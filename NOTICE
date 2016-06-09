@@ -1,0 +1,39 @@
+uMirrorMaker
+Copyright 2016 The Apache Software Foundation
+
+I. Included Software
+
+This product includes software developed at
+The Apache Software Foundation (http://www.apache.org/).
+Licensed under the Apache License 2.0.
+
+This product includes software developed at
+restlet (http://www.restlet.org/about/legal).
+Licensed under the Apache License 2.0.
+
+This product includes software developed at
+helix (http://helix.apache.org/).
+Licensed under the Apache License 2.0.
+
+This product includes software developed at
+zookeeper (http://zookeeper.apache.org/).
+Licensed under the Apache License 2.0.
+
+This product includes software developed at
+zkclient (https://github.com/sgroschupf/zkclient).
+Licensed under the Apache License 2.0.
+
+This product includes software developed at
+dropwizard (http://www.dropwizard.io/).
+Licensed under the Apache License 2.0.
+
+This product includes software developed at
+eclipse (https://eclipse.org/jetty)
+Licensed under the Apache License 2.0.
+
+This product includes software developed at
+kafka (https://kafka.apache.org/)
+Licensed under the Apache License 2.0.
+
+II. License Summary
+- Apache License 2.0
