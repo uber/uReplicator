@@ -1,6 +1,7 @@
-uMirrorMaker provides the ability to replicate between Kafka clusters in other data centers. With uMirrorMaker, you can publish to multiple regional Kafka clusters and aggregate in aggregation Kafka cluster instead of publish to single Kafka cluster.
-Current MirrorMaker design is using the Kafka high level consumer to consume data from multiple regional kafka clusters and produce to aggregation kafka cluster, thus whenever a regional kafka broker is having issue, it will cause rebalancing happens across all the currently serving topics.
-uMirrorMaker introduces helix controller as MirrorMaker Controller and uses simple consumer in MirrorMaker Worker, which achieves the following goals:
+uMirrorMaker provides the ability to replicate between Kafka clusters in other data centers. With uMirrorMaker, you can publish to multiple regional Kafka clusters and aggregate in an aggregation Kafka cluster instead of publishing to a single Kafka cluster.
+The current MirrorMaker design uses the Kafka high level consumer to consume data from multiple regional kafka clusters and produces to an aggregation kafka cluster. With this design, whenever a regional kafka broker is having an issue, it will cause rebalancing to happen across all of the active topics.
+
+uMirrorMaker introduces a helix controller as the MirrorMaker Controller and uses a simple consumer in MirrorMaker Worker. This design achieves the following goals:
 
 1. Stable MM: Rebalancing only during startup (when a node is added/ deleted)
 2. Simple operations: easy to scale up cluster, no server restart for whitelisting topics
