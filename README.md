@@ -4,9 +4,7 @@ uMirrorMaker provides the ability to replicate across Kafka clusters in other da
 
 =========
 
-Kafka's current (part of 0.8.2) MirrorMaker design consumes data from multiple regional Kafka clusters using a Kafka high-level consumer. With this design, any regional Kafka broker experiencing issues causes rebalancing across all of the active topics.
-
-uMirrorMaker introduces a Helix-based controller and uses a simple consumer in MirrorMaker Worker. This design achieves the following goals:
+Kafka's current (part of 0.8.2) MirrorMaker design consumes data from a given regional Kafka cluster using a Kafka high-level consumer. With this design, rebalancing in the high level consumer (due to a addition/deletion of topics, source cluster problems, network issues and so on) affects all the topics being replicated via that Mirrormaker.
 
 1. Stability: Rebalance only occurs during startup (when a node is added/deleted)
 2. Simple operations: Easy to scale up cluster, no server restart for whitelisting topics
