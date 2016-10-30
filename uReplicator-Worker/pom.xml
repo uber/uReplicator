@@ -3,23 +3,20 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+    <groupId>com.uber.uReplicator</groupId>
+    <artifactId>uReplicator-Worker</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <name>uReplicator-Worker</name>
     <parent>
-        <artifactId>uMirrorMaker</artifactId>
-        <groupId>com.uber.uMirrorMaker</groupId>
+        <artifactId>uReplicator</artifactId>
+        <groupId>com.uber.uReplicator</groupId>
         <version>1.0-SNAPSHOT</version>
     </parent>
-    <groupId>com.uber.uMirrorMaker</groupId>
-    <artifactId>uMirrorMaker-Worker</artifactId>
-    <version>1.0-SNAPSHOT</version>
-    <name>uMirrorMaker-Worker</name>
-
-
     <description>
         Kafka mirror maker with Helix is built for resolving high level consumers rebalancing pain point.
         Helix provides a good interface to dynamically interact with zookeeper and manages/rebalances a stateful mapping for instance
         to simple consumer mapping.
     </description>
-
     <dependencies>
         <dependency>
             <groupId>org.scala-lang</groupId>
