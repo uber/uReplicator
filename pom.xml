@@ -66,6 +66,14 @@
 			<groupId>org.apache.helix</groupId>
 			<artifactId>helix-core</artifactId>
 			<version>${helix.version}</version>
+			<exclusions>
+			  <exclusion>
+			    <!-- helix use the ancient version of ZkClient.
+			      Exclude or kafka's consumer will try to use it too ㅠㅠ -->
+			    <groupId>com.github.sgroschupf</groupId>
+			    <artifactId>zkclient</artifactId>
+			  </exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>com.yammer.metrics</groupId>
@@ -128,10 +136,10 @@
 						</binFileExtensions>
 						<!-- Set the target configuration directory to be used in the bin scripts -->
 						<configurationDirectory>conf</configurationDirectory>
-						<!-- Copy the contents from "/src/main/config" to the target configuration 
+						<!-- Copy the contents from "/src/main/config" to the target configuration
 							directory in the assembled application -->
 						<copyConfigurationDirectory>false</copyConfigurationDirectory>
-						<!-- Include the target configuration directory in the beginning of 
+						<!-- Include the target configuration directory in the beginning of
 							the classpath declaration in the bin scripts -->
 						<includeConfigurationDirectoryInClasspath>false</includeConfigurationDirectoryInClasspath>
 						<assembleDirectory>${project.build.directory}/${project.artifactId}-pkg</assembleDirectory>
@@ -217,7 +225,7 @@
 					<artifactId>maven-surefire-plugin</artifactId>
 					<version>2.14</version>
 					<configuration>
-						<!-- Do not set argLine here, it will break the code coverage plugin. 
+						<!-- Do not set argLine here, it will break the code coverage plugin.
 							Set it in the properties section. -->
 						<forkCount>1</forkCount>
 						<reuseForks>false</reuseForks>
