@@ -278,45 +278,6 @@
 					</execution>
 				</executions>
 			</plugin>
-			<plugin>
-				<artifactId>maven-resources-plugin</artifactId>
-				<version>2.5</version>
-				<executions>
-					<execution>
-						<id>copy-bin</id>
-						<phase>package</phase>
-						<goals>
-							<goal>copy-resources</goal>
-						</goals>
-						<configuration>
-							<outputDirectory>../bin/pkg</outputDirectory>
-							<resources>
-								<resource>
-									<directory>${project.build.directory}/${project.artifactId}-pkg/bin</directory>
-									<includes>
-										<include>*.sh</include>
-									</includes>
-								</resource>
-							</resources>
-						</configuration>
-					</execution>
-					<execution>
-						<id>copy-repo</id>
-						<phase>package</phase>
-						<goals>
-							<goal>copy-resources</goal>
-						</goals>
-						<configuration>
-							<outputDirectory>../bin/repo</outputDirectory>
-							<resources>
-								<resource>
-									<directory>${project.build.directory}/${project.artifactId}-pkg/repo</directory>
-								</resource>
-							</resources>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
 		</plugins>
 	</build>
 </project>
