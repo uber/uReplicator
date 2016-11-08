@@ -64,12 +64,12 @@ Kafka topic dummy topic data 4
 
 - Start uReplicator Controller (you should keep it running):
 ```
-./bin/pkg/start-controller-example1.sh
+./uReplicator-Distribution/target/uReplicator-Distribution-pkg/bin/start-controller-example1.sh
 ```
 
 - Start uReplicator Worker (you should keep it running, and it’s normal if you see kafka.consumer.ConsumerTimeoutException at this moment, since no topic has been added for copying):
 ```
-./bin/pkg/start-worker-example1.sh
+./uReplicator-Distribution/target/uReplicator-Distribution-pkg/bin/start-worker-example1.sh
 ```
 
 - Add topic to uReplicator Controller to start copying from kafka1 to kafka2:
@@ -95,12 +95,12 @@ Kafka topic dummy topic data 4
 
 - Start uReplicator Controller (you should keep it running):
 ```
-./bin/pkg/start-controller-example2.sh
+./uReplicator-Distribution/target/uReplicator-Distribution-pkg/bin/start-controller-example2.sh
 ```
 
 - Start uReplicator Worker (you should keep it running, and it’s normal if you see kafka.consumer.ConsumerTimeoutException at this moment since no topic has been added for copying):
 ```
-./bin/pkg/start-worker-example2.sh
+./uReplicator-Distribution/target/uReplicator-Distribution-pkg/bin/start-worker-example2.sh
 ```
 
 - Create topic in kafka2. Example 2 enables topic auto-whitelisting, so you don't need to whitelist topics manually. If a topic is in both source and destination Kafka clusters, the controller auto-whitelists the topic and starts copying data.

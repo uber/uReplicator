@@ -2,14 +2,14 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>com.uber.uMirrorMaker</groupId>
-	<artifactId>uMirrorMaker-Controller</artifactId>
+	<groupId>com.uber.uReplicator</groupId>
+	<artifactId>uReplicator-Controller</artifactId>
 	<packaging>jar</packaging>
 	<version>1.0-SNAPSHOT</version>
-	<name>uMirrorMaker-Controller</name>
+	<name>uReplicator-Controller</name>
 	<parent>
-            <artifactId>uMirrorMaker</artifactId>
-            <groupId>com.uber.uMirrorMaker</groupId>
+            <artifactId>uReplicator</artifactId>
+            <groupId>com.uber.uReplicator</groupId>
             <version>1.0-SNAPSHOT</version>
         </parent>
 	<description>

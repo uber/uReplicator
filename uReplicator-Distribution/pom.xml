@@ -2,14 +2,14 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>com.uber.uMirrorMaker</groupId>
-	<artifactId>uMirrorMaker-Distribution</artifactId>
+	<groupId>com.uber.uReplicator</groupId>
+	<artifactId>uReplicator-Distribution</artifactId>
 	<packaging>jar</packaging>
 	<version>1.0-SNAPSHOT</version>
-	<name>uMirrorMaker-Distribution</name>
+	<name>uReplicator-Distribution</name>
 	<parent>
-		<artifactId>uMirrorMaker</artifactId>
-		<groupId>com.uber.uMirrorMaker</groupId>
+		<artifactId>uReplicator</artifactId>
+		<groupId>com.uber.uReplicator</groupId>
 		<version>1.0-SNAPSHOT</version>
 	</parent>
 	<description>
@@ -21,13 +21,13 @@
 
 	<dependencies>
 		<dependency>
-			<groupId>com.uber.uMirrorMaker</groupId>
-			<artifactId>uMirrorMaker-Controller</artifactId>
+			<groupId>com.uber.uReplicator</groupId>
+			<artifactId>uReplicator-Controller</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>com.uber.uMirrorMaker</groupId>
-			<artifactId>uMirrorMaker-Worker</artifactId>
+			<groupId>com.uber.uReplicator</groupId>
+			<artifactId>uReplicator-Worker</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 	</dependencies>
@@ -129,9 +129,9 @@
 							</jvmSettings>
 							<jvmSettings>
 								<extraArguments>
-									<extraArgument>-Dapp_name=uMirrorMaker-Controller</extraArgument>
+									<extraArgument>-Dapp_name=uReplicator-Controller</extraArgument>
 									<extraArgument>-cp</extraArgument>
-									<extraArgument>uMirrorMaker-Distribution/target/uMirrorMaker-Distribution-0.1-SNAPSHOT-jar-with-dependencies.jar</extraArgument>
+									<extraArgument>uReplicator-Distribution/target/uReplicator-Distribution-0.1-SNAPSHOT-jar-with-dependencies.jar</extraArgument>
 									<extraArgument>-XX:+UseG1GC</extraArgument>
 									<extraArgument>-XX:+DisableExplicitGC</extraArgument>
 									<extraArgument>-XX:+PrintGCDetails</extraArgument>
@@ -161,9 +161,9 @@
 							</jvmSettings>
 							<jvmSettings>
 								<extraArguments>
-									<extraArgument>-Dapp_name=uMirrorMaker-Worker</extraArgument>
+									<extraArgument>-Dapp_name=uReplicator-Worker</extraArgument>
 									<extraArgument>-cp</extraArgument>
-									<extraArgument>uMirrorMaker-Distribution/target/uMirrorMaker-Distribution-0.1-SNAPSHOT-jar-with-dependencies.jar</extraArgument>
+									<extraArgument>uReplicator-Distribution/target/uReplicator-Distribution-0.1-SNAPSHOT-jar-with-dependencies.jar</extraArgument>
 									<extraArgument>-XX:+UseG1GC</extraArgument>
 									<extraArgument>-XX:+DisableExplicitGC</extraArgument>
 									<extraArgument>-XX:+PrintGCDetails</extraArgument>
@@ -185,7 +185,7 @@
 							<mainClass>com.uber.stream.kafka.mirrormaker.starter.MirrorMakerStarter</mainClass>
 							<id>start-controller-example1</id>
 							<jvmSettings>
-								<extraArgument>-Dapp_name=uMirrorMaker-Controller</extraArgument>
+								<extraArgument>-Dapp_name=uReplicator-Controller</extraArgument>
 							</jvmSettings>
 							<commandLineArguments>
 								<commandLineArgument>startMirrorMakerController -example1</commandLineArgument>
@@ -195,7 +195,7 @@
 							<mainClass>com.uber.stream.kafka.mirrormaker.starter.MirrorMakerStarter</mainClass>
 							<id>start-controller-example2</id>
 							<jvmSettings>
-								<extraArgument>-Dapp_name=uMirrorMaker-Controller</extraArgument>
+								<extraArgument>-Dapp_name=uReplicator-Controller</extraArgument>
 							</jvmSettings>
 							<commandLineArguments>
 								<commandLineArgument>startMirrorMakerController -example2</commandLineArgument>
@@ -205,7 +205,7 @@
 							<mainClass>com.uber.stream.kafka.mirrormaker.starter.MirrorMakerStarter</mainClass>
 							<id>start-worker-example1</id>
 							<jvmSettings>
-								<extraArgument>-Dapp_name=uMirrorMaker-Worker</extraArgument>
+								<extraArgument>-Dapp_name=uReplicator-Worker</extraArgument>
 							</jvmSettings>
 							<commandLineArguments>
 								<commandLineArgument>startMirrorMakerWorker kafka.mirrormaker.MirrorMakerWorker --consumer.config config/consumer.properties --producer.config config/producer.properties --helix.config config/helix.properties --topic.mappings config/topicmapping.properties</commandLineArgument>
@@ -215,7 +215,7 @@
 							<mainClass>com.uber.stream.kafka.mirrormaker.starter.MirrorMakerStarter</mainClass>
 							<id>start-worker-example2</id>
 							<jvmSettings>
-								<extraArgument>-Dapp_name=uMirrorMaker-Worker</extraArgument>
+								<extraArgument>-Dapp_name=uReplicator-Worker</extraArgument>
 							</jvmSettings>
 							<commandLineArguments>
 								<commandLineArgument>startMirrorMakerWorker kafka.mirrormaker.MirrorMakerWorker --consumer.config config/consumer.properties --producer.config config/producer.properties --helix.config config/helix.properties</commandLineArgument>
