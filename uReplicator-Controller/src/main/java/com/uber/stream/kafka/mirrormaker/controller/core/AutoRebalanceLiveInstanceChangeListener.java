@@ -84,7 +84,7 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
   }
 
   @Override
-  public synchronized void onLiveInstanceChange(final List<LiveInstance> liveInstances,
+  public void onLiveInstanceChange(final List<LiveInstance> liveInstances,
       NotificationContext changeContext) {
     LOGGER.info("AutoRebalanceLiveInstanceChangeListener.onLiveInstanceChange() wakes up!");
     _delayedScheuler.schedule(new Runnable() {
