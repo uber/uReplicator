@@ -65,7 +65,6 @@ class KafkaConnector(private val consumerIdString: String,
       info("Connector is now shutting down !")
       KafkaMetricsGroup.removeAllConsumerMetrics(config.clientId)
       fetcherManager.stopConnections()
-      commitOffsets
       if (zkClient != null) {
         zkClient.close()
       }
