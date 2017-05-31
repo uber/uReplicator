@@ -1,23 +1,24 @@
 /**
- * Copyright (C) 2015-2016 Uber Technology Inc. (streaming-core@uber.com)
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+  * Copyright (C) 2015-2016 Uber Technology Inc. (streaming-core@uber.com)
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  *
+  * http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
 package kafka.mirrormaker
 
 import java.net.InetAddress
 import java.util
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
+import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 import java.util.{Collections, Properties, UUID}
 
@@ -36,22 +37,22 @@ import org.apache.kafka.common.utils.Utils
 import scala.io.Source
 
 /**
- * The mirror maker has the following architecture:
- * - There is one mirror maker thread uses one KafkaConnector and owns a Kafka stream.
- * - All the mirror maker threads share one producer.
- * - Mirror maker thread periodically flushes the producer and then commits all offsets.
- *
- * @note For mirror maker, the following settings are set by default to make sure there is no data loss:
- *       1. use new producer with following settings
- *            acks=all
- *            retries=max integer
- *            block.on.buffer.full=true
- *            max.in.flight.requests.per.connection=1
- *       2. Consumer Settings
- *            auto.commit.enable=false
- *       3. Mirror Maker Setting:
- *            abort.on.send.failure=true
- */
+  * The mirror maker has the following architecture:
+  * - There is one mirror maker thread uses one KafkaConnector and owns a Kafka stream.
+  * - All the mirror maker threads share one producer.
+  * - Mirror maker thread periodically flushes the producer and then commits all offsets.
+  *
+  * @note      For mirror maker, the following settings are set by default to make sure there is no data loss:
+  *       1. use new producer with following settings
+  *            acks=all
+  *            retries=max integer
+  *            block.on.buffer.full=true
+  *            max.in.flight.requests.per.connection=1
+  *       2. Consumer Settings
+  *            auto.commit.enable=false
+  *       3. Mirror Maker Setting:
+  *            abort.on.send.failure=true
+  */
 object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
 
   private var helixClusterName: String = null
@@ -71,7 +72,9 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
   @volatile private var exitingOnSendFailure: Boolean = false
   private var topicMappings = Map.empty[String, String]
 
-
+  private var lastOffsetCommitMs = System.currentTimeMillis()
+  private val recordCount: AtomicInteger = new AtomicInteger(0)
+  private val flushCommitLock: ReentrantLock = new ReentrantLock
 
   def main(args: Array[String]) {
     info("Starting mirror maker")
@@ -164,7 +167,7 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
     maybeSetDefaultProperty(consumerConfigProps, "consumer.timeout.ms", "10000")
     val consumerConfig = new ConsumerConfig(consumerConfigProps)
     val consumerIdString = {
-      var consumerUuid : String = null
+      var consumerUuid: String = null
       consumerConfig.consumerId match {
         case Some(consumerId) // for testing only
         => consumerUuid = consumerId
@@ -172,7 +175,7 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
         => val uuid = UUID.randomUUID()
           consumerUuid = "%s-%d-%s".format(
             InetAddress.getLocalHost.getHostName, System.currentTimeMillis,
-            uuid.getMostSignificantBits().toHexString.substring(0,8))
+            uuid.getMostSignificantBits().toHexString.substring(0, 8))
       }
       consumerConfig.groupId + "_" + consumerUuid
     }
@@ -211,22 +214,36 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
     mirrorMakerThread.awaitShutdown()
   }
 
-  def commitOffsets(connector: KafkaConnector) {
-    if (!exitingOnSendFailure) {
-      trace("Committing offsets.")
-      connector.commitOffsets
-    } else {
-      info("Exiting on send failure, skip committing offsets.")
-    }
-  }
-
   def addToHelixController(): Unit = {
     helixZkManager = HelixManagerFactory.getZKHelixManager(helixClusterName, instanceId, InstanceType.PARTICIPANT, zkServer)
-    val stateMachineEngine: StateMachineEngine  = helixZkManager.getStateMachineEngine()
+    val stateMachineEngine: StateMachineEngine = helixZkManager.getStateMachineEngine()
     // register the MirrorMaker worker
     val stateModelFactory = new HelixWorkerOnlineOfflineStateModelFactory(instanceId, connector)
     stateMachineEngine.registerStateModelFactory("OnlineOffline", stateModelFactory)
     helixZkManager.connect()
+  }
+
+  def maybeFlushAndCommitOffsets(forceCommit: Boolean) {
+    try {
+      if (forceCommit || System.currentTimeMillis() - lastOffsetCommitMs > offsetCommitIntervalMs) {
+        info("Flushing producer.")
+        producer.flush()
+
+        flushCommitLock.synchronized {
+          while (!exitingOnSendFailure && recordCount.get() != 0) {
+            flushCommitLock.wait(100)
+          }
+        }
+
+        if (!exitingOnSendFailure) {
+          info("Committing offsets.")
+          connector.commitOffsets
+          lastOffsetCommitMs = System.currentTimeMillis()
+        } else {
+          info("Exiting on send failure, skip committing offsets.")
+        }
+      }
+    }
   }
 
   def cleanShutdown() {
@@ -238,17 +255,25 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
         mirrorMakerThread.shutdown()
         mirrorMakerThread.awaitShutdown()
       }
+
+      info("Flushing last batches and commit offsets.")
+      // flush the last batches of msg and commit the offsets
+      // since MM threads are stopped, it's consistent to flush/commit here
       // commit offsets
-      commitOffsets(connector)
+      maybeFlushAndCommitOffsets(true)
+
+      info("Shutting down consumer connectors.")
+      connector.shutdown()
 
       // shutdown producer
       info("Closing producer.")
       producer.close()
-      info("Kafka mirror maker shutdown successfully")
 
       // disconnect with helixZkManager
       helixZkManager.disconnect()
       info("helix connection shutdown successfully")
+
+      info("Kafka mirror maker shutdown successfully")
     }
   }
 
@@ -286,41 +311,27 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
               while (iterRecords.hasNext) {
                 producer.send(iterRecords.next())
               }
-              maybeFlushAndCommitOffsets()
+              maybeFlushAndCommitOffsets(false)
             }
           } catch {
             case e: ConsumerTimeoutException =>
               e.printStackTrace()
               trace("Caught ConsumerTimeoutException, continue iteration.")
           }
-          maybeFlushAndCommitOffsets()
+          maybeFlushAndCommitOffsets(false)
         }
       } catch {
         case t: Throwable =>
           t.printStackTrace()
           fatal("Mirror maker thread failure due to ", t)
       } finally {
-        info("Flushing producer.")
-        producer.flush()
-        info("Committing consumer offsets.")
-        commitOffsets(connector)
-        info("Shutting down consumer connectors.")
-        connector.shutdown()
         shutdownLatch.countDown()
         info("Mirror maker thread stopped")
-        // if it exits accidentally, stop the entire mirror maker
+        // if it exits accidentally, like only one thread dies, stop the entire mirror maker
         if (!isShuttingdown.get()) {
           fatal("Mirror maker thread exited abnormally, stopping the whole mirror maker.")
           System.exit(-1)
         }
-      }
-    }
-
-    def maybeFlushAndCommitOffsets() {
-      if (System.currentTimeMillis() - lastOffsetCommitMs > offsetCommitIntervalMs) {
-        producer.flush()
-        commitOffsets(connector)
-        lastOffsetCommitMs = System.currentTimeMillis()
       }
     }
 
@@ -353,6 +364,7 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
     val producer = new KafkaProducer[Array[Byte], Array[Byte]](producerProps)
 
     def send(record: ProducerRecord[Array[Byte], Array[Byte]]) {
+      recordCount.getAndIncrement()
       if (sync) {
         this.producer.send(record).get()
       } else {
@@ -374,29 +386,36 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
     }
   }
 
-  private class MirrorMakerProducerCallback (topic: String, key: Array[Byte], value: Array[Byte])
+  private class MirrorMakerProducerCallback(topic: String, key: Array[Byte], value: Array[Byte])
     extends ErrorLoggingCallback(topic, key, value, false) {
 
     override def onCompletion(metadata: RecordMetadata, exception: Exception) {
-      if (exception != null) {
-        // Use default call back to log error. This means the max retries of producer has reached and message
-        // still could not be sent.
-        super.onCompletion(metadata, exception)
-        // If abort.on.send.failure is set, stop the mirror maker. Otherwise log skipped message and move on.
-        if (abortOnSendFailure) {
-          info("Closing producer due to send failure.")
-          exitingOnSendFailure = true
-          producer.close(0)
+      try {
+        if (exception != null) {
+          // Use default call back to log error. This means the max retries of producer has reached and message
+          // still could not be sent.
+          super.onCompletion(metadata, exception)
+          // If abort.on.send.failure is set, stop the mirror maker. Otherwise log skipped message and move on.
+          if (abortOnSendFailure) {
+            info("Closing producer due to send failure.")
+            exitingOnSendFailure = true
+            producer.close(0)
+          }
+          numDroppedMessages.incrementAndGet()
         }
-        numDroppedMessages.incrementAndGet()
+      } finally {
+        if (exitingOnSendFailure || recordCount.decrementAndGet() == 0) {
+          flushCommitLock.synchronized {
+            flushCommitLock.notifyAll()
+          }
+        }
       }
     }
   }
 
-
   /**
-   * If message.handler.args is specified. A constructor that takes in a String as argument must exist.
-   */
+    * If message.handler.args is specified. A constructor that takes in a String as argument must exist.
+    */
   trait MirrorMakerMessageHandler {
     def handle(record: MessageAndMetadata[Array[Byte], Array[Byte]]): util.List[ProducerRecord[Array[Byte], Array[Byte]]]
   }
