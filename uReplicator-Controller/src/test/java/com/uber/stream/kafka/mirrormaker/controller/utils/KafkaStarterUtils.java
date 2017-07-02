@@ -15,15 +15,16 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.utils;
 
-import java.io.File;
-import java.util.Properties;
-
 import kafka.admin.TopicCommand;
 import kafka.server.KafkaConfig;
 import kafka.server.KafkaServerStartable;
-
+import kafka.utils.ZkUtils;
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.commons.io.FileUtils;
+import org.apache.kafka.common.errors.TopicExistsException;
+
+import java.io.File;
+import java.util.Properties;
 
 
 /**
@@ -97,7 +98,15 @@ public class KafkaStarterUtils {
   }
 
   public static void createTopic(String kafkaTopic, String zkStr) {
-    TopicCommand
-        .main(new String[] { "--create", "--zookeeper", zkStr, "--replication-factor", "1", "--partitions", "1", "--topic", kafkaTopic });
+    // TopicCommand.main() will call System.exit() finally, which will break maven-surefire-plugin
+    try {
+      String[] args = new String[]{"--create", "--zookeeper", zkStr, "--replication-factor", "1", "--partitions", "1", "--topic", kafkaTopic};
+      ZkUtils zkUtils = ZkUtils.apply(zkStr, 30000, 30000, false);
+      TopicCommand.TopicCommandOptions opts = new TopicCommand.TopicCommandOptions(args);
+      TopicCommand.createTopic(zkUtils, opts);
+    } catch (TopicExistsException e) {
+      // Catch TopicExistsException otherwise it will break maven-surefire-plugin
+      System.out.println("Topic already existed");
+    }
   }
 }

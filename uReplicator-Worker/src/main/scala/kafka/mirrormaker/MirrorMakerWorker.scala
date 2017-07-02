@@ -224,24 +224,22 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
   }
 
   def maybeFlushAndCommitOffsets(forceCommit: Boolean) {
-    try {
-      if (forceCommit || System.currentTimeMillis() - lastOffsetCommitMs > offsetCommitIntervalMs) {
-        info("Flushing producer.")
-        producer.flush()
+    if (forceCommit || System.currentTimeMillis() - lastOffsetCommitMs > offsetCommitIntervalMs) {
+      info("Flushing producer.")
+      producer.flush()
 
-        flushCommitLock.synchronized {
-          while (!exitingOnSendFailure && recordCount.get() != 0) {
-            flushCommitLock.wait(100)
-          }
+      flushCommitLock.synchronized {
+        while (!exitingOnSendFailure && recordCount.get() != 0) {
+          flushCommitLock.wait(100)
         }
+      }
 
-        if (!exitingOnSendFailure) {
-          info("Committing offsets.")
-          connector.commitOffsets
-          lastOffsetCommitMs = System.currentTimeMillis()
-        } else {
-          info("Exiting on send failure, skip committing offsets.")
-        }
+      if (!exitingOnSendFailure) {
+        info("Committing offsets.")
+        connector.commitOffsets
+        lastOffsetCommitMs = System.currentTimeMillis()
+      } else {
+        info("Exiting on send failure, skip committing offsets.")
       }
     }
   }

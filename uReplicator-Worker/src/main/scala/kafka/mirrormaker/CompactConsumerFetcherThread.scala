@@ -214,9 +214,13 @@ class CompactConsumerFetcherThread(name: String,
         response.data.foreach {
           case(topicAndPartition, partitionData) =>
             val (topic, partitionId) = topicAndPartition.asTuple
-            partitionMap.get(topicAndPartition).foreach(currentPartitionFetchState =>
+            partitionMap.get(topicAndPartition).foreach(currentPartitionFetchState => {
               // we append to the log if the current offset is defined and it is the same as the offset requested during fetch
-              if (fetchRequest.requestInfo(topicAndPartition).offset == currentPartitionFetchState.offset) {
+              val requestOffset = fetchRequest.requestInfo.toMap.get(topicAndPartition) match {
+                case Some(info) => info.offset
+                case _ => -1
+              }
+              if (requestOffset == currentPartitionFetchState.offset) {
                 partitionData.error match {
                   case ErrorMapping.NoError =>
                     try {
@@ -227,7 +231,7 @@ class CompactConsumerFetcherThread(name: String,
                         case None => currentPartitionFetchState.offset
                       }
                       partitionMap.put(topicAndPartition, new PartitionFetchState(newOffset))
-                      fetcherLagStats.getFetcherLagStats(topic, partitionId).lag = partitionData.hw - newOffset
+                      fetcherLagStats.getAndMaybePut(topic, partitionId).lag = partitionData.hw - newOffset
                       fetcherStats.byteRate.mark(validBytes)
                       // Once we hand off the partition data to processPartitionData, we don't want to mess with it any more in this thread
                       processPartitionData(topicAndPartition, currentPartitionFetchState.offset, partitionData)
@@ -240,7 +244,7 @@ class CompactConsumerFetcherThread(name: String,
                         // 1. If there is a corrupt message in a topic partition, it does not bring the fetcher thread down and cause other topic partition to also lag
                         // 2. If the message is corrupt due to a transient state in the log (truncation, partial writes can cause this), we simply continue and
                         // should get fixed in the subsequent fetches
-                        logger.error("Found invalid messages during fetch for partition [" + topic + "," + partitionId + "] offset " + currentPartitionFetchState.offset  + " error " + ime.getMessage)
+                        logger.error("Found invalid messages during fetch for partition [" + topic + "," + partitionId + "] offset " + currentPartitionFetchState.offset + " error " + ime.getMessage)
                       case e: Throwable =>
                         throw new KafkaException("error processing data for partition [%s,%d] offset %d"
                           .format(topic, partitionId, currentPartitionFetchState.offset), e)
@@ -263,7 +267,8 @@ class CompactConsumerFetcherThread(name: String,
                       partitionsWithError += topicAndPartition
                     }
                 }
-              })
+              }
+            })
         }
       }
     }

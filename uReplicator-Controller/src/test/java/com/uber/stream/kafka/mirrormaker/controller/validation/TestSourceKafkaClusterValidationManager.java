@@ -49,8 +49,6 @@ public class TestSourceKafkaClusterValidationManager {
             KafkaStarterUtils.DEFAULT_BROKER_ID,
             KafkaStarterUtils.DEFAULT_ZK_STR, KafkaStarterUtils.getDefaultKafkaConfiguration());
 
-    // Create Kafka topic
-    KafkaStarterUtils.createTopic("testTopic0", KafkaStarterUtils.DEFAULT_ZK_STR);
     try {
       Thread.sleep(2000);
     } catch (Exception e) {

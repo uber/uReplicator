@@ -65,6 +65,7 @@ public class AutoTopicWhitelistingManager {
   private final KafkaBrokerTopicObserver _destKafkaTopicObserver;
 
   private final ZkClient _zkClient;
+  private final ZkUtils _zkUtils;
   private final String _blacklistedTopicsZPath;
 
   private final String _patternToExcludeTopics;
@@ -102,6 +103,7 @@ public class AutoTopicWhitelistingManager {
     _initWaitTimeInSec = initWaitTimeInSec;
     _zkClient = new ZkClient(_helixMirrorMakerManager.getHelixZkURL(), 30000, 30000,
             ZKStringSerializer$.MODULE$);
+    _zkUtils = ZkUtils.apply(_zkClient, false);
     _blacklistedTopicsZPath =
             String.format("/%s/BLACKLISTED_TOPICS", _helixMirrorMakerManager.getHelixClusterName());
   }
@@ -242,7 +244,8 @@ public class AutoTopicWhitelistingManager {
   }
 
   public void removeFromBlacklist(String topic) {
-    ZkUtils.deletePath(_zkClient, _blacklistedTopicsZPath + "/" + topic);
+    _zkUtils.deletePath( _blacklistedTopicsZPath + "/" + topic);
+    //ZkUtils.deletePath(_zkClient, _blacklistedTopicsZPath + "/" + topic);
     LOGGER.info("topic={} is removed from blacklist on zk", topic);
   }
 
