@@ -109,8 +109,6 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
         }
         scala.collection.mutable.Map<String, scala.collection.Map<Object, Seq<Object>>> partitionAssignmentForTopics =
                 _zkUtils.getPartitionAssignmentForTopics(JavaConversions.asScalaBuffer(ImmutableList.copyOf(newAddedTopics)));
-                //ZkUtils.getPartitionAssignmentForTopics(_zkClient,
-                        //JavaConversions.asScalaBuffer(ImmutableList.copyOf(newAddedTopics)));
 
         for (String topic : newAddedTopics) {
           try {
@@ -145,8 +143,6 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
 
       scala.collection.mutable.Map<String, scala.collection.Map<Object, Seq<Object>>> partitionAssignmentForTopics =
           _zkUtils.getPartitionAssignmentForTopics(JavaConversions.asScalaBuffer(ImmutableList.copyOf(servingTopics)));
-              //ZkUtils.getPartitionAssignmentForTopics(_zkClient,
-                      //JavaConversions.asScalaBuffer(ImmutableList.copyOf(servingTopics)));
 
       for (String topic : servingTopics) {
         try {

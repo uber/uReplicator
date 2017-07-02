@@ -245,7 +245,6 @@ public class AutoTopicWhitelistingManager {
 
   public void removeFromBlacklist(String topic) {
     _zkUtils.deletePath( _blacklistedTopicsZPath + "/" + topic);
-    //ZkUtils.deletePath(_zkClient, _blacklistedTopicsZPath + "/" + topic);
     LOGGER.info("topic={} is removed from blacklist on zk", topic);
   }
 
