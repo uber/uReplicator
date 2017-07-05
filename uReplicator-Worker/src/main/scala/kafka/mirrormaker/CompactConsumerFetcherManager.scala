@@ -27,9 +27,8 @@ import kafka.consumer.ConsumerConfig
 import kafka.metrics.KafkaMetricsGroup
 import kafka.server.{BrokerAndFetcherId, BrokerAndInitialOffset}
 import kafka.utils.CoreUtils._
-import kafka.utils.{ZkUtils, Logging, ShutdownableThread, SystemTime}
+import kafka.utils.{Logging, ShutdownableThread, ZkUtils}
 import org.I0Itec.zkclient.ZkClient
-import org.apache.kafka.common.protocol.SecurityProtocol
 import org.apache.kafka.common.utils.Utils
 
 import scala.collection.mutable.HashMap
@@ -49,7 +48,7 @@ class CompactConsumerFetcherManager (private val consumerIdString: String,
                                      private val config: ConsumerConfig,
                                      private val zkClient : ZkClient)
   extends Logging with KafkaMetricsGroup {
-  protected val name: String = "CompactConsumerFetcherManager-%d".format(SystemTime.milliseconds)
+  protected val name: String = "CompactConsumerFetcherManager-%d".format(System.currentTimeMillis)
   private val clientId: String = config.clientId
   private val numFetchers: Int = config.numConsumerFetchers
   // map of (source broker_id, fetcher_id per source broker) => fetcher
@@ -305,7 +304,7 @@ class CompactConsumerFetcherManager (private val consumerIdString: String,
         }
 
         info("Partitions without leader %s".format(noLeaderPartitionSet))
-        val brokers = ZkUtils.apply(zkClient, true).getAllBrokerEndPointsForChannel(SecurityProtocol.PLAINTEXT)
+        val brokers = ClientUtils.getPlaintextBrokerEndPoints(ZkUtils.apply(zkClient, true))
 
         val topicsMetadata = ClientUtils.fetchTopicMetadata(noLeaderPartitionSet.map(m => m.topic).toSet,
           brokers,

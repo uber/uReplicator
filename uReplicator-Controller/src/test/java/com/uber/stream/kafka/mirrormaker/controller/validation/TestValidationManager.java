@@ -29,7 +29,6 @@ import org.testng.annotations.Test;
 
 import com.alibaba.fastjson.JSONObject;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
-import com.uber.stream.kafka.mirrormaker.controller.core.AutoTopicWhitelistingManager;
 import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
 import com.uber.stream.kafka.mirrormaker.controller.core.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.controller.utils.ControllerTestUtils;
@@ -47,7 +46,7 @@ public class TestValidationManager {
   private KafkaServerStartable kafkaStarter;
   private HelixMirrorMakerManager helixMirrorMakerManager;
   private ValidationManager validationManager;
-  private final String helixClusterName = "TestAutoTopicWhitelistingManager";
+  private final String helixClusterName = "TestValidationManager";
   public static List<FakeInstance> fakeInstances = new ArrayList<FakeInstance>();
 
   @BeforeTest

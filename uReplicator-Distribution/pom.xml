@@ -10,7 +10,7 @@
 	<parent>
 		<artifactId>uReplicator</artifactId>
 		<groupId>com.uber.uReplicator</groupId>
-		<version>1.0-SNAPSHOT</version>
+		<version>1.0.0</version>
 	</parent>
 	<description>
       A distribution for this project.
@@ -39,8 +39,8 @@
 				<version>2.5.1</version>
 				<inherited>true</inherited>
 				<configuration>
-					<source>1.7</source>
-					<target>1.7</target>
+					<source>1.8</source>
+					<target>1.8</target>
 				</configuration>
 			</plugin>
 
@@ -241,6 +241,45 @@
 						<platform>unix</platform>
 					</platforms>
 				</configuration>
+			</plugin>
+			<plugin>
+				<artifactId>maven-resources-plugin</artifactId>
+				<version>2.5</version>
+				<executions>
+					<execution>
+						<id>copy-bin</id>
+						<phase>package</phase>
+						<goals>
+							<goal>copy-resources</goal>
+						</goals>
+						<configuration>
+							<outputDirectory>../bin/pkg</outputDirectory>
+							<resources>
+								<resource>
+									<directory>${project.build.directory}/${project.artifactId}-pkg/bin</directory>
+									<includes>
+										<include>*.sh</include>
+									</includes>
+								</resource>
+							</resources>
+						</configuration>
+					</execution>
+					<execution>
+						<id>copy-repo</id>
+						<phase>package</phase>
+						<goals>
+							<goal>copy-resources</goal>
+						</goals>
+						<configuration>
+							<outputDirectory>../bin/repo</outputDirectory>
+							<resources>
+								<resource>
+									<directory>${project.build.directory}/${project.artifactId}-pkg/repo</directory>
+								</resource>
+							</resources>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>

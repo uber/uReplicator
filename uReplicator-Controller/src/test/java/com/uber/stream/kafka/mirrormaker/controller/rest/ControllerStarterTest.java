@@ -66,8 +66,6 @@ public class ControllerStarterTest {
             KafkaStarterUtils.DEFAULT_BROKER_ID,
             KafkaStarterUtils.DEFAULT_ZK_STR, KafkaStarterUtils.getDefaultKafkaConfiguration());
 
-    // Create Kafka topic
-    KafkaStarterUtils.createTopic("testTopic0", KafkaStarterUtils.DEFAULT_ZK_STR);
     try {
       Thread.sleep(2000);
     } catch (Exception e) {
@@ -75,10 +73,6 @@ public class ControllerStarterTest {
     kafkaBrokerTopicObserver =
         new KafkaBrokerTopicObserver("broker0", KafkaStarterUtils.DEFAULT_ZK_STR);
 
-    // Create Kafka topic
-    KafkaStarterUtils.createTopic("testTopic0", KafkaStarterUtils.DEFAULT_ZK_STR);
-    
-    
     ZK_CLIENT = new ZkClient(ZkStarter.DEFAULT_ZK_STR);
     ZK_CLIENT.deleteRecursive("/" + HELIX_CLUSTER_NAME);
     REQUEST_URL = "http://localhost:" + CONTROLLER_PORT;

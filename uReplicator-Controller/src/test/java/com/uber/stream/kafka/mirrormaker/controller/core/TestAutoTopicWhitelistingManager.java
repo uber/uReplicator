@@ -46,8 +46,6 @@ public class TestAutoTopicWhitelistingManager {
             KafkaStarterUtils.DEFAULT_BROKER_ID,
             KafkaStarterUtils.DEFAULT_ZK_STR, KafkaStarterUtils.getDefaultKafkaConfiguration());
 
-    // Create Kafka topic
-    KafkaStarterUtils.createTopic("testTopic0", KafkaStarterUtils.DEFAULT_ZK_STR);
     try {
       Thread.sleep(2000);
     } catch (Exception e) {
@@ -69,9 +67,6 @@ public class TestAutoTopicWhitelistingManager {
     autoTopicWhitelistingManager = new AutoTopicWhitelistingManager(kafkaBrokerTopicObserver,
         kafkaBrokerTopicObserver, helixMirrorMakerManager, "", 1);
     autoTopicWhitelistingManager.start();
-
-    // Create Kafka topic
-    KafkaStarterUtils.createTopic("testTopic0", KafkaStarterUtils.DEFAULT_ZK_STR);
   }
 
   @AfterTest

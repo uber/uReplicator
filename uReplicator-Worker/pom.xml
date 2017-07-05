@@ -10,7 +10,7 @@
     <parent>
         <artifactId>uReplicator</artifactId>
         <groupId>com.uber.uReplicator</groupId>
-        <version>1.0-SNAPSHOT</version>
+        <version>1.0.0</version>
     </parent>
     <description>
         Kafka mirror maker with Helix is built for resolving high level consumers rebalancing pain point.
@@ -44,6 +44,12 @@
             <groupId>org.apache.helix</groupId>
             <artifactId>helix-core</artifactId>
             <version>${helix.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.github.sgroschupf</groupId>
+                    <artifactId>zkclient</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>com.yammer.metrics</groupId>
@@ -185,10 +191,10 @@
     </dependencies>
 
     <properties>
-        <scala.version>2.10.5</scala.version>
-        <kafka.version>0.9.0.0</kafka.version>
-        <kafka.scala.version>2.10</kafka.scala.version>
-        <helix.version>0.6.5</helix.version>
+        <scala.version>2.11.8</scala.version>
+        <kafka.version>0.10.2.0</kafka.version>
+        <kafka.scala.version>2.11</kafka.scala.version>
+        <helix.version>0.6.8</helix.version>
         <yammer.version>2.2.0</yammer.version>
         <zookeeper.version>3.4.6</zookeeper.version>
         <zkclient.version>0.5</zkclient.version>
@@ -196,7 +202,7 @@
         <junit.version>4.6</junit.version>
         <scalatest.version>2.2.5</scalatest.version>
 
-        <jdk.version>1.7</jdk.version>
+        <jdk.version>1.8</jdk.version>
         <avro.version>1.7.7</avro.version>
         <jackson.version>2.4.3</jackson.version>
         <restlet.version>2.2.1</restlet.version>
