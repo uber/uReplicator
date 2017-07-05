@@ -29,7 +29,7 @@ import kafka.server.{BrokerAndFetcherId, BrokerAndInitialOffset}
 import kafka.utils.CoreUtils._
 import kafka.utils.{Logging, ShutdownableThread, ZkUtils}
 import org.I0Itec.zkclient.ZkClient
-import org.apache.kafka.common.utils.{SystemTime, Utils}
+import org.apache.kafka.common.utils.Utils
 
 import scala.collection.mutable.HashMap
 import scala.collection.{JavaConversions, Map, Set, mutable}
