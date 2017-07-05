@@ -48,7 +48,7 @@ class CompactConsumerFetcherManager (private val consumerIdString: String,
                                      private val config: ConsumerConfig,
                                      private val zkClient : ZkClient)
   extends Logging with KafkaMetricsGroup {
-  protected val name: String = "CompactConsumerFetcherManager-%d".format(new SystemTime().milliseconds)
+  protected val name: String = "CompactConsumerFetcherManager-%d".format(System.currentTimeMillis)
   private val clientId: String = config.clientId
   private val numFetchers: Int = config.numConsumerFetchers
   // map of (source broker_id, fetcher_id per source broker) => fetcher
