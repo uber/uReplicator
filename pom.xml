@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.uber.uReplicator</groupId>
 	<artifactId>uReplicator</artifactId>
-	<version>1.0-SNAPSHOT</version>
+	<version>1.0.1</version>
 	<packaging>pom</packaging>
 	<name>uReplicator</name>
 
@@ -15,7 +15,7 @@
 			<url>http://maven.restlet.org</url>
 		</repository>
 	</repositories>
-	
+
 	<modules>
 		<module>uReplicator-Controller</module>
 		<module>uReplicator-Worker</module>
@@ -52,6 +52,26 @@
 		</developer>
 	</developers>
 	<inceptionYear>2015-2016</inceptionYear>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>com.uber.uReplicator</groupId>
+				<artifactId>uReplicator-Controller</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.uber.uReplicator</groupId>
+				<artifactId>uReplicator-Distribution</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.uber.uReplicator</groupId>
+				<artifactId>uReplicator-Worker</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 
 	<dependencies>
 		<dependency>
@@ -110,7 +130,7 @@
 
 	<properties>
 		<scala.version>2.11.8</scala.version>
-		<kafka.version>0.10.2.0</kafka.version>
+		<kafka.version>0.10.2.1</kafka.version>
 		<kafka.scala.version>2.11</kafka.scala.version>
 		<helix.version>0.6.8</helix.version>
 		<yammer.version>2.2.0</yammer.version>
@@ -144,10 +164,10 @@
 						<!-- Set the target configuration directory to be used in the bin scripts -->
 						<configurationDirectory>conf</configurationDirectory>
 						<!-- Copy the contents from "/src/main/config" to the target configuration
-							directory in the assembled application -->
+                            directory in the assembled application -->
 						<copyConfigurationDirectory>false</copyConfigurationDirectory>
 						<!-- Include the target configuration directory in the beginning of
-							the classpath declaration in the bin scripts -->
+                            the classpath declaration in the bin scripts -->
 						<includeConfigurationDirectoryInClasspath>false</includeConfigurationDirectoryInClasspath>
 						<assembleDirectory>${project.build.directory}/${project.artifactId}-pkg</assembleDirectory>
 						<!-- Extra JVM arguments that will be included in the bin scripts -->
@@ -233,7 +253,7 @@
 					<version>2.14</version>
 					<configuration>
 						<!-- Do not set argLine here, it will break the code coverage plugin.
-							Set it in the properties section. -->
+                            Set it in the properties section. -->
 						<forkCount>1</forkCount>
 						<reuseForks>false</reuseForks>
 						<!-- 30 minutes -->

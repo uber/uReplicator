@@ -5,12 +5,11 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.uber.uReplicator</groupId>
     <artifactId>uReplicator-Worker</artifactId>
-    <version>1.0-SNAPSHOT</version>
     <name>uReplicator-Worker</name>
     <parent>
         <artifactId>uReplicator</artifactId>
         <groupId>com.uber.uReplicator</groupId>
-        <version>1.0.0</version>
+        <version>1.0.1</version>
     </parent>
     <description>
         Kafka mirror maker with Helix is built for resolving high level consumers rebalancing pain point.
@@ -25,46 +24,9 @@
             <scope>compile</scope>
         </dependency>
         <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>kafka_${kafka.scala.version}</artifactId>
-            <version>${kafka.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>kafka_${kafka.scala.version}</artifactId>
-            <version>${kafka.version}</version>
-            <classifier>test</classifier>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>kafka-clients</artifactId>
-            <version>${kafka.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.helix</groupId>
-            <artifactId>helix-core</artifactId>
-            <version>${helix.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.github.sgroschupf</groupId>
-                    <artifactId>zkclient</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
             <groupId>com.yammer.metrics</groupId>
             <artifactId>metrics-core</artifactId>
             <version>${yammer.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.zookeeper</groupId>
-            <artifactId>zookeeper</artifactId>
-            <version>${zookeeper.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.101tec</groupId>
-            <artifactId>zkclient</artifactId>
-            <version>${zkclient.version}</version>
         </dependency>
         <dependency>
             <groupId>net.sf.jopt-simple</groupId>
@@ -76,8 +38,6 @@
             <artifactId>junit</artifactId>
             <version>${junit.version}</version>
         </dependency>
-
-
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpcore</artifactId>
@@ -149,11 +109,6 @@
             <version>${jackson.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.avro</groupId>
-            <artifactId>avro</artifactId>
-            <version>${avro.version}</version>
-        </dependency>
-        <dependency>
             <groupId>org.restlet.jse</groupId>
             <artifactId>org.restlet</artifactId>
             <version>${restlet.version}</version>
@@ -192,18 +147,11 @@
 
     <properties>
         <scala.version>2.11.8</scala.version>
-        <kafka.version>0.10.2.0</kafka.version>
-        <kafka.scala.version>2.11</kafka.scala.version>
-        <helix.version>0.6.8</helix.version>
         <yammer.version>2.2.0</yammer.version>
-        <zookeeper.version>3.4.6</zookeeper.version>
-        <zkclient.version>0.5</zkclient.version>
         <jopt-simple.version>3.2</jopt-simple.version>
         <junit.version>4.6</junit.version>
         <scalatest.version>2.2.5</scalatest.version>
-
         <jdk.version>1.8</jdk.version>
-        <avro.version>1.7.7</avro.version>
         <jackson.version>2.4.3</jackson.version>
         <restlet.version>2.2.1</restlet.version>
         <testng.version>6.0.1</testng.version>
@@ -281,24 +229,24 @@
                 </configuration>
             </plugin>
             <plugin>
-              <groupId>org.apache.maven.plugins</groupId>
-              <artifactId>maven-assembly-plugin</artifactId>
-              <version>2.4.1</version>
-              <configuration>
-                <!-- get all project dependencies -->
-                <descriptorRefs>
-                  <descriptorRef>jar-with-dependencies</descriptorRef>
-                </descriptorRefs>
-              </configuration>
-              <executions>
-                <execution>
-                  <id>make-assembly</id>
-                  <phase>package</phase>
-                  <goals>
-                    <goal>single</goal>
-                  </goals>
-                </execution>
-              </executions>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>2.4.1</version>
+                <configuration>
+                    <!-- get all project dependencies -->
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
