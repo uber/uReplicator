@@ -210,9 +210,11 @@
                 <extraArgument>-Dapp_name=uReplicator-Worker</extraArgument>
               </jvmSettings>
               <commandLineArguments>
-                <commandLineArgument>startMirrorMakerWorker kafka.mirrormaker.MirrorMakerWorker --consumer.config
-                  config/consumer.properties --producer.config config/producer.properties --helix.config
-                  config/helix.properties --topic.mappings config/topicmapping.properties
+                <commandLineArgument>startMirrorMakerWorker kafka.mirrormaker.MirrorMakerWorker \
+                  --consumer.config config/consumer.properties \
+                  --producer.config config/producer.properties \
+                  --helix.config config/helix.properties \
+                  --topic.mappings config/topicmapping.properties
                 </commandLineArgument>
               </commandLineArguments>
             </program>
@@ -223,9 +225,10 @@
                 <extraArgument>-Dapp_name=uReplicator-Worker</extraArgument>
               </jvmSettings>
               <commandLineArguments>
-                <commandLineArgument>startMirrorMakerWorker kafka.mirrormaker.MirrorMakerWorker --consumer.config
-                  config/consumer.properties --producer.config config/producer.properties --helix.config
-                  config/helix.properties
+                <commandLineArgument>startMirrorMakerWorker kafka.mirrormaker.MirrorMakerWorker \
+                  --consumer.config config/consumer.properties \
+                  --producer.config config/producer.properties \
+                  --helix.config config/helix.properties
                 </commandLineArgument>
               </commandLineArguments>
             </program>
