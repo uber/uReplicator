@@ -153,7 +153,9 @@ public class HelixKafkaMirrorMakerMetricsReporter {
 
   public <T extends com.codahale.metrics.Metric> void registerMetric(String metricName, T metric) {
     Preconditions.checkState(DID_INIT, "Not initialized yet");
-    _registry.register(metricName, metric);
+    if (_registry != null) {
+      _registry.register(metricName, metric);
+    }
   }
 
 }
