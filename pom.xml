@@ -78,6 +78,7 @@
   </repositories>
 
   <properties>
+    <jdk.version>1.8</jdk.version>
     <scala.version>2.11.8</scala.version>
     <kafka.version>0.10.2.1</kafka.version>
     <kafka.scala.version>2.11</kafka.scala.version>
@@ -274,8 +275,8 @@
           <artifactId>maven-compiler-plugin</artifactId>
           <version>2.5.1</version>
           <configuration>
-            <source>1.8</source>
-            <target>1.8</target>
+            <source>${jdk.version}</source>
+            <target>${jdk.version}</target>
           </configuration>
         </plugin>
         <plugin>
