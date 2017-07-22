@@ -9,7 +9,7 @@
   <parent>
     <artifactId>uReplicator</artifactId>
     <groupId>com.uber.uReplicator</groupId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
   </parent>
   <description>
     Helix kafka mirror maker is built for resolving high level consumers rebalancing pain point.
