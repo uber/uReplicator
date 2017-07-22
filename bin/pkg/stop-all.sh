@@ -2,7 +2,7 @@
 
 echo "EXECUTING: stop controller"
 PID=`pgrep -f "Dapp_name=uReplicator-Controller"`
-kill -9 $PID
+# kill -9 $PID
 
 echo "EXECUTING: stop worker"
 PID=`pgrep -f "Dapp_name=uReplicator-Worker"`
