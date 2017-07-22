@@ -1,11 +1,11 @@
-/**
+/*
  * Copyright (C) 2015-2016 Uber Technology Inc. (streaming-core@uber.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,21 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.uber.stream.kafka.mirrormaker.controller;
-
-import java.util.HashMap;
-import java.util.Map;
-
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.restlet.Application;
-import org.restlet.Component;
-import org.restlet.Context;
-import org.restlet.data.Protocol;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.uber.stream.kafka.mirrormaker.controller.core.AutoTopicWhitelistingManager;
 import com.uber.stream.kafka.mirrormaker.controller.core.ClusterInfoBackupManager;
@@ -39,9 +26,22 @@ import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMak
 import com.uber.stream.kafka.mirrormaker.controller.rest.ControllerRestApplication;
 import com.uber.stream.kafka.mirrormaker.controller.validation.SourceKafkaClusterValidationManager;
 import com.uber.stream.kafka.mirrormaker.controller.validation.ValidationManager;
+import java.util.HashMap;
+import java.util.Map;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.restlet.Application;
+import org.restlet.Component;
+import org.restlet.Context;
+import org.restlet.data.Protocol;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The main entry point for everything.
+ *
  * @author xiangfu
  */
 public class ControllerStarter {
@@ -116,7 +116,8 @@ public class ControllerStarter {
 
       return new AutoTopicWhitelistingManager(_kafkaBrokerTopicObserverMap.get(SRC_KAFKA_CLUSTER),
           _kafkaBrokerTopicObserverMap.get(DEST_KAFKA_CLUSTER), _helixMirrorMakerManager,
-          patternToExcludeTopics, _config.getRefreshTimeInSeconds(), _config.getInitWaitTimeInSeconds());
+          patternToExcludeTopics, _config.getRefreshTimeInSeconds(),
+          _config.getInitWaitTimeInSeconds());
     } else {
       LOGGER.info("Not init AutoTopicWhitelistingManager!");
       return null;

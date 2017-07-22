@@ -1,11 +1,11 @@
-/**
+/*
  * Copyright (C) 2015-2016 Uber Technology Inc. (streaming-core@uber.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.uber.stream.kafka.mirrormaker.controller;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -44,7 +44,7 @@ public class TestControllerConf {
 
   @Test
   public void testCmdControllerConf() throws ParseException {
-    String[] args = new String[] {
+    String[] args = new String[]{
         "-helixClusterName", "testHelixClusterName",
         "-zookeeper", "localhost:2181",
         "-port", "9090",
@@ -89,7 +89,7 @@ public class TestControllerConf {
 
   @Test
   public void testAnotherCmdControllerConf() throws ParseException {
-    String[] args = new String[] {
+    String[] args = new String[]{
         "-helixClusterName", "testHelixClusterName",
         "-zookeeper", "localhost:2181",
         "-port", "9090",
@@ -131,7 +131,7 @@ public class TestControllerConf {
 
   @Test
   public void testNoGitBackupCmdControllerConf() throws ParseException, UnknownHostException {
-    String[] args = new String[] {
+    String[] args = new String[]{
         "-helixClusterName", "testHelixClusterName",
         "-zookeeper", "localhost:2181",
         "-port", "9090",

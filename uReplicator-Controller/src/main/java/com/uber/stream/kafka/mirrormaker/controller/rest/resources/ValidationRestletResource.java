@@ -1,5 +1,7 @@
 package com.uber.stream.kafka.mirrormaker.controller.rest.resources;
 
+import com.uber.stream.kafka.mirrormaker.controller.validation.SourceKafkaClusterValidationManager;
+import com.uber.stream.kafka.mirrormaker.controller.validation.ValidationManager;
 import org.restlet.data.MediaType;
 import org.restlet.representation.Representation;
 import org.restlet.representation.StringRepresentation;
@@ -8,9 +10,6 @@ import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.uber.stream.kafka.mirrormaker.controller.validation.SourceKafkaClusterValidationManager;
-import com.uber.stream.kafka.mirrormaker.controller.validation.ValidationManager;
 
 /**
  * Validate idealState and externalView also update related metrics.

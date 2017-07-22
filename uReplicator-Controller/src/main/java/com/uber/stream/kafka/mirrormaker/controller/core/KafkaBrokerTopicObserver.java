@@ -1,11 +1,11 @@
-/**
+/*
  * Copyright (C) 2015-2016 Uber Technology Inc. (streaming-core@uber.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,8 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.Timer;
+import com.codahale.metrics.Timer.Context;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -24,21 +31,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-
+import kafka.utils.ZKStringSerializer$;
+import kafka.utils.ZkUtils;
 import org.I0Itec.zkclient.IZkChildListener;
 import org.I0Itec.zkclient.ZkClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.codahale.metrics.Counter;
-import com.codahale.metrics.Timer;
-import com.codahale.metrics.Timer.Context;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
-import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
-
-import kafka.utils.ZKStringSerializer$;
-import kafka.utils.ZkUtils;
 import scala.collection.JavaConversions;
 import scala.collection.Seq;
 
@@ -108,7 +106,8 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
           }
         }
         scala.collection.mutable.Map<String, scala.collection.Map<Object, Seq<Object>>> partitionAssignmentForTopics =
-                _zkUtils.getPartitionAssignmentForTopics(JavaConversions.asScalaBuffer(ImmutableList.copyOf(newAddedTopics)));
+            _zkUtils.getPartitionAssignmentForTopics(
+                JavaConversions.asScalaBuffer(ImmutableList.copyOf(newAddedTopics)));
 
         for (String topic : newAddedTopics) {
           try {
@@ -142,7 +141,8 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
       }
 
       scala.collection.mutable.Map<String, scala.collection.Map<Object, Seq<Object>>> partitionAssignmentForTopics =
-          _zkUtils.getPartitionAssignmentForTopics(JavaConversions.asScalaBuffer(ImmutableList.copyOf(servingTopics)));
+          _zkUtils.getPartitionAssignmentForTopics(
+              JavaConversions.asScalaBuffer(ImmutableList.copyOf(servingTopics)));
 
       for (String topic : servingTopics) {
         try {

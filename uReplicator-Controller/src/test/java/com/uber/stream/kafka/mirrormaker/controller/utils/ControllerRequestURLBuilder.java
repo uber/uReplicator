@@ -1,11 +1,11 @@
-/**
+/*
  * Copyright (C) 2015-2016 Uber Technology Inc. (streaming-core@uber.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,16 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.uber.stream.kafka.mirrormaker.controller.utils;
 
+import com.uber.stream.kafka.mirrormaker.controller.core.TopicPartition;
 import org.apache.commons.lang.StringUtils;
 import org.restlet.Request;
 import org.restlet.data.MediaType;
 import org.restlet.data.Method;
 
-import com.uber.stream.kafka.mirrormaker.controller.core.TopicPartition;
-
 public class ControllerRequestURLBuilder {
+
   private final String _baseUrl;
 
   private ControllerRequestURLBuilder(String baseUrl) {
@@ -34,7 +35,7 @@ public class ControllerRequestURLBuilder {
   }
 
   public Request getTopicExternalViewRequestUrl(String topic) {
-    String requestUrl = StringUtils.join(new String[] {
+    String requestUrl = StringUtils.join(new String[]{
         _baseUrl, "/topics/", topic
     });
 
@@ -43,7 +44,7 @@ public class ControllerRequestURLBuilder {
   }
 
   public Request getTopicDeleteRequestUrl(String topic) {
-    String requestUrl = StringUtils.join(new String[] {
+    String requestUrl = StringUtils.join(new String[]{
         _baseUrl, "/topics/", topic
     });
 

@@ -1,13 +1,17 @@
 package com.uber.stream.kafka.mirrormaker.controller.rest.resources;
 
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import com.uber.stream.kafka.mirrormaker.controller.core.AutoTopicWhitelistingManager;
+import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
+import com.uber.stream.kafka.mirrormaker.controller.core.KafkaBrokerTopicObserver;
+import com.uber.stream.kafka.mirrormaker.controller.core.TopicPartition;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import com.uber.stream.kafka.mirrormaker.controller.core.AutoTopicWhitelistingManager;
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.IdealState;
 import org.restlet.data.MediaType;
@@ -23,16 +27,11 @@ import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
-import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
-import com.uber.stream.kafka.mirrormaker.controller.core.KafkaBrokerTopicObserver;
-import com.uber.stream.kafka.mirrormaker.controller.core.TopicPartition;
-
 /**
  * Rest API for topic management
  */
 public class TopicManagementRestletResource extends ServerResource {
+
   private static final Logger LOGGER =
       LoggerFactory.getLogger(TopicManagementRestletResource.class);
 

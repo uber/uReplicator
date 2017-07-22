@@ -1,11 +1,11 @@
-/**
+/*
  * Copyright (C) 2015-2016 Uber Technology Inc. (streaming-core@uber.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,16 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.uber.stream.kafka.mirrormaker.starter;
 
+import com.uber.stream.kafka.mirrormaker.controller.ControllerStarter;
 import java.util.Arrays;
-
+import kafka.mirrormaker.MirrorMakerWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.uber.stream.kafka.mirrormaker.controller.ControllerStarter;
-
-import kafka.mirrormaker.MirrorMakerWorker;
 
 /**
  * This is the entry point to start mirror maker controller and worker.
@@ -44,12 +42,14 @@ public class MirrorMakerStarter {
         LOGGER.info("Trying to start MirrorMaker Worker with args: {}", Arrays.toString(args));
         MirrorMakerWorker.main(args);
       } else {
-        LOGGER.error("Start script should provide the module(startMirrorMakerController/startMirrorMakerWorker)"
-            + " to start as the first parameter! Current args: {}", Arrays.toString(args));
+        LOGGER.error(
+            "Start script should provide the module(startMirrorMakerController/startMirrorMakerWorker)"
+                + " to start as the first parameter! Current args: {}", Arrays.toString(args));
       }
     } else {
       LOGGER.error(
-          "Start script doesn't provide enough parameters! Current args: {}.", Arrays.toString(args));
+          "Start script doesn't provide enough parameters! Current args: {}.",
+          Arrays.toString(args));
     }
   }
 

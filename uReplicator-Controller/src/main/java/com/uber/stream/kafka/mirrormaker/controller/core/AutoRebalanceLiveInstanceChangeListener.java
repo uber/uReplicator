@@ -1,11 +1,11 @@
-/**
+/*
  * Copyright (C) 2015-2016 Uber Technology Inc. (streaming-core@uber.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,8 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.Timer;
+import com.codahale.metrics.Timer.Context;
+import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
+import com.uber.stream.kafka.mirrormaker.controller.utils.HelixUtils;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -24,7 +31,6 @@ import java.util.TreeSet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.helix.HelixAdmin;
 import org.apache.helix.HelixManager;
 import org.apache.helix.LiveInstanceChangeListener;
@@ -34,19 +40,13 @@ import org.apache.helix.model.LiveInstance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.codahale.metrics.Counter;
-import com.codahale.metrics.Meter;
-import com.codahale.metrics.Timer;
-import com.codahale.metrics.Timer.Context;
-import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
-import com.uber.stream.kafka.mirrormaker.controller.utils.HelixUtils;
-
 /**
  * We only considering add or remove box(es), not considering the replacing.
  * For replacing, we just need to bring up a new box and give the old instanceId no auto-balancing
  * needed.
  */
 public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChangeListener {
+
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AutoRebalanceLiveInstanceChangeListener.class);
 
@@ -91,7 +91,7 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
       @Override
       public void run() {
         try {
-          rebalanceCurrentCluster(_helixMirrorMakerManager.getCurrentLiveInstances()); 
+          rebalanceCurrentCluster(_helixMirrorMakerManager.getCurrentLiveInstances());
         } catch (Exception e) {
           LOGGER.error("Got exception during rebalance the whole cluster! ", e);
         }
@@ -168,7 +168,7 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     }
     LOGGER.info("Trying to rescale cluster with new instances - " + Arrays.toString(
         newInstances.toArray(new String[0])) + " and removed instances - " + Arrays.toString(
-            removedInstances.toArray(new String[0])));
+        removedInstances.toArray(new String[0])));
     TreeSet<InstanceTopicPartitionHolder> orderedSet =
         new TreeSet<>(InstanceTopicPartitionHolder.getComparator());
     Set<TopicPartition> tpiNeedsToBeAssigned = new HashSet<TopicPartition>();

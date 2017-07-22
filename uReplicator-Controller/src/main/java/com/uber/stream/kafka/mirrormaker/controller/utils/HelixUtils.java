@@ -1,11 +1,11 @@
-/**
+/*
  * Copyright (C) 2015-2016 Uber Technology Inc. (streaming-core@uber.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,8 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.uber.stream.kafka.mirrormaker.controller.utils;
 
+import com.google.common.collect.ImmutableList;
+import com.uber.stream.kafka.mirrormaker.controller.core.InstanceTopicPartitionHolder;
+import com.uber.stream.kafka.mirrormaker.controller.core.OnlineOfflineStateModel;
+import com.uber.stream.kafka.mirrormaker.controller.core.TopicPartition;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -22,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.helix.HelixAdmin;
 import org.apache.helix.HelixDataAccessor;
@@ -36,12 +40,8 @@ import org.apache.helix.model.IdealState;
 import org.apache.helix.model.builder.CustomModeISBuilder;
 import org.apache.helix.store.zk.ZkHelixPropertyStore;
 
-import com.google.common.collect.ImmutableList;
-import com.uber.stream.kafka.mirrormaker.controller.core.InstanceTopicPartitionHolder;
-import com.uber.stream.kafka.mirrormaker.controller.core.OnlineOfflineStateModel;
-import com.uber.stream.kafka.mirrormaker.controller.core.TopicPartition;
-
 public class HelixUtils {
+
   public static String getAbsoluteZkPathForHelix(String zkBaseUrl) {
     zkBaseUrl = StringUtils.chomp(zkBaseUrl, "/");
     return zkBaseUrl;
@@ -67,7 +67,7 @@ public class HelixUtils {
 
   /**
    * From IdealStates.
-   * @param helixManager
+   *
    * @return InstanceToNumTopicPartitionMap
    */
   public static Map<String, Set<TopicPartition>> getInstanceToTopicPartitionsMap(

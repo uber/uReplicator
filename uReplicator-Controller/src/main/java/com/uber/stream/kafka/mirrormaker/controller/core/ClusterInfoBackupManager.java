@@ -1,11 +1,11 @@
-/**
+/*
  * Copyright (C) 2015-2016 Uber Technology Inc. (streaming-core@uber.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,8 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,15 +32,11 @@ import org.restlet.representation.StringRepresentation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
-import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
-
 /**
  * This manager schedules a periodic backup task once every 24 hrs to take the
  * backup of the mirror maker controller cluster state and dump the ideal state, parition assignment
  * to two different files either to a remote git repo or a local backup file based on the config
- * 
+ *
  * @author naveencherukuri
  *
  */
@@ -82,7 +82,6 @@ public class ClusterInfoBackupManager {
       return;
     }
 
-
     LOGGER.info("Backing up the CurrentState and the IdealState!");
     StringBuilder idealState = new StringBuilder();
     StringBuilder partitionAssignment = new StringBuilder();
@@ -91,7 +90,6 @@ public class ClusterInfoBackupManager {
       LOGGER.info("No topics available to take backup");
       return;
     }
-
 
     JSONArray resultList = new JSONArray();
 
@@ -102,7 +100,6 @@ public class ClusterInfoBackupManager {
       resultJson.put("idealStateMeta", idealStateForTopic);
       resultList.add(resultJson);
     }
-
 
     idealState.append(new StringRepresentation(resultList.toJSONString()));
 

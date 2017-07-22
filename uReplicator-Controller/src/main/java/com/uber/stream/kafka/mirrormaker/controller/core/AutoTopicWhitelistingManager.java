@@ -1,11 +1,11 @@
-/**
+/*
  * Copyright (C) 2015-2016 Uber Technology Inc. (streaming-core@uber.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,8 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
+import com.codahale.metrics.Counter;
+import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -24,17 +27,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
+import kafka.utils.ZKStringSerializer$;
+import kafka.utils.ZkUtils;
 import org.I0Itec.zkclient.ZkClient;
 import org.I0Itec.zkclient.exception.ZkNodeExistsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.codahale.metrics.Counter;
-import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
-
-import kafka.utils.ZKStringSerializer$;
-import kafka.utils.ZkUtils;
 
 /**
  * AutoTopicWhitelistingManager will look at both source and destination Kafka brokers and pick
@@ -86,15 +84,15 @@ public class AutoTopicWhitelistingManager {
       String patternToExcludeTopics,
       int refreshTimeInSec) {
     this(srcKafkaTopicObserver, destKafkaTopicObserver, helixMirrorMakerManager,
-            patternToExcludeTopics, refreshTimeInSec, 120);
+        patternToExcludeTopics, refreshTimeInSec, 120);
   }
 
   public AutoTopicWhitelistingManager(KafkaBrokerTopicObserver srcKafkaTopicObserver,
-                                      KafkaBrokerTopicObserver destKafkaTopicObserver,
-                                      HelixMirrorMakerManager helixMirrorMakerManager,
-                                      String patternToExcludeTopics,
-                                      int refreshTimeInSec,
-                                      int initWaitTimeInSec) {
+      KafkaBrokerTopicObserver destKafkaTopicObserver,
+      HelixMirrorMakerManager helixMirrorMakerManager,
+      String patternToExcludeTopics,
+      int refreshTimeInSec,
+      int initWaitTimeInSec) {
     _srcKafkaTopicObserver = srcKafkaTopicObserver;
     _destKafkaTopicObserver = destKafkaTopicObserver;
     _helixMirrorMakerManager = helixMirrorMakerManager;
@@ -102,10 +100,10 @@ public class AutoTopicWhitelistingManager {
     _refreshTimeInSec = refreshTimeInSec;
     _initWaitTimeInSec = initWaitTimeInSec;
     _zkClient = new ZkClient(_helixMirrorMakerManager.getHelixZkURL(), 30000, 30000,
-            ZKStringSerializer$.MODULE$);
+        ZKStringSerializer$.MODULE$);
     _zkUtils = ZkUtils.apply(_zkClient, false);
     _blacklistedTopicsZPath =
-            String.format("/%s/BLACKLISTED_TOPICS", _helixMirrorMakerManager.getHelixClusterName());
+        String.format("/%s/BLACKLISTED_TOPICS", _helixMirrorMakerManager.getHelixClusterName());
   }
 
   public void start() {
@@ -244,7 +242,7 @@ public class AutoTopicWhitelistingManager {
   }
 
   public void removeFromBlacklist(String topic) {
-    _zkUtils.deletePath( _blacklistedTopicsZPath + "/" + topic);
+    _zkUtils.deletePath(_blacklistedTopicsZPath + "/" + topic);
     LOGGER.info("topic={} is removed from blacklist on zk", topic);
   }
 

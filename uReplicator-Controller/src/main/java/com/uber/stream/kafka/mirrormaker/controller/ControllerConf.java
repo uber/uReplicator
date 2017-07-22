@@ -1,11 +1,11 @@
-/**
+/*
  * Copyright (C) 2015-2016 Uber Technology Inc. (streaming-core@uber.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.uber.stream.kafka.mirrormaker.controller;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Iterator;
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.apache.commons.configuration.PropertiesConfiguration;
@@ -313,7 +313,8 @@ public class ControllerConf extends PropertiesConfiguration {
         .addOption("graphiteHost", true, "Graphite Host")
         .addOption("graphitePort", true, "Graphite Port")
         .addOption("enableAutoWhitelist", true, "Enable Auto Whitelist")
-        .addOption("enableAutoTopicExpansion", true, "Enable Auto Topic Expansion during Source Kafka Validation")
+        .addOption("enableAutoTopicExpansion", true,
+            "Enable Auto Topic Expansion during Source Kafka Validation")
         .addOption("patternToExcludeTopics", true, "Exclude specific topics by pattern")
         .addOption("enableSrcKafkaValidation", true, "Enable Source Kafka Validation")
         .addOption("srcKafkaZkPath", true, "Source Kafka Zookeeper Path")

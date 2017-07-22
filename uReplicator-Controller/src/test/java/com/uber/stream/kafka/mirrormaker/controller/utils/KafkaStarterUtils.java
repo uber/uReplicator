@@ -1,11 +1,11 @@
-/**
+/*
  * Copyright (C) 2015-2016 Uber Technology Inc. (streaming-core@uber.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,8 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.uber.stream.kafka.mirrormaker.controller.utils;
 
+import java.io.File;
+import java.util.Properties;
 import kafka.admin.TopicCommand;
 import kafka.server.KafkaConfig;
 import kafka.server.KafkaServerStartable;
@@ -23,15 +26,12 @@ import org.I0Itec.zkclient.ZkClient;
 import org.apache.commons.io.FileUtils;
 import org.apache.kafka.common.errors.TopicExistsException;
 
-import java.io.File;
-import java.util.Properties;
-
 
 /**
  * Utilities to start Kafka during unit tests.
- *
  */
 public class KafkaStarterUtils {
+
   public static final int DEFAULT_KAFKA_PORT = 19092;
   public static final int DEFAULT_BROKER_ID = 0;
   public static final String DEFAULT_ZK_STR = ZkStarter.DEFAULT_ZK_STR + "/kafka";
@@ -41,7 +41,8 @@ public class KafkaStarterUtils {
     return new Properties();
   }
 
-  public static KafkaServerStartable startServer(final int port, final int brokerId, final String zkStr,
+  public static KafkaServerStartable startServer(final int port, final int brokerId,
+      final String zkStr,
       final Properties configuration) {
     // Create the ZK nodes for Kafka, if needed
     int indexOfFirstSlash = zkStr.indexOf('/');
@@ -72,7 +73,8 @@ public class KafkaStarterUtils {
     properties.put("log.segment.bytes", Integer.toString(segmentSize));
   }
 
-  public static void configureLogRetentionSizeBytes(Properties properties, int logRetentionSizeBytes) {
+  public static void configureLogRetentionSizeBytes(Properties properties,
+      int logRetentionSizeBytes) {
     properties.put("log.retention.bytes", Integer.toString(logRetentionSizeBytes));
   }
 
@@ -100,7 +102,8 @@ public class KafkaStarterUtils {
   public static void createTopic(String kafkaTopic, String zkStr) {
     // TopicCommand.main() will call System.exit() finally, which will break maven-surefire-plugin
     try {
-      String[] args = new String[]{"--create", "--zookeeper", zkStr, "--replication-factor", "1", "--partitions", "1", "--topic", kafkaTopic};
+      String[] args = new String[]{"--create", "--zookeeper", zkStr, "--replication-factor", "1",
+          "--partitions", "1", "--topic", kafkaTopic};
       ZkUtils zkUtils = ZkUtils.apply(zkStr, 30000, 30000, false);
       TopicCommand.TopicCommandOptions opts = new TopicCommand.TopicCommandOptions(args);
       TopicCommand.createTopic(zkUtils, opts);

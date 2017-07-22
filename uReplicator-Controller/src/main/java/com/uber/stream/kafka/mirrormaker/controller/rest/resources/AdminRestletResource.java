@@ -1,5 +1,6 @@
 package com.uber.stream.kafka.mirrormaker.controller.rest.resources;
 
+import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
 import org.restlet.representation.Representation;
 import org.restlet.representation.StringRepresentation;
 import org.restlet.resource.Get;
@@ -7,15 +8,13 @@ import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
-
 /**
  * AdminRestletResource is used to control auto balancing enable/disalbe.
- *  
- * @author xiangfu
  *
+ * @author xiangfu
  */
 public class AdminRestletResource extends ServerResource {
+
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AdminRestletResource.class);
 
