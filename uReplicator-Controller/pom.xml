@@ -12,7 +12,7 @@
     <version>1.0.2</version>
   </parent>
   <description>
-    Helix kafka mirror maker is built for resolving high level consumers rebalancing pain point.
+    Kafka MirrorMaker with Helix is built for resolving high level consumers rebalancing pain point.
     Helix provides a good interface to interact with zookeeper and manages/rebalances a stateful
     mapping for instance to simple consumer mapping.
   </description>

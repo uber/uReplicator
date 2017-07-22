@@ -38,14 +38,14 @@ import org.slf4j.LoggerFactory;
  * to two different files either to a remote git repo or a local backup file based on the config
  *
  * @author naveencherukuri
- *
  */
 public class ClusterInfoBackupManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterInfoBackupManager.class);
 
   private final HelixMirrorMakerManager _helixMirrorMakerManager;
-  private final ScheduledExecutorService _executorService = Executors.newSingleThreadScheduledExecutor();
+  private final ScheduledExecutorService _executorService = Executors
+      .newSingleThreadScheduledExecutor();
 
   private int _timeValue = 24 * 60 * 60;
   private TimeUnit _timeUnit = TimeUnit.SECONDS;
@@ -54,7 +54,8 @@ public class ClusterInfoBackupManager {
   private final ControllerConf _config;
   private String envInfo = "default";
 
-  public ClusterInfoBackupManager(HelixMirrorMakerManager helixMirrorMakerManager, BackUpHandler handler,
+  public ClusterInfoBackupManager(HelixMirrorMakerManager helixMirrorMakerManager,
+      BackUpHandler handler,
       ControllerConf config) {
     _helixMirrorMakerManager = helixMirrorMakerManager;
     _handler = handler;
@@ -62,7 +63,8 @@ public class ClusterInfoBackupManager {
   }
 
   public void start() {
-    LOGGER.info("Trying to schedule cluster backup job at rate {} {} !", _timeValue, _timeUnit.toString());
+    LOGGER.info("Trying to schedule cluster backup job at rate {} {} !", _timeValue,
+        _timeUnit.toString());
     _executorService.scheduleAtFixedRate(new Runnable() {
       @Override
       public void run() {
@@ -103,12 +105,12 @@ public class ClusterInfoBackupManager {
 
     idealState.append(new StringRepresentation(resultList.toJSONString()));
 
-
     resultList = new JSONArray();
 
     for (String topicName : topicLists) {
       IdealState idealStateForTopic = _helixMirrorMakerManager.getIdealStateForTopic(topicName);
-      ExternalView externalViewForTopic = _helixMirrorMakerManager.getExternalViewForTopic(topicName);
+      ExternalView externalViewForTopic = _helixMirrorMakerManager
+          .getExternalViewForTopic(topicName);
       JSONObject resultJson = new JSONObject();
       resultJson.put("topic", topicName);
       JSONObject externalViewPartitionToServerMappingJson = new JSONObject();
@@ -156,7 +158,8 @@ public class ClusterInfoBackupManager {
               }
               serverToPartitionMapping.get(server).add(partition);
               serverToPartitionMappingJson.getJSONArray(server).add(partition);
-              serverToNumPartitionsMappingJson.put(server, serverToNumPartitionsMappingJson.getInteger(server) + 1);
+              serverToNumPartitionsMappingJson
+                  .put(server, serverToNumPartitionsMappingJson.getInteger(server) + 1);
             }
           }
         }

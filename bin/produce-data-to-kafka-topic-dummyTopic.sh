@@ -1,5 +1,4 @@
 #!/bin/bash -e
-
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BASE_DIR=$(dirname $DIR)
 ZOOKEEPER=localhost:2181/cluster1
