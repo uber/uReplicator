@@ -43,8 +43,7 @@ public class ClusterInfoBackupManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterInfoBackupManager.class);
 
   private final HelixMirrorMakerManager _helixMirrorMakerManager;
-  private final ScheduledExecutorService _executorService = Executors
-      .newSingleThreadScheduledExecutor();
+  private final ScheduledExecutorService _executorService = Executors.newSingleThreadScheduledExecutor();
 
   private int _timeValue = 24 * 60 * 60;
   private TimeUnit _timeUnit = TimeUnit.SECONDS;
@@ -62,8 +61,7 @@ public class ClusterInfoBackupManager {
   }
 
   public void start() {
-    LOGGER.info("Trying to schedule cluster backup job at rate {} {} !", _timeValue,
-        _timeUnit.toString());
+    LOGGER.info("Trying to schedule cluster backup job at rate {} {} !", _timeValue, _timeUnit.toString());
     _executorService.scheduleAtFixedRate(new Runnable() {
       @Override
       public void run() {
@@ -108,8 +106,7 @@ public class ClusterInfoBackupManager {
 
     for (String topicName : topicLists) {
       IdealState idealStateForTopic = _helixMirrorMakerManager.getIdealStateForTopic(topicName);
-      ExternalView externalViewForTopic = _helixMirrorMakerManager
-          .getExternalViewForTopic(topicName);
+      ExternalView externalViewForTopic = _helixMirrorMakerManager.getExternalViewForTopic(topicName);
       JSONObject resultJson = new JSONObject();
       resultJson.put("topic", topicName);
       JSONObject externalViewPartitionToServerMappingJson = new JSONObject();
@@ -157,8 +154,7 @@ public class ClusterInfoBackupManager {
               }
               serverToPartitionMapping.get(server).add(partition);
               serverToPartitionMappingJson.getJSONArray(server).add(partition);
-              serverToNumPartitionsMappingJson
-                  .put(server, serverToNumPartitionsMappingJson.getInteger(server) + 1);
+              serverToNumPartitionsMappingJson.put(server, serverToNumPartitionsMappingJson.getInteger(server) + 1);
             }
           }
         }
@@ -166,7 +162,6 @@ public class ClusterInfoBackupManager {
       resultJson.put("serverToPartitionMapping", serverToPartitionMappingJson);
       resultJson.put("serverToNumPartitionsMapping", serverToNumPartitionsMappingJson);
       resultList.add(resultJson);
-
     }
 
     partitionAssignment.append(new StringRepresentation(resultList.toJSONString()));

@@ -98,11 +98,9 @@ public class AutoTopicWhitelistingManager {
     _patternToExcludeTopics = patternToExcludeTopics;
     _refreshTimeInSec = refreshTimeInSec;
     _initWaitTimeInSec = initWaitTimeInSec;
-    _zkClient = new ZkClient(_helixMirrorMakerManager.getHelixZkURL(), 30000, 30000,
-        ZKStringSerializer$.MODULE$);
+    _zkClient = new ZkClient(_helixMirrorMakerManager.getHelixZkURL(), 30000, 30000, ZKStringSerializer$.MODULE$);
     _zkUtils = ZkUtils.apply(_zkClient, false);
-    _blacklistedTopicsZPath =
-        String.format("/%s/BLACKLISTED_TOPICS", _helixMirrorMakerManager.getHelixClusterName());
+    _blacklistedTopicsZPath = String.format("/%s/BLACKLISTED_TOPICS", _helixMirrorMakerManager.getHelixClusterName());
   }
 
   public void start() {

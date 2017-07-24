@@ -41,8 +41,7 @@ public class KafkaStarterUtils {
   }
 
   public static KafkaServerStartable startServer(final int port, final int brokerId,
-      final String zkStr,
-      final Properties configuration) {
+      final String zkStr, final Properties configuration) {
     // Create the ZK nodes for Kafka, if needed
     int indexOfFirstSlash = zkStr.indexOf('/');
     if (indexOfFirstSlash != -1) {
@@ -72,8 +71,7 @@ public class KafkaStarterUtils {
     properties.put("log.segment.bytes", Integer.toString(segmentSize));
   }
 
-  public static void configureLogRetentionSizeBytes(Properties properties,
-      int logRetentionSizeBytes) {
+  public static void configureLogRetentionSizeBytes(Properties properties, int logRetentionSizeBytes) {
     properties.put("log.retention.bytes", Integer.toString(logRetentionSizeBytes));
   }
 

@@ -60,16 +60,14 @@ public class HelixMirrorMakerManagerCustomSimpleTest {
     // Adding fake workers
     LOGGER.info("Trying to add 1 instance ");
     List<FakeInstance> fakeInstances = ControllerTestUtils
-        .addFakeDataInstancesToAutoJoinHelixCluster(helixClusterName, ZkStarter.DEFAULT_ZK_STR, 1,
-            0);
+        .addFakeDataInstancesToAutoJoinHelixCluster(helixClusterName, ZkStarter.DEFAULT_ZK_STR, 1, 0);
     LOGGER.info("Trying to add topic testTopic0");
     helixMirrorMakerManager.addTopicToMirrorMaker("testTopic0", 8);
     Thread.sleep(5000);
 
     LOGGER.info("Trying to add 1 more instances, waiting for rebalancing");
     fakeInstances.addAll(ControllerTestUtils
-        .addFakeDataInstancesToAutoJoinHelixCluster(helixClusterName, ZkStarter.DEFAULT_ZK_STR, 1,
-            1));
+        .addFakeDataInstancesToAutoJoinHelixCluster(helixClusterName, ZkStarter.DEFAULT_ZK_STR, 1, 1));
     Thread.sleep(5000);
     for (int k = 0; k < 10; ++k) {
       LOGGER.info("Simulate restart nodes 1 by 1");

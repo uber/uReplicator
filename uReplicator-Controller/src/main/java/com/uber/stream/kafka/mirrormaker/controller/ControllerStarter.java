@@ -115,8 +115,7 @@ public class ControllerStarter {
 
       return new AutoTopicWhitelistingManager(_kafkaBrokerTopicObserverMap.get(SRC_KAFKA_CLUSTER),
           _kafkaBrokerTopicObserverMap.get(DEST_KAFKA_CLUSTER), _helixMirrorMakerManager,
-          patternToExcludeTopics, _config.getRefreshTimeInSeconds(),
-          _config.getInitWaitTimeInSeconds());
+          patternToExcludeTopics, _config.getRefreshTimeInSeconds(), _config.getInitWaitTimeInSeconds());
     } else {
       LOGGER.info("Not init AutoTopicWhitelistingManager!");
       return null;

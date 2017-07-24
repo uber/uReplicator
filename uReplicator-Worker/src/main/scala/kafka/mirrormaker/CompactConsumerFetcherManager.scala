@@ -342,8 +342,7 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
         addFetcherForPartitions(leaderForPartitionsMap.map {
           case (topicAndPartition, broker) =>
             topicAndPartition -> BrokerAndInitialOffset(broker, partitionInfoMap.get(topicAndPartition).getFetchOffset())
-        }
-        )
+        })
       } catch {
         case t: Throwable => {
           if (!isRunning.get())

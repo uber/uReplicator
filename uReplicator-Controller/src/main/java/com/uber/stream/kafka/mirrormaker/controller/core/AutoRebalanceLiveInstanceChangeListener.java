@@ -168,8 +168,7 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     LOGGER.info("Trying to rescale cluster with new instances - " + Arrays.toString(
         newInstances.toArray(new String[0])) + " and removed instances - " + Arrays.toString(
         removedInstances.toArray(new String[0])));
-    TreeSet<InstanceTopicPartitionHolder> orderedSet =
-        new TreeSet<>(InstanceTopicPartitionHolder.getComparator());
+    TreeSet<InstanceTopicPartitionHolder> orderedSet = new TreeSet<>(InstanceTopicPartitionHolder.getComparator());
     Set<TopicPartition> tpiNeedsToBeAssigned = new HashSet<TopicPartition>();
     tpiNeedsToBeAssigned.addAll(unassignedTopicPartitions);
     for (String instanceName : instanceToTopicPartitionMap.keySet()) {

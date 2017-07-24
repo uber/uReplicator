@@ -56,7 +56,8 @@ class CompactConsumerFetcherThread(name: String,
   private var lastDumpTime = 0L;
   private final val DUMP_INTERVAL_MS = 5 * 60 * 1000;
 
-  private val partitionMap = new mutable.HashMap[TopicAndPartition, PartitionFetchState] // a (topic, partition) -> partitionFetchState map
+  // a (topic, partition) -> partitionFetchState map
+  private val partitionMap = new mutable.HashMap[TopicAndPartition, PartitionFetchState]
   private val partitionAddMap = new ConcurrentHashMap[TopicAndPartition, PartitionFetchState]
   private val partitionDeleteMap = new ConcurrentHashMap[TopicAndPartition, Boolean]
   private val updateMapLock = new ReentrantLock

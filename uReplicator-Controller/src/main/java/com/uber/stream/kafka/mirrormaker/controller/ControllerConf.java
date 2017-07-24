@@ -312,8 +312,7 @@ public class ControllerConf extends PropertiesConfiguration {
         .addOption("graphiteHost", true, "Graphite Host")
         .addOption("graphitePort", true, "Graphite Port")
         .addOption("enableAutoWhitelist", true, "Enable Auto Whitelist")
-        .addOption("enableAutoTopicExpansion", true,
-            "Enable Auto Topic Expansion during Source Kafka Validation")
+        .addOption("enableAutoTopicExpansion", true, "Enable Auto Topic Expansion during Source Kafka Validation")
         .addOption("patternToExcludeTopics", true, "Exclude specific topics by pattern")
         .addOption("enableSrcKafkaValidation", true, "Enable Source Kafka Validation")
         .addOption("srcKafkaZkPath", true, "Source Kafka Zookeeper Path")
@@ -321,8 +320,7 @@ public class ControllerConf extends PropertiesConfiguration {
         .addOption("autoRebalanceDelayInSeconds", true, "Auto Rebalance Delay in seconds")
         .addOption("refreshTimeInSeconds", true, "Controller Refresh Time in seconds")
         .addOption("initWaitTimeInSeconds", true, "Controller Init Delay in seconds")
-        .addOption("backUpToGit", true,
-            "Backup controller metadata to git (true) or local file (false)")
+        .addOption("backUpToGit", true, "Backup controller metadata to git (true) or local file (false)")
         .addOption("remoteBackupRepo", true, "Remote Backup Repo to store cluster state")
         .addOption("localGitRepoClonePath", true, "Clone location of the remote git backup repo")
         .addOption("localBackupFilePath", true, "Local backup file location");
