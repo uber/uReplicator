@@ -15,17 +15,15 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
+import com.uber.stream.kafka.mirrormaker.controller.utils.KafkaStarterUtils;
+import com.uber.stream.kafka.mirrormaker.controller.utils.ZkStarter;
+import kafka.server.KafkaServerStartable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
-
-import com.uber.stream.kafka.mirrormaker.controller.utils.KafkaStarterUtils;
-import com.uber.stream.kafka.mirrormaker.controller.utils.ZkStarter;
-
-import kafka.server.KafkaServerStartable;
 
 public class TestKafkaBrokerTopicObserver {
 

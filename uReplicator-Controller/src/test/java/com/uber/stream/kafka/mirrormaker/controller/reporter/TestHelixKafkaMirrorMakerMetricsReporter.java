@@ -15,17 +15,15 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.reporter;
 
-import java.lang.reflect.Field;
-
-import org.testng.Assert;
-import org.testng.annotations.Test;
-
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
 import com.codahale.metrics.Timer.Context;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerStarter;
+import java.lang.reflect.Field;
+import org.testng.Assert;
+import org.testng.annotations.Test;
 
 public class TestHelixKafkaMirrorMakerMetricsReporter {
 

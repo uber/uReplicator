@@ -15,8 +15,8 @@
  */
 package kafka.mirrormaker
 
-import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import java.util.concurrent.locks.ReentrantLock
+import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 
 import kafka.api._
 import kafka.cluster.BrokerEndPoint
@@ -54,9 +54,10 @@ class CompactConsumerFetcherThread(name: String,
   private val fetchBackOffMs = config.refreshLeaderBackoffMs
 
   private var lastDumpTime = 0L;
-  private final val DUMP_INTERVAL_MS = 5*60*1000;
+  private final val DUMP_INTERVAL_MS = 5 * 60 * 1000;
 
-  private val partitionMap = new mutable.HashMap[TopicAndPartition, PartitionFetchState] // a (topic, partition) -> partitionFetchState map
+  // a (topic, partition) -> partitionFetchState map
+  private val partitionMap = new mutable.HashMap[TopicAndPartition, PartitionFetchState]
   private val partitionAddMap = new ConcurrentHashMap[TopicAndPartition, PartitionFetchState]
   private val partitionDeleteMap = new ConcurrentHashMap[TopicAndPartition, Boolean]
   private val updateMapLock = new ReentrantLock
@@ -103,7 +104,7 @@ class CompactConsumerFetcherThread(name: String,
 
   // handle a partition whose offset is out of range and return a new fetch offset
   def handleOffsetOutOfRange(topicAndPartition: TopicAndPartition): Long = {
-    var startTimestamp : Long = 0
+    var startTimestamp: Long = 0
     config.autoOffsetReset match {
       case OffsetRequest.SmallestTimeString => startTimestamp = OffsetRequest.EarliestTime
       case OffsetRequest.LargestTimeString => startTimestamp = OffsetRequest.LatestTime
@@ -122,15 +123,16 @@ class CompactConsumerFetcherThread(name: String,
     consumerFetcherManager.addPartitionsWithError(partitions)
   }
 
-  def logTopicPartitionInfo(): Unit ={
+  def logTopicPartitionInfo(): Unit = {
     if ((System.currentTimeMillis() - lastDumpTime) > DUMP_INTERVAL_MS) {
-      info("Topic partitions dump in fetcher thread: %s".format(partitionMap.map{ case (topicAndPartition, partitionFetchState) =>
-        "[" + topicAndPartition + ", Offset " + partitionFetchState.offset + "] "}))
+      info("Topic partitions dump in fetcher thread: %s".format(partitionMap.map { case (topicAndPartition, partitionFetchState) =>
+        "[" + topicAndPartition + ", Offset " + partitionFetchState.offset + "] "
+      }))
       lastDumpTime = System.currentTimeMillis()
     }
   }
 
-  override def shutdown(){
+  override def shutdown() {
     initiateShutdown()
     inLock(partitionMapLock) {
       partitionMapCond.signalAll()
@@ -170,8 +172,8 @@ class CompactConsumerFetcherThread(name: String,
       }
 
       partitionMap.foreach {
-        case((topicAndPartition, partitionFetchState)) =>
-          if(partitionFetchState.isActive)
+        case ((topicAndPartition, partitionFetchState)) =>
+          if (partitionFetchState.isActive)
             fetchRequestBuilder.addFetch(topicAndPartition.topic, topicAndPartition.partition,
               partitionFetchState.offset, fetchSize)
       }
@@ -184,7 +186,7 @@ class CompactConsumerFetcherThread(name: String,
       logTopicPartitionInfo()
     }
 
-    if(!fetchRequest.requestInfo.isEmpty)
+    if (!fetchRequest.requestInfo.isEmpty)
       processFetchRequest(fetchRequest)
   }
 
@@ -212,7 +214,7 @@ class CompactConsumerFetcherThread(name: String,
       // process fetched data
       inLock(partitionMapLock) {
         response.data.foreach {
-          case(topicAndPartition, partitionData) =>
+          case (topicAndPartition, partitionData) =>
             val (topic, partitionId) = topicAndPartition.asTuple
             partitionMap.get(topicAndPartition).foreach(currentPartitionFetchState => {
               // we append to the log if the current offset is defined and it is the same as the offset requested during fetch
@@ -273,7 +275,7 @@ class CompactConsumerFetcherThread(name: String,
       }
     }
 
-    if(partitionsWithError.size > 0) {
+    if (partitionsWithError.size > 0) {
       info("handling partitions with error for %s".format(partitionsWithError))
       handlePartitionsWithErrors(partitionsWithError)
     }

@@ -15,9 +15,18 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller;
 
+import com.uber.stream.kafka.mirrormaker.controller.core.AutoTopicWhitelistingManager;
+import com.uber.stream.kafka.mirrormaker.controller.core.ClusterInfoBackupManager;
+import com.uber.stream.kafka.mirrormaker.controller.core.FileBackUpHandler;
+import com.uber.stream.kafka.mirrormaker.controller.core.GitBackUpHandler;
+import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
+import com.uber.stream.kafka.mirrormaker.controller.core.KafkaBrokerTopicObserver;
+import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
+import com.uber.stream.kafka.mirrormaker.controller.rest.ControllerRestApplication;
+import com.uber.stream.kafka.mirrormaker.controller.validation.SourceKafkaClusterValidationManager;
+import com.uber.stream.kafka.mirrormaker.controller.validation.ValidationManager;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -29,19 +38,9 @@ import org.restlet.data.Protocol;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.uber.stream.kafka.mirrormaker.controller.core.AutoTopicWhitelistingManager;
-import com.uber.stream.kafka.mirrormaker.controller.core.ClusterInfoBackupManager;
-import com.uber.stream.kafka.mirrormaker.controller.core.FileBackUpHandler;
-import com.uber.stream.kafka.mirrormaker.controller.core.GitBackUpHandler;
-import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
-import com.uber.stream.kafka.mirrormaker.controller.core.KafkaBrokerTopicObserver;
-import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
-import com.uber.stream.kafka.mirrormaker.controller.rest.ControllerRestApplication;
-import com.uber.stream.kafka.mirrormaker.controller.validation.SourceKafkaClusterValidationManager;
-import com.uber.stream.kafka.mirrormaker.controller.validation.ValidationManager;
-
 /**
  * The main entry point for everything.
+ *
  * @author xiangfu
  */
 public class ControllerStarter {

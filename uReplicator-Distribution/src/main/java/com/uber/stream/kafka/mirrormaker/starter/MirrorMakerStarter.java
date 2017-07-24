@@ -15,14 +15,11 @@
  */
 package com.uber.stream.kafka.mirrormaker.starter;
 
+import com.uber.stream.kafka.mirrormaker.controller.ControllerStarter;
 import java.util.Arrays;
-
+import kafka.mirrormaker.MirrorMakerWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.uber.stream.kafka.mirrormaker.controller.ControllerStarter;
-
-import kafka.mirrormaker.MirrorMakerWorker;
 
 /**
  * This is the entry point to start mirror maker controller and worker.
@@ -48,8 +45,7 @@ public class MirrorMakerStarter {
             + " to start as the first parameter! Current args: {}", Arrays.toString(args));
       }
     } else {
-      LOGGER.error(
-          "Start script doesn't provide enough parameters! Current args: {}.", Arrays.toString(args));
+      LOGGER.error("Start script doesn't provide enough parameters! Current args: {}.", Arrays.toString(args));
     }
   }
 

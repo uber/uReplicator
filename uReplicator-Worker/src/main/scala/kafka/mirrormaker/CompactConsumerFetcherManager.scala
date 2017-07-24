@@ -44,9 +44,9 @@ import scala.collection.{JavaConversions, Map, Set, mutable}
  * @param config
  * @param zkClient
  */
-class CompactConsumerFetcherManager (private val consumerIdString: String,
-                                     private val config: ConsumerConfig,
-                                     private val zkClient : ZkClient)
+class CompactConsumerFetcherManager(private val consumerIdString: String,
+                                    private val config: ConsumerConfig,
+                                    private val zkClient: ZkClient)
   extends Logging with KafkaMetricsGroup {
   protected val name: String = "CompactConsumerFetcherManager-%d".format(System.currentTimeMillis)
   private val clientId: String = config.clientId
@@ -88,23 +88,23 @@ class CompactConsumerFetcherManager (private val consumerIdString: String,
   )
 
   newGauge(
-  "MinFetchRate", {
-    new Gauge[Double] {
-      // current min fetch rate across all fetchers/topics/partitions
-      def value = {
-        val headRate: Double =
-          fetcherThreadMap.headOption.map(_._2.fetcherStats.requestRate.oneMinuteRate).getOrElse(0)
+    "MinFetchRate", {
+      new Gauge[Double] {
+        // current min fetch rate across all fetchers/topics/partitions
+        def value = {
+          val headRate: Double =
+            fetcherThreadMap.headOption.map(_._2.fetcherStats.requestRate.oneMinuteRate).getOrElse(0)
 
-        fetcherThreadMap.foldLeft(headRate)((curMinAll, fetcherThreadMapEntry) => {
-          fetcherThreadMapEntry._2.fetcherStats.requestRate.oneMinuteRate.min(curMinAll)
-        })
+          fetcherThreadMap.foldLeft(headRate)((curMinAll, fetcherThreadMapEntry) => {
+            fetcherThreadMapEntry._2.fetcherStats.requestRate.oneMinuteRate.min(curMinAll)
+          })
+        }
       }
-    }
-  },
-  Map("clientId" -> clientId)
+    },
+    Map("clientId" -> clientId)
   )
 
-  private def getFetcherId(topic: String, partitionId: Int) : Int = {
+  private def getFetcherId(topic: String, partitionId: Int): Int = {
     Utils.abs(31 * topic.hashCode() + partitionId) % numFetchers
   }
 
@@ -117,8 +117,9 @@ class CompactConsumerFetcherManager (private val consumerIdString: String,
   def addFetcherForPartitions(partitionAndOffsets: Map[TopicAndPartition, BrokerAndInitialOffset]) {
     mapLock synchronized {
       debug("addFetcherForPartitions get lock")
-      val partitionsPerFetcher = partitionAndOffsets.groupBy{ case(topicAndPartition, brokerAndInitialOffset) =>
-        BrokerAndFetcherId(brokerAndInitialOffset.broker, getFetcherId(topicAndPartition.topic, topicAndPartition.partition))}
+      val partitionsPerFetcher = partitionAndOffsets.groupBy { case (topicAndPartition, brokerAndInitialOffset) =>
+        BrokerAndFetcherId(brokerAndInitialOffset.broker, getFetcherId(topicAndPartition.topic, topicAndPartition.partition))
+      }
       for ((brokerAndFetcherId, partitionAndOffsets) <- partitionsPerFetcher) {
         var fetcherThread: CompactConsumerFetcherThread = null
         fetcherThreadMap.get(brokerAndFetcherId) match {
@@ -132,14 +133,16 @@ class CompactConsumerFetcherManager (private val consumerIdString: String,
         fetcherThreadMap(brokerAndFetcherId).addPartitions(partitionAndOffsets.map { case (topicAndPartition, brokerAndInitOffset) =>
           topicAndPartition -> brokerAndInitOffset.initOffset
         })
-        info("Fetcher Thread for topic partitions: %s is %s".format(partitionAndOffsets.map{ case (topicAndPartition, brokerAndInitialOffset) =>
-          "[" + topicAndPartition + ", InitialOffset " + brokerAndInitialOffset.initOffset + "] "}, fetcherThread.name))
+        info("Fetcher Thread for topic partitions: %s is %s".format(partitionAndOffsets.map { case (topicAndPartition, brokerAndInitialOffset) =>
+          "[" + topicAndPartition + ", InitialOffset " + brokerAndInitialOffset.initOffset + "] "
+        }, fetcherThread.name))
       }
       debug("addFetcherForPartitions releasing lock")
     }
 
-    info("Added fetcher for partitions %s".format(partitionAndOffsets.map{ case (topicAndPartition, brokerAndInitialOffset) =>
-      "[" + topicAndPartition + ", initOffset " + brokerAndInitialOffset.initOffset + " to broker " + brokerAndInitialOffset.broker + "] "}))
+    info("Added fetcher for partitions %s".format(partitionAndOffsets.map { case (topicAndPartition, brokerAndInitialOffset) =>
+      "[" + topicAndPartition + ", initOffset " + brokerAndInitialOffset.initOffset + " to broker " + brokerAndInitialOffset.broker + "] "
+    }))
   }
 
   def removeFetcherForPartitions(partitions: Set[TopicAndPartition]) {
@@ -158,7 +161,7 @@ class CompactConsumerFetcherManager (private val consumerIdString: String,
 
   def closeAllFetchers() {
     mapLock synchronized {
-      for ( (_, fetcher) <- fetcherThreadMap) {
+      for ((_, fetcher) <- fetcherThreadMap) {
         fetcher.shutdown()
       }
       fetcherThreadMap.clear()
@@ -240,7 +243,7 @@ class CompactConsumerFetcherManager (private val consumerIdString: String,
     partitionInfoMap.get(tp).deleted.set(true)
   }
 
-  def getPartitionInfoMapSize():Int = {
+  def getPartitionInfoMapSize(): Int = {
     var count = 0
     val piItr = partitionInfoMap.values().iterator()
     while (piItr.hasNext) {
@@ -311,12 +314,12 @@ class CompactConsumerFetcherManager (private val consumerIdString: String,
           config.clientId,
           config.socketTimeoutMs,
           correlationId.getAndIncrement).topicsMetadata
-        if(logger.isDebugEnabled) topicsMetadata.foreach(topicMetadata => debug(topicMetadata.toString()))
+        if (logger.isDebugEnabled) topicsMetadata.foreach(topicMetadata => debug(topicMetadata.toString()))
         topicsMetadata.foreach { tmd =>
           val topic = tmd.topic
           tmd.partitionsMetadata.foreach { pmd =>
             val topicAndPartition = TopicAndPartition(topic, pmd.partitionId)
-            if(pmd.leader.isDefined && noLeaderPartitionSet.contains(topicAndPartition)) {
+            if (pmd.leader.isDefined && noLeaderPartitionSet.contains(topicAndPartition)) {
               info("Try find leader for topic: %s, partition:%d".format(topicAndPartition.topic, topicAndPartition.partition))
               val leaderBroker = pmd.leader.get
               leaderForPartitionsMap.put(topicAndPartition, leaderBroker)
@@ -336,10 +339,10 @@ class CompactConsumerFetcherManager (private val consumerIdString: String,
       }
 
       try {
-        addFetcherForPartitions(leaderForPartitionsMap.map{
+        addFetcherForPartitions(leaderForPartitionsMap.map {
           case (topicAndPartition, broker) =>
-            topicAndPartition -> BrokerAndInitialOffset(broker, partitionInfoMap.get(topicAndPartition).getFetchOffset())}
-        )
+            topicAndPartition -> BrokerAndInitialOffset(broker, partitionInfoMap.get(topicAndPartition).getFetchOffset())
+        })
       } catch {
         case t: Throwable => {
           if (!isRunning.get())
@@ -355,5 +358,5 @@ class CompactConsumerFetcherManager (private val consumerIdString: String,
       Thread.sleep(config.refreshLeaderBackoffMs)
     }
   }
-}
 
+}

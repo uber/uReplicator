@@ -15,6 +15,8 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.utils;
 
+import java.io.File;
+import java.util.Properties;
 import kafka.admin.TopicCommand;
 import kafka.server.KafkaConfig;
 import kafka.server.KafkaServerStartable;
@@ -23,15 +25,12 @@ import org.I0Itec.zkclient.ZkClient;
 import org.apache.commons.io.FileUtils;
 import org.apache.kafka.common.errors.TopicExistsException;
 
-import java.io.File;
-import java.util.Properties;
-
 
 /**
  * Utilities to start Kafka during unit tests.
- *
  */
 public class KafkaStarterUtils {
+
   public static final int DEFAULT_KAFKA_PORT = 19092;
   public static final int DEFAULT_BROKER_ID = 0;
   public static final String DEFAULT_ZK_STR = ZkStarter.DEFAULT_ZK_STR + "/kafka";
@@ -41,8 +40,8 @@ public class KafkaStarterUtils {
     return new Properties();
   }
 
-  public static KafkaServerStartable startServer(final int port, final int brokerId, final String zkStr,
-      final Properties configuration) {
+  public static KafkaServerStartable startServer(final int port, final int brokerId,
+      final String zkStr, final Properties configuration) {
     // Create the ZK nodes for Kafka, if needed
     int indexOfFirstSlash = zkStr.indexOf('/');
     if (indexOfFirstSlash != -1) {
@@ -100,7 +99,8 @@ public class KafkaStarterUtils {
   public static void createTopic(String kafkaTopic, String zkStr) {
     // TopicCommand.main() will call System.exit() finally, which will break maven-surefire-plugin
     try {
-      String[] args = new String[]{"--create", "--zookeeper", zkStr, "--replication-factor", "1", "--partitions", "1", "--topic", kafkaTopic};
+      String[] args = new String[]{"--create", "--zookeeper", zkStr, "--replication-factor", "1",
+          "--partitions", "1", "--topic", kafkaTopic};
       ZkUtils zkUtils = ZkUtils.apply(zkStr, 30000, 30000, false);
       TopicCommand.TopicCommandOptions opts = new TopicCommand.TopicCommandOptions(args);
       TopicCommand.createTopic(zkUtils, opts);

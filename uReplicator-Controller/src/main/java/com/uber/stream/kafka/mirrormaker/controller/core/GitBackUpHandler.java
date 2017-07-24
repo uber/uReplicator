@@ -20,7 +20,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Date;
-
 import org.apache.commons.io.FileUtils;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -108,8 +107,9 @@ public class GitBackUpHandler extends BackUpHandler {
     } finally {
       output.close();
       git.close();
-      if (result != null)
+      if (result != null) {
         result.getRepository().close();
+      }
       backupRepo.close();
     }
   }

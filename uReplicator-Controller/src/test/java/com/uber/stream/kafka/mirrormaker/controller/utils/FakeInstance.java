@@ -61,6 +61,7 @@ public class FakeInstance {
   }
 
   public static class ShutdownHook extends Thread {
+
     private final FakeInstance _fakeInstance;
 
     public ShutdownHook(FakeInstance fakeInstance) {

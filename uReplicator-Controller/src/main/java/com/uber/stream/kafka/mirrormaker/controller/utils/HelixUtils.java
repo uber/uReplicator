@@ -15,6 +15,10 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.utils;
 
+import com.google.common.collect.ImmutableList;
+import com.uber.stream.kafka.mirrormaker.controller.core.InstanceTopicPartitionHolder;
+import com.uber.stream.kafka.mirrormaker.controller.core.OnlineOfflineStateModel;
+import com.uber.stream.kafka.mirrormaker.controller.core.TopicPartition;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -22,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.helix.HelixAdmin;
 import org.apache.helix.HelixDataAccessor;
@@ -36,12 +39,8 @@ import org.apache.helix.model.IdealState;
 import org.apache.helix.model.builder.CustomModeISBuilder;
 import org.apache.helix.store.zk.ZkHelixPropertyStore;
 
-import com.google.common.collect.ImmutableList;
-import com.uber.stream.kafka.mirrormaker.controller.core.InstanceTopicPartitionHolder;
-import com.uber.stream.kafka.mirrormaker.controller.core.OnlineOfflineStateModel;
-import com.uber.stream.kafka.mirrormaker.controller.core.TopicPartition;
-
 public class HelixUtils {
+
   public static String getAbsoluteZkPathForHelix(String zkBaseUrl) {
     zkBaseUrl = StringUtils.chomp(zkBaseUrl, "/");
     return zkBaseUrl;
@@ -67,7 +66,7 @@ public class HelixUtils {
 
   /**
    * From IdealStates.
-   * @param helixManager
+   *
    * @return InstanceToNumTopicPartitionMap
    */
   public static Map<String, Set<TopicPartition>> getInstanceToTopicPartitionsMap(

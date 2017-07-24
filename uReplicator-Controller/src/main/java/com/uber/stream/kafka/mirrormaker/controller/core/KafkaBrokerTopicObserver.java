@@ -15,6 +15,12 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.Timer;
+import com.codahale.metrics.Timer.Context;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -24,21 +30,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-
+import kafka.utils.ZKStringSerializer$;
+import kafka.utils.ZkUtils;
 import org.I0Itec.zkclient.IZkChildListener;
 import org.I0Itec.zkclient.ZkClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.codahale.metrics.Counter;
-import com.codahale.metrics.Timer;
-import com.codahale.metrics.Timer.Context;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
-import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
-
-import kafka.utils.ZKStringSerializer$;
-import kafka.utils.ZkUtils;
 import scala.collection.JavaConversions;
 import scala.collection.Seq;
 
@@ -108,7 +105,8 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
           }
         }
         scala.collection.mutable.Map<String, scala.collection.Map<Object, Seq<Object>>> partitionAssignmentForTopics =
-                _zkUtils.getPartitionAssignmentForTopics(JavaConversions.asScalaBuffer(ImmutableList.copyOf(newAddedTopics)));
+            _zkUtils.getPartitionAssignmentForTopics(
+                JavaConversions.asScalaBuffer(ImmutableList.copyOf(newAddedTopics)));
 
         for (String topic : newAddedTopics) {
           try {
@@ -142,7 +140,8 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
       }
 
       scala.collection.mutable.Map<String, scala.collection.Map<Object, Seq<Object>>> partitionAssignmentForTopics =
-          _zkUtils.getPartitionAssignmentForTopics(JavaConversions.asScalaBuffer(ImmutableList.copyOf(servingTopics)));
+          _zkUtils.getPartitionAssignmentForTopics(
+              JavaConversions.asScalaBuffer(ImmutableList.copyOf(servingTopics)));
 
       for (String topic : servingTopics) {
         try {

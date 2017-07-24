@@ -19,7 +19,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
-
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.zookeeper.server.ZooKeeperServerMain;
 import org.apache.zookeeper.server.quorum.QuorumPeerConfig;
@@ -27,9 +26,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ZkStarter {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(ZkStarter.class);
   public static final int DEFAULT_ZK_TEST_PORT = new Random().nextInt(10000) + 10000;
-  public static final String DEFAULT_ZK_STR = "localhost:" + DEFAULT_ZK_TEST_PORT;;
+  public static final String DEFAULT_ZK_STR = "localhost:" + DEFAULT_ZK_TEST_PORT;
 
   private static PublicZooKeeperServerMain _zookeeperServerMain = null;
   private static String _zkDataDir = null;
@@ -38,6 +38,7 @@ public class ZkStarter {
    * Silly class to make protected methods public.
    */
   static class PublicZooKeeperServerMain extends ZooKeeperServerMain {
+
     @Override
     public void initializeAndRun(String[] args)
         throws QuorumPeerConfig.ConfigException, IOException {
@@ -65,6 +66,7 @@ public class ZkStarter {
 
   /**
    * Starts a local Zk instance with a generated empty data directory
+   *
    * @param port The port to listen on
    */
   public static void startLocalZkServer(final int port) {
@@ -74,6 +76,7 @@ public class ZkStarter {
 
   /**
    * Starts a local Zk instance
+   *
    * @param port The port to listen on
    * @param dataDirPath The path for the Zk data directory
    */
@@ -87,7 +90,7 @@ public class ZkStarter {
       _zookeeperServerMain = new PublicZooKeeperServerMain();
       LOGGER.info("Zookeeper data path - " + dataDirPath);
       _zkDataDir = dataDirPath;
-      final String[] args = new String[] {
+      final String[] args = new String[]{
           Integer.toString(port), dataDirPath
       };
       new Thread() {
@@ -126,6 +129,7 @@ public class ZkStarter {
 
   /**
    * Stops a local Zk instance.
+   *
    * @param deleteDataDir Whether or not to delete the data directory
    */
   public synchronized static void stopLocalZkServer(final boolean deleteDataDir) {

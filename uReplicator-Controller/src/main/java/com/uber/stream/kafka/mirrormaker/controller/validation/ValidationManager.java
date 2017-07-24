@@ -15,21 +15,19 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.validation;
 
+import com.alibaba.fastjson.JSONObject;
+import com.codahale.metrics.Counter;
+import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
+import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.IdealState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.alibaba.fastjson.JSONObject;
-import com.codahale.metrics.Counter;
-import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
-import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
 
 /**
  * Validate every one minute and update related metrics.

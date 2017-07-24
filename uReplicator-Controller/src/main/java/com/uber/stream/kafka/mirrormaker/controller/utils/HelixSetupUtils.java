@@ -15,9 +15,9 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.utils;
 
+import com.uber.stream.kafka.mirrormaker.controller.core.OnlineOfflineStateModel;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.helix.HelixAdmin;
 import org.apache.helix.HelixManager;
 import org.apache.helix.controller.HelixControllerMain;
@@ -30,8 +30,6 @@ import org.apache.helix.model.Message.MessageType;
 import org.apache.helix.model.builder.HelixConfigScopeBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.uber.stream.kafka.mirrormaker.controller.core.OnlineOfflineStateModel;
 
 /**
  * HelixSetupUtils handles how to create or get a helixCluster in controller.

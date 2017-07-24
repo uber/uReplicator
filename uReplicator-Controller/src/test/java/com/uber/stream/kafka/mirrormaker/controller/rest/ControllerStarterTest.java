@@ -15,9 +15,19 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.rest;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
+import com.uber.stream.kafka.mirrormaker.controller.ControllerStarter;
+import com.uber.stream.kafka.mirrormaker.controller.core.KafkaBrokerTopicObserver;
+import com.uber.stream.kafka.mirrormaker.controller.utils.ControllerRequestURLBuilder;
+import com.uber.stream.kafka.mirrormaker.controller.utils.ControllerTestUtils;
+import com.uber.stream.kafka.mirrormaker.controller.utils.FakeInstance;
+import com.uber.stream.kafka.mirrormaker.controller.utils.KafkaStarterUtils;
+import com.uber.stream.kafka.mirrormaker.controller.utils.ZkStarter;
 import java.util.ArrayList;
 import java.util.List;
-
+import kafka.server.KafkaServerStartable;
 import org.I0Itec.zkclient.ZkClient;
 import org.restlet.Client;
 import org.restlet.Request;
@@ -31,20 +41,8 @@ import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
-import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
-import com.uber.stream.kafka.mirrormaker.controller.ControllerStarter;
-import com.uber.stream.kafka.mirrormaker.controller.core.KafkaBrokerTopicObserver;
-import com.uber.stream.kafka.mirrormaker.controller.utils.ControllerRequestURLBuilder;
-import com.uber.stream.kafka.mirrormaker.controller.utils.ControllerTestUtils;
-import com.uber.stream.kafka.mirrormaker.controller.utils.FakeInstance;
-import com.uber.stream.kafka.mirrormaker.controller.utils.KafkaStarterUtils;
-import com.uber.stream.kafka.mirrormaker.controller.utils.ZkStarter;
-
-import kafka.server.KafkaServerStartable;
-
 public class ControllerStarterTest {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(ControllerStarterTest.class);
   public static String CONTROLLER_PORT = "9999";
   public static Client HTTP_CLIENT = new Client(Protocol.HTTP);
@@ -103,7 +101,7 @@ public class ControllerStarterTest {
 
     kafkaBrokerTopicObserver.stop();
     KafkaStarterUtils.stopServer(kafkaStarter);
-    
+
     ZK_CLIENT.deleteRecursive("/" + HELIX_CLUSTER_NAME);
     ZK_CLIENT.close();
     ZkStarter.stopLocalZkServer();
@@ -120,7 +118,7 @@ public class ControllerStarterTest {
     conf.setEnableAutoTopicExpansion("true");
     conf.setSrcKafkaZkPath(KafkaStarterUtils.DEFAULT_ZK_STR);
     conf.setDestKafkaZkPath(KafkaStarterUtils.DEFAULT_ZK_STR);
-    
+
     final ControllerStarter starter = new ControllerStarter(conf);
     try {
       starter.start();
@@ -139,7 +137,7 @@ public class ControllerStarterTest {
     Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
     Assert.assertEquals(response.getEntityAsText(), "No topic is added in MirrorMaker Controller!");
     System.out.println(response.getEntityAsText());
-   
+
     // Create topic
     request = ControllerRequestURLBuilder.baseUrl(REQUEST_URL)
         .getTopicCreationRequestUrl("testTopic0", 8);

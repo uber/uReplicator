@@ -37,22 +37,22 @@ import org.apache.kafka.common.utils.Utils
 import scala.io.Source
 
 /**
-  * The mirror maker has the following architecture:
-  * - There is one mirror maker thread uses one KafkaConnector and owns a Kafka stream.
-  * - All the mirror maker threads share one producer.
-  * - Mirror maker thread periodically flushes the producer and then commits all offsets.
-  *
-  * @note      For mirror maker, the following settings are set by default to make sure there is no data loss:
-  *       1. use new producer with following settings
-  *            acks=all
-  *            retries=max integer
-  *            block.on.buffer.full=true
-  *            max.in.flight.requests.per.connection=1
-  *       2. Consumer Settings
-  *            auto.commit.enable=false
-  *       3. Mirror Maker Setting:
-  *            abort.on.send.failure=true
-  */
+ * The mirror maker has the following architecture:
+ * - There is one mirror maker thread uses one KafkaConnector and owns a Kafka stream.
+ * - All the mirror maker threads share one producer.
+ * - Mirror maker thread periodically flushes the producer and then commits all offsets.
+ *
+ * @note      For mirror maker, the following settings are set by default to make sure there is no data loss:
+ *       1. use new producer with following settings
+ *            acks=all
+ *            retries=max integer
+ *            block.on.buffer.full=true
+ *            max.in.flight.requests.per.connection=1
+ *       2. Consumer Settings
+ *            auto.commit.enable=false
+ *       3. Mirror Maker Setting:
+ *            abort.on.send.failure=true
+ */
 object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
 
   private var helixClusterName: String = null
@@ -156,7 +156,6 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
     zkServer = helixProps.getProperty("zkServer", "localhost:2181")
     instanceId = helixProps.getProperty("instanceId", "HelixMirrorMaker-" + System.currentTimeMillis)
     helixClusterName = helixProps.getProperty("helixClusterName", "testMirrorMaker")
-
 
     // Create consumer connector
     val consumerConfigProps = Utils.loadProps(options.valueOf(consumerConfigOpt))
@@ -412,8 +411,8 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
   }
 
   /**
-    * If message.handler.args is specified. A constructor that takes in a String as argument must exist.
-    */
+   * If message.handler.args is specified. A constructor that takes in a String as argument must exist.
+   */
   trait MirrorMakerMessageHandler {
     def handle(record: MessageAndMetadata[Array[Byte], Array[Byte]]): util.List[ProducerRecord[Array[Byte], Array[Byte]]]
   }

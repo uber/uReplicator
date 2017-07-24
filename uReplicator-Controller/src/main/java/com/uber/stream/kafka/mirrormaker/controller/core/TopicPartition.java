@@ -36,9 +36,6 @@ public class TopicPartition {
 
   /**
    * This is used only for POST and PUT call to create the pojo.
-   *
-   * @param jsonRequest
-   * @return
    */
   public static TopicPartition init(String jsonRequest) {
     JSONObject jsonObject = JSON.parseObject(jsonRequest);

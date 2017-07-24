@@ -16,7 +16,6 @@
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
 import java.util.PriorityQueue;
-
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.builder.CustomModeISBuilder;
 

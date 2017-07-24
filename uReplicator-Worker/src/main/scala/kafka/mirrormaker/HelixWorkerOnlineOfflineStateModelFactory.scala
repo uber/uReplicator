@@ -28,10 +28,10 @@ import org.apache.helix.participant.statemachine.{StateModel, StateModelFactory}
  */
 class HelixWorkerOnlineOfflineStateModelFactory(final val instanceId: String,
                                                 final val connector: KafkaConnector) extends StateModelFactory[StateModel] with Logging {
-  override def createNewStateModel( partitionName:String) =  new OnlineOfflineStateModel(instanceId, connector)
+  override def createNewStateModel(partitionName: String) = new OnlineOfflineStateModel(instanceId, connector)
 
   // register mm instance
-  class OnlineOfflineStateModel (final val instanceId: String, final val connectors: KafkaConnector) extends StateModel {
+  class OnlineOfflineStateModel(final val instanceId: String, final val connectors: KafkaConnector) extends StateModel {
 
     def onBecomeOnlineFromOffline(message: Message, context: NotificationContext) = {
       info("OnlineOfflineStateModel.onBecomeOnlineFromOffline for topic: "

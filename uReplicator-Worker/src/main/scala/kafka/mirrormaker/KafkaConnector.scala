@@ -22,19 +22,19 @@ import kafka.common.{AppInfo, OffsetAndMetadata, OffsetMetadataAndError, TopicAn
 import kafka.consumer._
 import kafka.metrics.{KafkaMetricsGroup, KafkaMetricsReporter}
 import kafka.serializer.DefaultDecoder
-import kafka.utils.{ZkUtils, Pool, ZKGroupTopicDirs}
+import kafka.utils.{Pool, ZKGroupTopicDirs, ZkUtils}
 import org.I0Itec.zkclient.ZkClient
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 /**
-  * This class handles the consumers interaction with zookeeper
-  * Stores the consumer offsets to Zookeeper.
-  *
-  * @param consumerIdString
-  * @param config
-  */
+ * This class handles the consumers interaction with zookeeper
+ * Stores the consumer offsets to Zookeeper.
+ *
+ * @param consumerIdString
+ * @param config
+ */
 class KafkaConnector(private val consumerIdString: String,
                      private val config: ConsumerConfig) extends KafkaMetricsGroup {
   private val zkClient: ZkClient = ZkUtils.createZkClient(config.zkConnect, config.zkSessionTimeoutMs, config.zkConnectionTimeoutMs)

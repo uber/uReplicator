@@ -15,16 +15,15 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.rest;
 
+import com.uber.stream.kafka.mirrormaker.controller.rest.resources.AdminRestletResource;
+import com.uber.stream.kafka.mirrormaker.controller.rest.resources.HealthCheckRestletResource;
+import com.uber.stream.kafka.mirrormaker.controller.rest.resources.TopicManagementRestletResource;
+import com.uber.stream.kafka.mirrormaker.controller.rest.resources.ValidationRestletResource;
 import org.restlet.Application;
 import org.restlet.Context;
 import org.restlet.Restlet;
 import org.restlet.routing.Router;
 import org.restlet.routing.Template;
-
-import com.uber.stream.kafka.mirrormaker.controller.rest.resources.AdminRestletResource;
-import com.uber.stream.kafka.mirrormaker.controller.rest.resources.HealthCheckRestletResource;
-import com.uber.stream.kafka.mirrormaker.controller.rest.resources.TopicManagementRestletResource;
-import com.uber.stream.kafka.mirrormaker.controller.rest.resources.ValidationRestletResource;
 
 /**
  * Register different REST endpoints

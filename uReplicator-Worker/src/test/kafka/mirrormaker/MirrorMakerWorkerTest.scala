@@ -15,17 +15,13 @@
  */
 package kafka.mirrormaker
 
-
 import java.util.Properties
 
-import kafka.api.IntegrationTestHarness
 import kafka.consumer.SimpleConsumer
-import kafka.integration.KafkaServerTestHarness
 import kafka.producer.Producer
-import kafka.security.auth.SimpleAclAuthorizer
 import kafka.serializer.StringEncoder
 import kafka.server.KafkaConfig
-import kafka.utils.{StaticPartitioner, TestUtils, Logging}
+import kafka.utils.Logging
 import org.junit.{After, Before}
 import org.scalatest.junit.JUnitSuite
 
@@ -81,6 +77,3 @@ class MirrorMakerWorkerTest extends JUnitSuite with IntegrationTestHarness with 
   override def generateConfigs() = Seq(brokerConfig1, brokerConfig2)
 
 }
-
-
-

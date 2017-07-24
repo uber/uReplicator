@@ -21,6 +21,7 @@ import org.apache.helix.participant.statemachine.StateModel;
 import org.apache.helix.participant.statemachine.StateModelFactory;
 
 public class TestOnlineOfflineStateModelFactory extends StateModelFactory<StateModel> {
+
   int _delay;
   final String _instanceId;
 
@@ -37,6 +38,7 @@ public class TestOnlineOfflineStateModelFactory extends StateModelFactory<StateM
   }
 
   public static class TestOnlineOfflineStateModel extends StateModel {
+
     int _transDelay = 0;
     final String _instanceId;
 

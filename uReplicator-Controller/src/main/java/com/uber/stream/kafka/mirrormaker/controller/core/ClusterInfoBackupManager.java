@@ -15,6 +15,9 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,17 +31,12 @@ import org.restlet.representation.StringRepresentation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
-import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
-
 /**
  * This manager schedules a periodic backup task once every 24 hrs to take the
  * backup of the mirror maker controller cluster state and dump the ideal state, parition assignment
  * to two different files either to a remote git repo or a local backup file based on the config
- * 
- * @author naveencherukuri
  *
+ * @author naveencherukuri
  */
 public class ClusterInfoBackupManager {
 
@@ -54,7 +52,8 @@ public class ClusterInfoBackupManager {
   private final ControllerConf _config;
   private String envInfo = "default";
 
-  public ClusterInfoBackupManager(HelixMirrorMakerManager helixMirrorMakerManager, BackUpHandler handler,
+  public ClusterInfoBackupManager(HelixMirrorMakerManager helixMirrorMakerManager,
+      BackUpHandler handler,
       ControllerConf config) {
     _helixMirrorMakerManager = helixMirrorMakerManager;
     _handler = handler;
@@ -82,7 +81,6 @@ public class ClusterInfoBackupManager {
       return;
     }
 
-
     LOGGER.info("Backing up the CurrentState and the IdealState!");
     StringBuilder idealState = new StringBuilder();
     StringBuilder partitionAssignment = new StringBuilder();
@@ -91,7 +89,6 @@ public class ClusterInfoBackupManager {
       LOGGER.info("No topics available to take backup");
       return;
     }
-
 
     JSONArray resultList = new JSONArray();
 
@@ -103,9 +100,7 @@ public class ClusterInfoBackupManager {
       resultList.add(resultJson);
     }
 
-
     idealState.append(new StringRepresentation(resultList.toJSONString()));
-
 
     resultList = new JSONArray();
 
@@ -167,7 +162,6 @@ public class ClusterInfoBackupManager {
       resultJson.put("serverToPartitionMapping", serverToPartitionMappingJson);
       resultJson.put("serverToNumPartitionsMapping", serverToNumPartitionsMappingJson);
       resultList.add(resultJson);
-
     }
 
     partitionAssignment.append(new StringRepresentation(resultList.toJSONString()));

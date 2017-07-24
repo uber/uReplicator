@@ -15,12 +15,11 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
+import com.google.common.collect.ImmutableSet;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
-
-import com.google.common.collect.ImmutableSet;
 
 /**
  * InstanceTopicPartitionHolder is a wrapper for instance and the topicPartitionSet it's holding.

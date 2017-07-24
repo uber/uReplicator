@@ -15,19 +15,17 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.integration;
 
-import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.Test;
-
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
 import com.uber.stream.kafka.mirrormaker.controller.utils.ControllerTestUtils;
 import com.uber.stream.kafka.mirrormaker.controller.utils.FakeInstance;
 import com.uber.stream.kafka.mirrormaker.controller.utils.ZkStarter;
+import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testng.annotations.AfterTest;
+import org.testng.annotations.BeforeTest;
+import org.testng.annotations.Test;
 
 public class HelixMirrorMakerManagerCustomSimpleTest {
 

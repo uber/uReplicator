@@ -15,11 +15,6 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.reporter;
 
-import java.net.InetSocketAddress;
-import java.util.concurrent.TimeUnit;
-
-import org.apache.log4j.Logger;
-
 import com.codahale.metrics.JmxReporter;
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
@@ -28,6 +23,9 @@ import com.codahale.metrics.graphite.GraphiteReporter;
 import com.google.common.base.Preconditions;
 import com.google.common.io.Closeables;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
+import java.net.InetSocketAddress;
+import java.util.concurrent.TimeUnit;
+import org.apache.log4j.Logger;
 
 /**
  * Holds a singleton MetricRegistry to be shared across MirrorMaker.
@@ -35,6 +33,7 @@ import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
  * config). Note: There is no need to explicitly close this.
  */
 public class HelixKafkaMirrorMakerMetricsReporter {
+
   private static final String KAFKA_MIRROR_MAKER_METRICS_REPORTER_PREFIX_FORMAT =
       "stats.%s.counter.kafka-mirror-maker-controller.%s.%s";
 
@@ -95,10 +94,12 @@ public class HelixKafkaMirrorMakerMetricsReporter {
     Runtime.getRuntime().addShutdownHook(new Thread() {
       public void run() {
         try {
-          if (enabledJmxReporting)
+          if (enabledJmxReporting) {
             Closeables.close(_jmxReporter, true);
-          if (enabledGraphiteReporting)
+          }
+          if (enabledGraphiteReporting) {
             Closeables.close(_graphiteReporter, true);
+          }
         } catch (Exception e) {
           LOGGER.error("Error while closing Jmx and Graphite reporters.", e);
         }
@@ -107,11 +108,13 @@ public class HelixKafkaMirrorMakerMetricsReporter {
   }
 
   private String[] parse(String environment) {
-    if (environment == null || environment.trim().length() <= 0)
+    if (environment == null || environment.trim().length() <= 0) {
       return null;
+    }
     String[] res = environment.split("\\.");
-    if (res == null || res.length != 2)
+    if (res == null || res.length != 2) {
       return null;
+    }
     return res;
   }
 
@@ -131,12 +134,13 @@ public class HelixKafkaMirrorMakerMetricsReporter {
   /**
    * This function must be called before calling the get() method, because of
    * the dependency on the config object.
-   * 
+   *
    * @param config Specifies config pertaining to Metrics
    */
   public static synchronized void init(ControllerConf config) {
-    if (DID_INIT)
+    if (DID_INIT) {
       return;
+    }
     METRICS_REPORTER_INSTANCE = new HelixKafkaMirrorMakerMetricsReporter(config);
     DID_INIT = true;
   }

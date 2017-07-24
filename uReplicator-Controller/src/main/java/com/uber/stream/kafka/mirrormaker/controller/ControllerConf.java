@@ -18,7 +18,6 @@ package com.uber.stream.kafka.mirrormaker.controller;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Iterator;
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.apache.commons.configuration.PropertiesConfiguration;
@@ -321,8 +320,7 @@ public class ControllerConf extends PropertiesConfiguration {
         .addOption("autoRebalanceDelayInSeconds", true, "Auto Rebalance Delay in seconds")
         .addOption("refreshTimeInSeconds", true, "Controller Refresh Time in seconds")
         .addOption("initWaitTimeInSeconds", true, "Controller Init Delay in seconds")
-        .addOption("backUpToGit", true,
-            "Backup controller metadata to git (true) or local file (false)")
+        .addOption("backUpToGit", true, "Backup controller metadata to git (true) or local file (false)")
         .addOption("remoteBackupRepo", true, "Remote Backup Repo to store cluster state")
         .addOption("localGitRepoClonePath", true, "Clone location of the remote git backup repo")
         .addOption("localBackupFilePath", true, "Local backup file location");

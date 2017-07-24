@@ -17,7 +17,6 @@ package com.uber.stream.kafka.mirrormaker.controller;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -44,7 +43,7 @@ public class TestControllerConf {
 
   @Test
   public void testCmdControllerConf() throws ParseException {
-    String[] args = new String[] {
+    String[] args = new String[]{
         "-helixClusterName", "testHelixClusterName",
         "-zookeeper", "localhost:2181",
         "-port", "9090",
@@ -89,7 +88,7 @@ public class TestControllerConf {
 
   @Test
   public void testAnotherCmdControllerConf() throws ParseException {
-    String[] args = new String[] {
+    String[] args = new String[]{
         "-helixClusterName", "testHelixClusterName",
         "-zookeeper", "localhost:2181",
         "-port", "9090",
@@ -131,7 +130,7 @@ public class TestControllerConf {
 
   @Test
   public void testNoGitBackupCmdControllerConf() throws ParseException, UnknownHostException {
-    String[] args = new String[] {
+    String[] args = new String[]{
         "-helixClusterName", "testHelixClusterName",
         "-zookeeper", "localhost:2181",
         "-port", "9090",

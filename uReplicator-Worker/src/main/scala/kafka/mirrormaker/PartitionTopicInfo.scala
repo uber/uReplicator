@@ -40,13 +40,14 @@ class PartitionTopicInfo(override val topic: String,
                          private val fetchSize: AtomicInteger,
                          private val clientId: String)
   extends kafka.consumer.PartitionTopicInfo(topic = topic,
-                             partitionId = partitionId,
-                             chunkQueue = chunkQueue,
-                             consumedOffset = consumedOffset,
-                             fetchedOffset = fetchedOffset,
-                             fetchSize = fetchSize,
-                             clientId = clientId) with Logging {
+    partitionId = partitionId,
+    chunkQueue = chunkQueue,
+    consumedOffset = consumedOffset,
+    fetchedOffset = fetchedOffset,
+    fetchSize = fetchSize,
+    clientId = clientId) with Logging {
 
-  val deleted:AtomicBoolean = new AtomicBoolean(false)
+  val deleted: AtomicBoolean = new AtomicBoolean(false)
+
   def getDeleted() = deleted.get()
 }

@@ -15,10 +15,14 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.integration;
 
+import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
+import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
+import com.uber.stream.kafka.mirrormaker.controller.utils.ControllerTestUtils;
+import com.uber.stream.kafka.mirrormaker.controller.utils.FakeInstance;
+import com.uber.stream.kafka.mirrormaker.controller.utils.ZkStarter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.helix.model.ExternalView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,12 +30,6 @@ import org.testng.Assert;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
-
-import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
-import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
-import com.uber.stream.kafka.mirrormaker.controller.utils.ControllerTestUtils;
-import com.uber.stream.kafka.mirrormaker.controller.utils.FakeInstance;
-import com.uber.stream.kafka.mirrormaker.controller.utils.ZkStarter;
 
 public class HelixMirrorMakerManagerCustomEmptyFullTest {
 

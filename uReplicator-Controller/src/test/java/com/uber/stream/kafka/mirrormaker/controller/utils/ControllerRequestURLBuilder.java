@@ -15,14 +15,14 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.utils;
 
+import com.uber.stream.kafka.mirrormaker.controller.core.TopicPartition;
 import org.apache.commons.lang.StringUtils;
 import org.restlet.Request;
 import org.restlet.data.MediaType;
 import org.restlet.data.Method;
 
-import com.uber.stream.kafka.mirrormaker.controller.core.TopicPartition;
-
 public class ControllerRequestURLBuilder {
+
   private final String _baseUrl;
 
   private ControllerRequestURLBuilder(String baseUrl) {
@@ -34,7 +34,7 @@ public class ControllerRequestURLBuilder {
   }
 
   public Request getTopicExternalViewRequestUrl(String topic) {
-    String requestUrl = StringUtils.join(new String[] {
+    String requestUrl = StringUtils.join(new String[]{
         _baseUrl, "/topics/", topic
     });
 
@@ -43,7 +43,7 @@ public class ControllerRequestURLBuilder {
   }
 
   public Request getTopicDeleteRequestUrl(String topic) {
-    String requestUrl = StringUtils.join(new String[] {
+    String requestUrl = StringUtils.join(new String[]{
         _baseUrl, "/topics/", topic
     });
 
