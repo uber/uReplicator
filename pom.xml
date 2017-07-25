@@ -24,7 +24,7 @@
   </licenses>
 
   <organization>
-    <name>Uber Technology Inc.</name>
+    <name>Uber Technologies, Inc.</name>
     <url>http://www.uber.com/</url>
   </organization>
 
@@ -47,7 +47,7 @@
     </developer>
   </developers>
 
-  <inceptionYear>2015-2016</inceptionYear>
+  <inceptionYear>2015-2017</inceptionYear>
 
   <dependencyManagement>
     <dependencies>
@@ -399,11 +399,12 @@
         <configuration>
           <header>com/mycila/maven/plugin/license/templates/APACHE-2.txt</header>
           <properties>
-            <owner>Uber Technology Inc.</owner>
-            <email>streaming-core@uber.com</email>
+            <owner>Uber Technologies, Inc.</owner>
+            <email>streaming-data@uber.com</email>
           </properties>
           <excludes>
             <exclude>config/*.*</exclude>
+            <exclude>deploy/**</exclude>
             <exclude>**/*.xml</exclude>
             <exclude>**/*.txt</exclude>
             <exclude>**/*.log</exclude>
@@ -416,9 +417,7 @@
             <exclude>**/resources/**/*.*</exclude>
           </excludes>
           <mapping>
-            <thrift>JAVADOC_STYLE</thrift>
-            <g>DOUBLESLASH_STYLE</g>
-            <g4>JAVADOC_STYLE</g4>
+            <java>SLASHSTAR_STYLE</java>
           </mapping>
         </configuration>
         <executions>
