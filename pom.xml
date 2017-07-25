@@ -24,7 +24,7 @@
   </licenses>
 
   <organization>
-    <name>Uber Technology Inc.</name>
+    <name>Uber Technologies, Inc.</name>
     <url>http://www.uber.com/</url>
   </organization>
 
@@ -399,7 +399,7 @@
         <configuration>
           <header>com/mycila/maven/plugin/license/templates/APACHE-2.txt</header>
           <properties>
-            <owner>Uber Technology Inc.</owner>
+            <owner>Uber Technologies, Inc.</owner>
             <email>streaming-data@uber.com</email>
           </properties>
           <excludes>
