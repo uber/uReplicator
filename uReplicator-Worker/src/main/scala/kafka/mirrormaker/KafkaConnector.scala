@@ -125,14 +125,16 @@ class KafkaConnector(private val consumerIdString: String,
 
   def commitOffsets: Unit = {
     // Convert the Java concurrent hashmap into a map of offsets to commit
-    val offsetsToCommit = topicRegistry.asScala.map { case (topic, info) => {
-      topic -> OffsetAndMetadata(info.getConsumeOffset())
-    }
+    val offsetsToCommit = topicRegistry.asScala.map {
+      case (topic, info) => {
+        topic -> OffsetAndMetadata(info.getConsumeOffset())
+      }
     }
     kafkaCommitMeter.mark(offsetsToCommit.size)
     // Commit all offsets to Zookeeper
-    offsetsToCommit.foreach { case (topicAndPartition, offsetAndMetadata) =>
-      commitOffsetToZooKeeper(topicAndPartition, offsetAndMetadata.offset)
+    offsetsToCommit.foreach {
+      case (topicAndPartition, offsetAndMetadata) =>
+        commitOffsetToZooKeeper(topicAndPartition, offsetAndMetadata.offset)
     }
   }
 
