@@ -37,7 +37,6 @@ class HelixWorkerOnlineOfflineStateModelFactory(final val instanceId: String,
       info("OnlineOfflineStateModel.onBecomeOnlineFromOffline for topic: "
         + message.getResourceName() + ", partition: " + message.getPartitionName()
         + " to instance: " + instanceId)
-
       // add topic partition on the instance
       connectors.addTopicPartition(message.getResourceName, message.getPartitionName.toInt)
       debug("Finish OnlineOfflineStateModel.onBecomeOnlineFromOffline for topic: "
@@ -50,7 +49,7 @@ class HelixWorkerOnlineOfflineStateModelFactory(final val instanceId: String,
         + message.getResourceName() + ", partition: " + message.getPartitionName()
         + " to instance: " + instanceId)
       // delete topic partition on the instance
-      connectors.deleteTopicPartition(message.getResourceName, message.getPartitionName.toInt)
+      connectors.deleteTopicPartition(message.getResourceName, message.getPartitionName.toInt, false)
       debug("Finish OnlineOfflineStateModel.onBecomeOfflineFromOnline for topic: "
         + message.getResourceName() + ", partition: " + message.getPartitionName()
         + " to instance: " + instanceId)
@@ -60,7 +59,11 @@ class HelixWorkerOnlineOfflineStateModelFactory(final val instanceId: String,
       info("OnlineOfflineStateModel.onBecomeDroppedFromOffline for topic: "
         + message.getResourceName() + ", partition: " + message.getPartitionName()
         + " to instance: " + instanceId)
-      // do nothing
+      // delete topic partition on the instance
+      connectors.deleteTopicPartition(message.getResourceName, message.getPartitionName.toInt, true)
+      debug("Finish OnlineOfflineStateModel.onBecomeDroppedFromOffline for topic: "
+        + message.getResourceName() + ", partition: " + message.getPartitionName()
+        + " to instance: " + instanceId)
     }
   }
 

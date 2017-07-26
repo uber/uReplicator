@@ -103,7 +103,7 @@ class KafkaConnector(private val consumerIdString: String,
     topicRegistry.put(TopicAndPartition(topic, partition), partTopicInfo)
   }
 
-  def deleteTopicPartition(topic: String, partition: Int): Unit = {
+  def deleteTopicPartition(topic: String, partition: Int, deleteOnly: Boolean): Unit = {
     info("Removing topic: %s , partition %d".format(topic, partition))
     val topicAndPartition = TopicAndPartition(topic, partition)
     if (!topicRegistry.keySet().contains(topicAndPartition)) {
@@ -115,7 +115,9 @@ class KafkaConnector(private val consumerIdString: String,
     fetcherManager.removeTopicPartition(pti)
 
     // commit offset for this topic partition before deletion
-    commitOffsetToZooKeeper(topicAndPartition, OffsetAndMetadata(pti.getConsumeOffset()).offset)
+    if (!deleteOnly) {
+      commitOffsetToZooKeeper(topicAndPartition, OffsetAndMetadata(pti.getConsumeOffset()).offset)
+    }
 
     topicRegistry.remove(topicAndPartition)
     info("Finish deleteTopicPartition in KafkaConnector for topic: %s , partition %d".format(topic, partition))
@@ -123,14 +125,16 @@ class KafkaConnector(private val consumerIdString: String,
 
   def commitOffsets: Unit = {
     // Convert the Java concurrent hashmap into a map of offsets to commit
-    val offsetsToCommit = topicRegistry.asScala.map { case (topic, info) => {
-      topic -> OffsetAndMetadata(info.getConsumeOffset())
-    }
+    val offsetsToCommit = topicRegistry.asScala.map {
+      case (topic, info) => {
+        topic -> OffsetAndMetadata(info.getConsumeOffset())
+      }
     }
     kafkaCommitMeter.mark(offsetsToCommit.size)
     // Commit all offsets to Zookeeper
-    offsetsToCommit.foreach { case (topicAndPartition, offsetAndMetadata) =>
-      commitOffsetToZooKeeper(topicAndPartition, offsetAndMetadata.offset)
+    offsetsToCommit.foreach {
+      case (topicAndPartition, offsetAndMetadata) =>
+        commitOffsetToZooKeeper(topicAndPartition, offsetAndMetadata.offset)
     }
   }
 
