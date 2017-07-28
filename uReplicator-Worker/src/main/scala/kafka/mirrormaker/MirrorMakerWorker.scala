@@ -27,12 +27,11 @@ import joptsimple.OptionParser
 import kafka.consumer._
 import kafka.message.MessageAndMetadata
 import kafka.metrics.KafkaMetricsGroup
-import kafka.utils.{CommandLineUtils, Logging}
+import kafka.utils.{CommandLineUtils, Logging, Utils}
 import org.apache.helix.participant.StateMachineEngine
 import org.apache.helix.{HelixManager, HelixManagerFactory, InstanceType}
 import org.apache.kafka.clients.producer.internals.ErrorLoggingCallback
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord, RecordMetadata}
-import org.apache.kafka.common.utils.Utils
 
 import scala.io.Source
 
@@ -226,8 +225,6 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
   def maybeFlushAndCommitOffsets(forceCommit: Boolean) {
     try {
       if (forceCommit || System.currentTimeMillis() - lastOffsetCommitMs > offsetCommitIntervalMs) {
-        info("Flushing producer.")
-        producer.flush()
 
         flushCommitLock.synchronized {
           while (!exitingOnSendFailure && recordCount.get() != 0) {
@@ -373,16 +370,8 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
       }
     }
 
-    def flush() {
-      this.producer.flush()
-    }
-
     def close() {
       this.producer.close()
-    }
-
-    def close(timeout: Long) {
-      this.producer.close(timeout, TimeUnit.MILLISECONDS)
     }
   }
 
@@ -399,7 +388,7 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
           if (abortOnSendFailure) {
             info("Closing producer due to send failure.")
             exitingOnSendFailure = true
-            producer.close(0)
+            producer.close()
           }
           numDroppedMessages.incrementAndGet()
         }

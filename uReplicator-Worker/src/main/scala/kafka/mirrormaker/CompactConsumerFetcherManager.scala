@@ -21,15 +21,14 @@ import java.util.concurrent.locks.ReentrantLock
 
 import com.yammer.metrics.core.Gauge
 import kafka.client.ClientUtils
-import kafka.cluster.{BrokerEndPoint, Cluster}
+import kafka.cluster.{Broker, Cluster}
 import kafka.common.TopicAndPartition
 import kafka.consumer.ConsumerConfig
 import kafka.metrics.KafkaMetricsGroup
 import kafka.server.{BrokerAndFetcherId, BrokerAndInitialOffset}
-import kafka.utils.CoreUtils._
+import kafka.utils.Utils._
 import kafka.utils.{ZkUtils, Logging, ShutdownableThread, SystemTime}
 import org.I0Itec.zkclient.ZkClient
-import org.apache.kafka.common.protocol.SecurityProtocol
 import org.apache.kafka.common.utils.Utils
 
 import scala.collection.mutable.HashMap
@@ -109,7 +108,7 @@ class CompactConsumerFetcherManager (private val consumerIdString: String,
     Utils.abs(31 * topic.hashCode() + partitionId) % numFetchers
   }
 
-  def createFetcherThread(fetcherId: Int, sourceBroker: BrokerEndPoint): CompactConsumerFetcherThread = {
+  def createFetcherThread(fetcherId: Int, sourceBroker: Broker): CompactConsumerFetcherThread = {
     new CompactConsumerFetcherThread(
       "CompactConsumerFetcherThread-%s-%d-%d".format(consumerIdString, fetcherId, sourceBroker.id),
       config, sourceBroker, partitionInfoMap, this)
@@ -293,7 +292,7 @@ class CompactConsumerFetcherManager (private val consumerIdString: String,
 
     // thread responsible for adding the fetcher to the right broker when leader is available
     override def doWork() {
-      val leaderForPartitionsMap = new HashMap[TopicAndPartition, BrokerEndPoint]
+      val leaderForPartitionsMap = new HashMap[TopicAndPartition, Broker]
       lock.lock()
       try {
         processAddDeleteSet
@@ -305,7 +304,7 @@ class CompactConsumerFetcherManager (private val consumerIdString: String,
         }
 
         info("Partitions without leader %s".format(noLeaderPartitionSet))
-        val brokers = ZkUtils.apply(zkClient, true).getAllBrokerEndPointsForChannel(SecurityProtocol.PLAINTEXT)
+        val brokers = ZkUtils.getAllBrokersInCluster(zkClient)
 
         val topicsMetadata = ClientUtils.fetchTopicMetadata(noLeaderPartitionSet.map(m => m.topic).toSet,
           brokers,

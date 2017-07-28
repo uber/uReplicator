@@ -186,7 +186,7 @@
 
     <properties>
         <scala.version>2.10.5</scala.version>
-        <kafka.version>0.9.0.0</kafka.version>
+        <kafka.version>0.8.2.1</kafka.version>
         <kafka.scala.version>2.10</kafka.scala.version>
         <helix.version>0.6.5</helix.version>
         <yammer.version>2.2.0</yammer.version>

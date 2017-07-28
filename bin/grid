@@ -34,7 +34,7 @@ DOWNLOAD_CACHE_DIR=$HOME/.kafkamirrormaker/download
 COMMAND=$1
 SYSTEM=$2
 
-DOWNLOAD_KAFKA=http://www.us.apache.org/dist/kafka/0.9.0.0/kafka_2.10-0.9.0.0.tgz
+DOWNLOAD_KAFKA=http://www.us.apache.org/dist/kafka/0.8.2.1/kafka_2.10-0.8.2.1.tgz
 DOWNLOAD_ZOOKEEPER=http://archive.apache.org/dist/zookeeper/zookeeper-3.4.3/zookeeper-3.4.3.tar.gz
 
 bootstrap() {
@@ -62,7 +62,7 @@ install_zookeeper() {
 
 install_kafka() {
   mkdir -p "$DEPLOY_ROOT_DIR"
-  install kafka $DOWNLOAD_KAFKA kafka_2.10-0.9.0.0
+  install kafka $DOWNLOAD_KAFKA kafka_2.10-0.8.2.1
   # have to use SIGTERM since nohup on appears to ignore SIGINT
   # and Kafka switched to SIGINT in KAFKA-1031.
   sed -i.bak 's/SIGINT/SIGTERM/g' $DEPLOY_ROOT_DIR/kafka/bin/kafka-server-stop.sh

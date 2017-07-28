@@ -25,5 +25,5 @@ fi
 # produce raw data
 while sleep 1
 do
-  $BASE_DIR/deploy/kafka/bin/kafka-console-producer.sh < $BASE_DIR/bin/dummyTopicData.log --topic dummyTopic --broker $KAFKA_BROKER
+  $BASE_DIR/deploy/kafka/bin/kafka-console-producer.sh < $BASE_DIR/bin/dummyTopicData.log --topic dummyTopic --broker-list $KAFKA_BROKER
 done

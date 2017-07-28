@@ -15,19 +15,20 @@
  */
 package kafka.mirrormaker
 
-import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
+import java.util.concurrent.{ConcurrentHashMap, Delayed, TimeUnit}
 import java.util.concurrent.locks.ReentrantLock
 
 import kafka.api._
-import kafka.cluster.BrokerEndPoint
+import kafka.cluster.Broker
 import kafka.common.{ClientIdAndBroker, ErrorMapping, KafkaException, TopicAndPartition}
 import kafka.consumer.{ConsumerConfig, SimpleConsumer}
 import kafka.message.{ByteBufferMessageSet, InvalidMessageException, MessageAndOffset}
-import kafka.server.{ClientIdTopicPartition, FetcherLagStats, FetcherStats, PartitionFetchState}
-import kafka.utils.CoreUtils._
-import kafka.utils.ShutdownableThread
+import kafka.server.{ClientIdTopicPartition, FetcherLagStats, FetcherStats}
+import kafka.utils.Utils._
+import kafka.utils.{Logging, ShutdownableThread, SystemTime}
 
 import scala.collection.{Map, Set, mutable}
+import scala.math._
 
 /**
  * Fetcher thread that fetches data for multiple topic partitions from the same broker.
@@ -40,7 +41,7 @@ import scala.collection.{Map, Set, mutable}
  */
 class CompactConsumerFetcherThread(name: String,
                                    val config: ConsumerConfig,
-                                   sourceBroker: BrokerEndPoint,
+                                   sourceBroker: Broker,
                                    partitionInfoMap: ConcurrentHashMap[TopicAndPartition, PartitionTopicInfo],
                                    consumerFetcherManager: CompactConsumerFetcherManager)
   extends ShutdownableThread(name, isInterruptible = true) {
@@ -313,6 +314,41 @@ class CompactConsumerFetcherThread(name: String,
       }
     }
     info("Finish removePartitions in CompactConsumerFetcherThread %d for set %s".format(this.getId, topicAndPartitions.toString()))
+  }
+
+}
+
+/**
+ * case class to keep partition offset and its state(active , inactive)
+ */
+case class PartitionFetchState(offset: Long, delay: DelayedItem) {
+
+  def this(offset: Long) = this(offset, new DelayedItem(0))
+
+  def isActive: Boolean = { delay.getDelay(TimeUnit.MILLISECONDS) == 0 }
+
+  override def toString = "%d-%b".format(offset, isActive)
+}
+
+class DelayedItem(delayMs: Long) extends Delayed with Logging {
+
+  private val dueMs = SystemTime.milliseconds + delayMs
+
+  def this(delay: Long, unit: TimeUnit) = this(unit.toMillis(delay))
+
+  /**
+   * The remaining delay time
+   */
+  def getDelay(unit: TimeUnit): Long = {
+    unit.convert(max(dueMs - SystemTime.milliseconds, 0), TimeUnit.MILLISECONDS)
+  }
+
+  def compareTo(d: Delayed): Int = {
+    val other = d.asInstanceOf[DelayedItem]
+
+    if(dueMs < other.dueMs) -1
+    else if(dueMs > other.dueMs) 1
+    else 0
   }
 
 }
