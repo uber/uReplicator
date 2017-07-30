@@ -174,9 +174,10 @@ class CompactConsumerFetcherThread(name: String,
 
         partitionMap.foreach {
           case ((topicAndPartition, partitionFetchState)) =>
-            if (partitionFetchState.isActive)
+            if (partitionFetchState.isActive) {
               fetchRequestBuilder.addFetch(topicAndPartition.topic, topicAndPartition.partition,
                 partitionFetchState.offset, fetchSize)
+            }
         }
 
         fetchRequest = fetchRequestBuilder.build()

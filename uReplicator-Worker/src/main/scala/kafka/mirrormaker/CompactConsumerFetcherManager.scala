@@ -204,7 +204,7 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
   }
 
   def addPartitionsWithError(partitionList: Iterable[TopicAndPartition]) {
-    debug("adding partitions with error %s".format(partitionList))
+    info("adding partitions with error %s".format(partitionList))
     if (partitionNewLeaderMap != null) {
       inLock(updateMapLock) {
         partitionList.foreach(p => partitionNewLeaderMap.put(p, true))
