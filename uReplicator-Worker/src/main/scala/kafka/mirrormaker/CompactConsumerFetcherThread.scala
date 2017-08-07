@@ -142,52 +142,63 @@ class CompactConsumerFetcherThread(name: String,
   }
 
   override def doWork() {
-    var fetchRequest: FetchRequest = null
+    try {
+      var fetchRequest: FetchRequest = null
 
-    inLock(partitionMapLock) {
-      inLock(updateMapLock) {
-        // add topic partition into partitionMap
-        val addIter = partitionAddMap.entrySet().iterator()
-        while (addIter.hasNext) {
-          val tpToAdd = addIter.next()
-          if (!partitionMap.contains(tpToAdd.getKey)) {
-            partitionMap.put(tpToAdd.getKey, tpToAdd.getValue)
+      inLock(partitionMapLock) {
+        inLock(updateMapLock) {
+          // add topic partition into partitionMap
+          val addIter = partitionAddMap.entrySet().iterator()
+          while (addIter.hasNext) {
+            val tpToAdd = addIter.next()
+            if (!partitionMap.contains(tpToAdd.getKey)) {
+              partitionMap.put(tpToAdd.getKey, tpToAdd.getValue)
+            }
           }
+          partitionAddMap.clear()
+
+          // remove topic partition from partitionMap
+          val deleteIter = partitionDeleteMap.entrySet().iterator()
+          while (deleteIter.hasNext) {
+            val tpToDelete = deleteIter.next()
+            if (partitionMap.contains(tpToDelete.getKey)) {
+              partitionMap.remove(tpToDelete.getKey)
+            }
+            val lagMetricToRemove = new ClientIdTopicPartition(clientId, tpToDelete.getKey.topic, tpToDelete.getKey.partition)
+            if (fetcherLagStats.stats.contains(lagMetricToRemove)) {
+              fetcherLagStats.stats.remove(lagMetricToRemove)
+            }
+          }
+          partitionDeleteMap.clear()
         }
-        partitionAddMap.clear()
 
-        // remove topic partition from partitionMap
-        val deleteIter = partitionDeleteMap.entrySet().iterator()
-        while (deleteIter.hasNext) {
-          val tpToDelete = deleteIter.next()
-          if (partitionMap.contains(tpToDelete.getKey)) {
-            partitionMap.remove(tpToDelete.getKey)
-          }
-          val lagMetricToRemove = new ClientIdTopicPartition(clientId, tpToDelete.getKey.topic, tpToDelete.getKey.partition)
-          if (fetcherLagStats.stats.contains(lagMetricToRemove)) {
-            fetcherLagStats.stats.remove(lagMetricToRemove)
-          }
+        partitionMap.foreach {
+          case ((topicAndPartition, partitionFetchState)) =>
+            if (partitionFetchState.isActive) {
+              fetchRequestBuilder.addFetch(topicAndPartition.topic, topicAndPartition.partition,
+                partitionFetchState.offset, fetchSize)
+            }
         }
-        partitionDeleteMap.clear()
+
+        fetchRequest = fetchRequestBuilder.build()
+        if (fetchRequest.requestInfo.isEmpty) {
+          trace("There are no active partitions. Back off for %d ms before sending a fetch request".format(fetchBackOffMs))
+          partitionMapCond.await(fetchBackOffMs, TimeUnit.MILLISECONDS)
+        }
+        logTopicPartitionInfo()
       }
 
-      partitionMap.foreach {
-        case ((topicAndPartition, partitionFetchState)) =>
-          if (partitionFetchState.isActive)
-            fetchRequestBuilder.addFetch(topicAndPartition.topic, topicAndPartition.partition,
-              partitionFetchState.offset, fetchSize)
+      if (!fetchRequest.requestInfo.isEmpty) {
+        processFetchRequest(fetchRequest)
       }
-
-      fetchRequest = fetchRequestBuilder.build()
-      if (fetchRequest.requestInfo.isEmpty) {
-        trace("There are no active partitions. Back off for %d ms before sending a fetch request".format(fetchBackOffMs))
-        partitionMapCond.await(fetchBackOffMs, TimeUnit.MILLISECONDS)
-      }
-      logTopicPartitionInfo()
+    } catch {
+      case e: InterruptedException =>
+        throw e
+      case e: Throwable =>
+        if (isRunning.get()) {
+          error("Error due to ", e)
+        }
     }
-
-    if (!fetchRequest.requestInfo.isEmpty)
-      processFetchRequest(fetchRequest)
   }
 
   private def processFetchRequest(fetchRequest: FetchRequest) {
