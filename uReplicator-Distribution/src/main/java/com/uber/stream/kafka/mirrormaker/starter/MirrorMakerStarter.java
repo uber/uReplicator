@@ -39,7 +39,7 @@ public class MirrorMakerStarter {
         ControllerStarter.main(args);
       } else if (args[0].equalsIgnoreCase("startMirrorMakerWorker")) {
         LOGGER.info("Trying to start MirrorMaker Worker with args: {}", Arrays.toString(args));
-        MirrorMakerWorker.main(args);
+        new MirrorMakerWorker().main(args);
       } else {
         LOGGER.error("Start script should provide the module(startMirrorMakerController/startMirrorMakerWorker)"
             + " to start as the first parameter! Current args: {}", Arrays.toString(args));

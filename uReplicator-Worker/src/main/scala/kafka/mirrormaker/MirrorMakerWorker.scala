@@ -23,7 +23,6 @@ import java.util.concurrent.{CountDownLatch, TimeUnit}
 import java.util.{Collections, Properties, UUID}
 
 import com.yammer.metrics.core.Gauge
-import joptsimple.OptionParser
 import kafka.consumer._
 import kafka.message.MessageAndMetadata
 import kafka.metrics.KafkaMetricsGroup
@@ -53,7 +52,7 @@ import scala.io.Source
  *       3. Mirror Maker Setting:
  *            abort.on.send.failure=true
  */
-object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
+class MirrorMakerWorker extends Logging with KafkaMetricsGroup {
 
   private var helixClusterName: String = null
   private var instanceId: String = null
@@ -63,9 +62,9 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
   private var connector: KafkaConnector = null
   private var producer: MirrorMakerProducer = null
   private var mirrorMakerThread: MirrorMakerThread = null
-  private val isShuttingdown: AtomicBoolean = new AtomicBoolean(false)
+  private val isShuttingDown: AtomicBoolean = new AtomicBoolean(false)
   // Track the messages not successfully sent by mirror maker.
-  private var numDroppedMessages: AtomicInteger = new AtomicInteger(0)
+  private val numDroppedMessages: AtomicInteger = new AtomicInteger(0)
   private val messageHandler: MirrorMakerMessageHandler = defaultMirrorMakerMessageHandler
   private var offsetCommitIntervalMs = 0
   private var abortOnSendFailure: Boolean = true
@@ -78,63 +77,27 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
 
   def main(args: Array[String]) {
     info("Starting mirror maker")
-    val parser = new OptionParser
 
-    val consumerConfigOpt = parser.accepts("consumer.config",
-      "Embedded consumer config for consuming from the source cluster.")
-      .withRequiredArg()
-      .describedAs("config file")
-      .ofType(classOf[String])
-
-    val producerConfigOpt = parser.accepts("producer.config",
-      "Embedded producer config.")
-      .withRequiredArg()
-      .describedAs("config file")
-      .ofType(classOf[String])
-
-    val helixConfigOpt = parser.accepts("helix.config",
-      "Embedded helix config.")
-      .withRequiredArg()
-      .describedAs("config file")
-      .ofType(classOf[String])
-
-    val offsetCommitIntervalMsOpt = parser.accepts("offset.commit.interval.ms",
-      "Offset commit interval in ms")
-      .withRequiredArg()
-      .describedAs("offset commit interval in millisecond")
-      .ofType(classOf[java.lang.Integer])
-      .defaultsTo(60000)
-
-    val abortOnSendFailureOpt = parser.accepts("abort.on.send.failure",
-      "Configure the mirror maker to exit on a failed send.")
-      .withRequiredArg()
-      .describedAs("Stop the entire mirror maker when a send failure occurs")
-      .ofType(classOf[String])
-      .defaultsTo("true")
-
-    val topicMappingsOpt = parser.accepts("topic.mappings",
-      "Path to file containing line deliminated mappings of topics to consume from and produce to.")
-      .withRequiredArg()
-      .describedAs("Path to mappings file")
-      .ofType(classOf[String])
-
-    val helpOpt = parser.accepts("help", "Print this message.")
+    val mirrorMakerWorkerConf = getMirrorMakerWorkerConf
+    val parser = mirrorMakerWorkerConf.getParser
 
     if (args.length == 0)
       CommandLineUtils.printUsageAndDie(parser, "Continuously copy data between two Kafka clusters.")
 
-
     val options = parser.parse(args: _*)
 
-    if (options.has(helpOpt)) {
+    if (options.has(mirrorMakerWorkerConf.getHelpOpt)) {
       parser.printHelpOn(System.out)
       System.exit(0)
     }
 
-    CommandLineUtils.checkRequiredArgs(parser, options, consumerConfigOpt, producerConfigOpt, helixConfigOpt)
+    CommandLineUtils.checkRequiredArgs(parser, options,
+      mirrorMakerWorkerConf.getConsumerConfigOpt,
+      mirrorMakerWorkerConf.getProducerConfigOpt,
+      mirrorMakerWorkerConf.getHelixConfigOpt)
 
-    abortOnSendFailure = options.valueOf(abortOnSendFailureOpt).toBoolean
-    offsetCommitIntervalMs = options.valueOf(offsetCommitIntervalMsOpt).intValue()
+    abortOnSendFailure = options.valueOf(mirrorMakerWorkerConf.getAbortOnSendFailureOpt).toBoolean
+    offsetCommitIntervalMs = options.valueOf(mirrorMakerWorkerConf.getOffsetCommitIntervalMsOpt).toInt
 
     Runtime.getRuntime.addShutdownHook(new Thread("MirrorMakerShutdownHook") {
       override def run() {
@@ -143,7 +106,7 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
     })
 
     // create producer
-    val producerProps = Utils.loadProps(options.valueOf(producerConfigOpt))
+    val producerProps = Utils.loadProps(options.valueOf(mirrorMakerWorkerConf.getProducerConfigOpt))
     // Defaults to no data loss settings.
     maybeSetDefaultProperty(producerProps, ProducerConfig.RETRIES_CONFIG, Int.MaxValue.toString)
     maybeSetDefaultProperty(producerProps, ProducerConfig.BLOCK_ON_BUFFER_FULL_CONFIG, "true")
@@ -152,13 +115,13 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
     producer = new MirrorMakerProducer(producerProps)
 
     // create helix manager
-    val helixProps = Utils.loadProps(options.valueOf(helixConfigOpt))
+    val helixProps = Utils.loadProps(options.valueOf(mirrorMakerWorkerConf.getHelixConfigOpt))
     zkServer = helixProps.getProperty("zkServer", "localhost:2181")
     instanceId = helixProps.getProperty("instanceId", "HelixMirrorMaker-" + System.currentTimeMillis)
     helixClusterName = helixProps.getProperty("helixClusterName", "testMirrorMaker")
 
     // Create consumer connector
-    val consumerConfigProps = Utils.loadProps(options.valueOf(consumerConfigOpt))
+    val consumerConfigProps = Utils.loadProps(options.valueOf(mirrorMakerWorkerConf.getConsumerConfigOpt))
     // Disable consumer auto offsets commit to prevent data loss.
     maybeSetDefaultProperty(consumerConfigProps, "auto.commit.enable", "false")
     // Set the consumer timeout so we will not block for low volume pipeline. The timeout is necessary to make sure
@@ -192,8 +155,8 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
     )
 
     // initialize topic mappings for rewriting topic names between consuming side and producing side
-    topicMappings = if (options.has(topicMappingsOpt)) {
-      val topicMappingsFile = options.valueOf(topicMappingsOpt)
+    topicMappings = if (options.has(mirrorMakerWorkerConf.getTopicMappingsOpt)) {
+      val topicMappingsFile = options.valueOf(mirrorMakerWorkerConf.getTopicMappingsOpt)
       val topicMappingPattern = """\s*(\S+)\s+(\S+)\s*""".r
       Source.fromFile(topicMappingsFile).getLines().flatMap(_ match {
         case topicMappingPattern(consumerTopic, producerTopic) => {
@@ -211,6 +174,10 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
     mirrorMakerThread = new MirrorMakerThread(connector, instanceId)
     mirrorMakerThread.start()
     mirrorMakerThread.awaitShutdown()
+  }
+
+  def getMirrorMakerWorkerConf: MirrorMakerWorkerConf = {
+    new MirrorMakerWorkerConf()
   }
 
   def addToHelixController(): Unit = {
@@ -244,7 +211,7 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
   }
 
   def cleanShutdown() {
-    if (isShuttingdown.compareAndSet(false, true)) {
+    if (isShuttingDown.compareAndSet(false, true)) {
       info("Start clean shutdown.")
       // Shutdown consumer threads.
       info("Shutting down consumer thread.")
@@ -306,7 +273,7 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
               val records = messageHandler.handle(data)
               val iterRecords = records.iterator()
               while (iterRecords.hasNext) {
-                producer.send(iterRecords.next())
+                producer.send(iterRecords.next(), data.partition, data.offset)
               }
               maybeFlushAndCommitOffsets(false)
             }
@@ -325,7 +292,7 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
         shutdownLatch.countDown()
         info("Mirror maker thread stopped")
         // if it exits accidentally, like only one thread dies, stop the entire mirror maker
-        if (!isShuttingdown.get()) {
+        if (!isShuttingDown.get()) {
           fatal("Mirror maker thread exited abnormally, stopping the whole mirror maker.")
           System.exit(-1)
         }
@@ -354,19 +321,19 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
     }
   }
 
-  private class MirrorMakerProducer(val producerProps: Properties) {
+  class MirrorMakerProducer(val producerProps: Properties) {
 
     val sync = producerProps.getProperty("producer.type", "async").equals("sync")
 
     val producer = new KafkaProducer[Array[Byte], Array[Byte]](producerProps)
 
-    def send(record: ProducerRecord[Array[Byte], Array[Byte]]) {
+    def send(record: ProducerRecord[Array[Byte], Array[Byte]], srcPartition: Int, srcOffset: Long) {
       recordCount.getAndIncrement()
       if (sync) {
         this.producer.send(record).get()
       } else {
         this.producer.send(record,
-          new MirrorMakerProducerCallback(record.topic(), record.key(), record.value()))
+          new MirrorMakerProducerCallback(record.topic(), record.key(), record.value(), srcPartition, srcOffset))
       }
     }
 
@@ -383,7 +350,10 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
     }
   }
 
-  private class MirrorMakerProducerCallback(topic: String, key: Array[Byte], value: Array[Byte])
+  def onCompletionWithoutException(metadata: RecordMetadata, srcPartition: Int, srcOffset: Long) {}
+
+  class MirrorMakerProducerCallback(topic: String, key: Array[Byte], value: Array[Byte],
+                                    srcPartition: Int, srcOffset: Long)
     extends ErrorLoggingCallback(topic, key, value, false) {
 
     override def onCompletion(metadata: RecordMetadata, exception: Exception) {
@@ -399,9 +369,12 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
             producer.close(0)
           }
           numDroppedMessages.incrementAndGet()
+        } else {
+          onCompletionWithoutException(metadata, srcPartition, srcOffset)
         }
       } finally {
-        if (exitingOnSendFailure || recordCount.decrementAndGet() == 0) {
+        recordCount.decrementAndGet()
+        if (exitingOnSendFailure || recordCount.get() == 0) {
           flushCommitLock.synchronized {
             flushCommitLock.notifyAll()
           }
