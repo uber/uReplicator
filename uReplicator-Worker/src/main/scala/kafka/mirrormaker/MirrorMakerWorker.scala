@@ -373,8 +373,7 @@ class MirrorMakerWorker extends Logging with KafkaMetricsGroup {
           onCompletionWithoutException(metadata, srcPartition, srcOffset)
         }
       } finally {
-        recordCount.decrementAndGet()
-        if (exitingOnSendFailure || recordCount.get() == 0) {
+        if (recordCount.decrementAndGet() == 0 || exitingOnSendFailure) {
           flushCommitLock.synchronized {
             flushCommitLock.notifyAll()
           }
