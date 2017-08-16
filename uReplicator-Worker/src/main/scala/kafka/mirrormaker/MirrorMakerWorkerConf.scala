@@ -20,55 +20,54 @@ import joptsimple.{ArgumentAcceptingOptionSpec, OptionParser, OptionSpecBuilder}
 class MirrorMakerWorkerConf {
 
   private val parser: OptionParser = new OptionParser
-  private var consumerConfigOpt: ArgumentAcceptingOptionSpec[String] = null
-  private var producerConfigOpt: ArgumentAcceptingOptionSpec[String] = null
-  private var helixConfigOpt: ArgumentAcceptingOptionSpec[String] = null
-  private var offsetCommitIntervalMsOpt: ArgumentAcceptingOptionSpec[Integer] = null
-  private var abortOnSendFailureOpt: ArgumentAcceptingOptionSpec[String] = null
-  private var topicMappingsOpt: ArgumentAcceptingOptionSpec[String] = null
-  private var helpOpt: OptionSpecBuilder = null
 
-  def getParser: OptionParser = {
-    consumerConfigOpt = parser.accepts("consumer.config",
+  private val consumerConfigOpt: ArgumentAcceptingOptionSpec[String] =
+    parser.accepts("consumer.config",
       "Embedded consumer config for consuming from the source cluster.")
       .withRequiredArg()
       .describedAs("config file")
       .ofType(classOf[String])
 
-    producerConfigOpt = parser.accepts("producer.config",
+  private val producerConfigOpt: ArgumentAcceptingOptionSpec[String] =
+    parser.accepts("producer.config",
       "Embedded producer config.")
       .withRequiredArg()
       .describedAs("config file")
       .ofType(classOf[String])
 
-    helixConfigOpt = parser.accepts("helix.config",
+  private val helixConfigOpt: ArgumentAcceptingOptionSpec[String] =
+    parser.accepts("helix.config",
       "Embedded helix config.")
       .withRequiredArg()
       .describedAs("config file")
       .ofType(classOf[String])
 
-    offsetCommitIntervalMsOpt = parser.accepts("offset.commit.interval.ms",
+  private val offsetCommitIntervalMsOpt: ArgumentAcceptingOptionSpec[Integer] =
+    parser.accepts("offset.commit.interval.ms",
       "Offset commit interval in ms")
       .withRequiredArg()
       .describedAs("offset commit interval in millisecond")
       .ofType(classOf[java.lang.Integer])
       .defaultsTo(60000)
 
-    abortOnSendFailureOpt = parser.accepts("abort.on.send.failure",
+  private val abortOnSendFailureOpt: ArgumentAcceptingOptionSpec[String] =
+    parser.accepts("abort.on.send.failure",
       "Configure the mirror maker to exit on a failed send.")
       .withRequiredArg()
       .describedAs("Stop the entire mirror maker when a send failure occurs")
       .ofType(classOf[String])
       .defaultsTo("true")
 
-    topicMappingsOpt = parser.accepts("topic.mappings",
+  private val topicMappingsOpt: ArgumentAcceptingOptionSpec[String] =
+    parser.accepts("topic.mappings",
       "Path to file containing line deliminated mappings of topics to consume from and produce to.")
       .withRequiredArg()
       .describedAs("Path to mappings file")
       .ofType(classOf[String])
 
-    helpOpt = parser.accepts("help", "Print this message.")
+  private val helpOpt: OptionSpecBuilder = parser.accepts("help", "Print this message.")
 
+  def getParser: OptionParser = {
     parser
   }
 
