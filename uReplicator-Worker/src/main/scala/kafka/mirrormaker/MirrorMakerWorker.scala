@@ -27,6 +27,7 @@ import kafka.consumer._
 import kafka.message.MessageAndMetadata
 import kafka.metrics.KafkaMetricsGroup
 import kafka.utils.{CommandLineUtils, Logging}
+import org.apache.helix.manager.zk.ZKHelixManager
 import org.apache.helix.participant.StateMachineEngine
 import org.apache.helix.{HelixManager, HelixManagerFactory, InstanceType}
 import org.apache.kafka.clients.producer.internals.ErrorLoggingCallback
@@ -180,8 +181,25 @@ class MirrorMakerWorker extends Logging with KafkaMetricsGroup {
     new MirrorMakerWorkerConf()
   }
 
+  class WorkerZKHelixManager(clusterName: String,
+                             instanceName: String,
+                             `type`: InstanceType,
+                             zkAddr: String)
+    extends ZKHelixManager(clusterName, instanceName, `type`, zkAddr) {
+    override def disconnect(): Unit = {
+      if (isShuttingDown.get()) {
+        info("Is shutting down; call super.disconnect()")
+        super.disconnect()
+      } else {
+        info("Is not shutting down; call cleanShutdown()")
+        cleanShutdown()
+      }
+    }
+  }
+
+
   def addToHelixController(): Unit = {
-    helixZkManager = HelixManagerFactory.getZKHelixManager(helixClusterName, instanceId, InstanceType.PARTICIPANT, zkServer)
+    helixZkManager = new WorkerZKHelixManager(helixClusterName, instanceId, InstanceType.PARTICIPANT, zkServer)
     val stateMachineEngine: StateMachineEngine = helixZkManager.getStateMachineEngine()
     // register the MirrorMaker worker
     val stateModelFactory = new HelixWorkerOnlineOfflineStateModelFactory(instanceId, connector)
