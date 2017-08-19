@@ -6,7 +6,7 @@ uReplicator provides the ability to replicate across Kafka clusters in other dat
 
 Kafka's current (part of 0.8.2) MirrorMaker design consumes data from a given regional Kafka cluster using a Kafka high-level consumer. With this design, rebalancing in the high level consumer (due to a addition/deletion of topics, source cluster problems, network issues and so on) affects all the topics being replicated via that Mirrormaker.
 
-# Goals of uReplicator
+## Goals of uReplicator
 
 1. Stability: Rebalance only occurs during startup (when a node is added/deleted)
 2. Simple operations: Easy to scale up cluster, no server restart for whitelisting topics
