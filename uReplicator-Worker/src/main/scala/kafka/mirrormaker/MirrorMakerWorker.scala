@@ -304,6 +304,7 @@ class MirrorMakerWorker extends Logging with KafkaMetricsGroup {
         }
       } catch {
         case t: Throwable =>
+          exitingOnSendFailure = true
           t.printStackTrace()
           fatal("Mirror maker thread failure due to ", t)
       } finally {
