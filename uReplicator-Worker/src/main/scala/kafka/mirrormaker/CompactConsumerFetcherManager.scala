@@ -29,6 +29,7 @@ import kafka.server.{BrokerAndFetcherId, BrokerAndInitialOffset}
 import kafka.utils.CoreUtils._
 import kafka.utils.{Logging, ShutdownableThread, ZkUtils}
 import org.I0Itec.zkclient.ZkClient
+import org.apache.kafka.common.protocol.SecurityProtocol
 import org.apache.kafka.common.utils.Utils
 
 import scala.collection.mutable.HashMap
@@ -310,7 +311,8 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
         }
 
         info("Partitions without leader %s".format(noLeaderPartitionSet))
-        val brokers = ClientUtils.getPlaintextBrokerEndPoints(ZkUtils.apply(zkClient, true))
+        //For kafka 0.9
+        val brokers = ZkUtils.apply(zkClient, true).getAllBrokerEndPointsForChannel(SecurityProtocol.PLAINTEXT)
 
         val topicsMetadata = ClientUtils.fetchTopicMetadata(noLeaderPartitionSet.map(m => m.topic).toSet,
           brokers,

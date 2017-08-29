@@ -23,7 +23,7 @@ import kafka.server.KafkaServerStartable;
 import kafka.utils.ZkUtils;
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.commons.io.FileUtils;
-import org.apache.kafka.common.errors.TopicExistsException;
+
 
 
 /**
@@ -104,7 +104,7 @@ public class KafkaStarterUtils {
       ZkUtils zkUtils = ZkUtils.apply(zkStr, 30000, 30000, false);
       TopicCommand.TopicCommandOptions opts = new TopicCommand.TopicCommandOptions(args);
       TopicCommand.createTopic(zkUtils, opts);
-    } catch (TopicExistsException e) {
+    } catch (Exception e) {
       // Catch TopicExistsException otherwise it will break maven-surefire-plugin
       System.out.println("Topic already existed");
     }

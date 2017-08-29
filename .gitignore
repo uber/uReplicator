@@ -5,6 +5,7 @@ target/
 deploy/ 
 # OS Files #
 .DS_Store
+bin
  
 *.class
 dependency-reduced-pom.xml
