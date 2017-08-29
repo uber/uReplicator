@@ -273,7 +273,7 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
       info("Starting mirror maker thread " + threadName)
       try {
         // Creating one stream per each connector instance
-        val stream = connector.getStream()
+        val stream = connector.getStream
         val iter = stream.iterator()
 
         while (!exitingOnSendFailure && !shuttingDown) {

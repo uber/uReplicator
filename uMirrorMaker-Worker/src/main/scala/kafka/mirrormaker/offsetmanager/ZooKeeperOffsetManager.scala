@@ -1,10 +1,9 @@
-package kafka.offsetmanager
+package kafka.mirrormaker.offsetmanager
 
 import java.util.concurrent.TimeUnit
 
 import kafka.metrics.KafkaMetricsGroup
 import kafka.common.{OffsetAndMetadata, OffsetMetadataAndError, TopicAndPartition}
-import kafka.mirrormaker.offsetmanager.OffsetManager
 import kafka.utils.{ZkUtils, ZKGroupTopicDirs, Pool}
 
 private[offsetmanager] class ZooKeeperOffsetManager(zkUtils: ZkUtils, groupId: String, clientId: String) extends OffsetManager {
