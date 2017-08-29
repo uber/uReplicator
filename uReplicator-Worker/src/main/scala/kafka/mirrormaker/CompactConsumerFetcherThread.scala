@@ -244,7 +244,8 @@ class CompactConsumerFetcherThread(name: String,
                         case None => currentPartitionFetchState.offset
                       }
                       partitionMap.put(topicAndPartition, new PartitionFetchState(newOffset))
-                      fetcherLagStats.getAndMaybePut(topic, partitionId).lag = partitionData.hw - newOffset
+                      //For Kafka 0.9
+                      fetcherLagStats.getFetcherLagStats(topic, partitionId).lag = partitionData.hw - newOffset
                       fetcherStats.byteRate.mark(validBytes)
                       // Once we hand off the partition data to processPartitionData, we don't want to mess with it any more in this thread
                       processPartitionData(topicAndPartition, currentPartitionFetchState.offset, partitionData)
