@@ -39,6 +39,13 @@ public class ControllerConf extends PropertiesConfiguration {
 
   private static final String GRAPHITE_HOST = "controller.graphite.host";
   private static final String GRAPHITE_PORT = "controller.graphite.port";
+
+  private static final String C3_HOST = "controller.c3.host";
+  private static final String DEFAULT_C3_HOST = "localhost";
+
+  private static final String C3_PORT = "controller.c3.port";
+  private static final int DEFAULT_C3_PORT = 0;
+
   private static final String SRC_KAFKA_ZK_PATH = "controller.srckafka.zkStr";
   private static final String DEST_KAFKA_ZK_PATH = "controller.destkafka.zkStr";
   private static final String ENABLE_AUTO_WHITELIST = "controller.enable.auto.whitelist";
@@ -67,6 +74,19 @@ public class ControllerConf extends PropertiesConfiguration {
   private static final String INIT_WAIT_TIME_IN_SECONDS = "controller.init.wait.time.in.seconds";
 
   private static final int DEFAULT_INIT_WAIT_TIME_IN_SECONDS = 120;
+
+  private static final String AUTO_REBALANCE_PERIOD_IN_SECONDS =
+      "controller.auto.rebalance.period.in.seconds";
+
+  private static final String AUTO_REBALANCE_WORKLOAD_RATIO_THRESHOLD =
+      "controller.auto.rebalance.workload.ratio.threshold";
+
+  private static final double DEFAULT_AUTO_REBALANCE_WORKLOAD_RATIO_THRESHOLD = 1.2;
+
+  private static final String WORKLOAD_REFRESH_PERIOD_IN_SECONDS =
+      "controller.workload.refresh.period.in.seconds";
+
+  private static final int DEFAULT_WORKLOAD_REFRESH_PERIOD_IN_SECONDS = 600;
 
   private static final String defaultLocal = "/var/log/kafka-mirror-maker-controller";
 
@@ -109,6 +129,14 @@ public class ControllerConf extends PropertiesConfiguration {
 
   public void setGraphitePort(String graphitePort) {
     setProperty(GRAPHITE_PORT, Integer.valueOf(graphitePort));
+  }
+
+  public void setC3Host(String C3Host) {
+    setProperty(C3_HOST, C3Host);
+  }
+
+  public void setC3Port(String C3Port) {
+    setProperty(C3_PORT, Integer.valueOf(C3Port));
   }
 
   public void setSrcKafkaZkPath(String srcKafkaZkPath) {
@@ -157,6 +185,18 @@ public class ControllerConf extends PropertiesConfiguration {
 
   public void setInitWaitTimeInSeconds(String initWaitTimeInSeconds) {
     setProperty(INIT_WAIT_TIME_IN_SECONDS, Integer.parseInt(initWaitTimeInSeconds));
+  }
+
+  public void setAutoRebalancePeriodInSeconds(String autoRebalancePeriodInSeconds) {
+    setProperty(AUTO_REBALANCE_PERIOD_IN_SECONDS, Integer.parseInt(autoRebalancePeriodInSeconds));
+  }
+
+  public void setAutoRebalanceWorkloadRatioThreshold(String autoRebalanceWorkloadRatioThreshold) {
+    setProperty(AUTO_REBALANCE_WORKLOAD_RATIO_THRESHOLD, Double.parseDouble(autoRebalanceWorkloadRatioThreshold));
+  }
+
+  public void setWorkloadRefreshPeriodInSeconds(String workloadRefreshPeriodInSeconds) {
+    setProperty(WORKLOAD_REFRESH_PERIOD_IN_SECONDS, Integer.parseInt(workloadRefreshPeriodInSeconds));
   }
 
   public String getPatternToExcludeTopics() {
@@ -214,6 +254,22 @@ public class ControllerConf extends PropertiesConfiguration {
     return (Integer) getProperty(GRAPHITE_PORT);
   }
 
+  public String getC3Host() {
+    if (containsKey(C3_HOST)) {
+      return (String) getProperty(C3_HOST);
+    } else {
+      return DEFAULT_C3_HOST;
+    }
+  }
+
+  public Integer getC3Port() {
+    if (containsKey(C3_PORT)) {
+      return (Integer) getProperty(C3_PORT);
+    } else {
+      return DEFAULT_C3_PORT;
+    }
+  }
+
   public String getSrcKafkaZkPath() {
     return (String) getProperty(SRC_KAFKA_ZK_PATH);
   }
@@ -247,6 +303,30 @@ public class ControllerConf extends PropertiesConfiguration {
       return (Integer) getProperty(REFRESH_TIME_IN_SECONDS);
     } else {
       return DEFAULT_REFRESH_TIME_IN_SECONDS;
+    }
+  }
+
+  public Integer getAutoRebalancePeriodInSeconds() {
+    if (containsKey(AUTO_REBALANCE_PERIOD_IN_SECONDS)) {
+      return (Integer) getProperty(AUTO_REBALANCE_PERIOD_IN_SECONDS);
+    } else {
+      return 0;
+    }
+  }
+
+  public Double getAutoRebalanceWorkloadRatioThreshold() {
+    if (containsKey(AUTO_REBALANCE_WORKLOAD_RATIO_THRESHOLD)) {
+      return (Double) getProperty(AUTO_REBALANCE_WORKLOAD_RATIO_THRESHOLD);
+    } else {
+      return DEFAULT_AUTO_REBALANCE_WORKLOAD_RATIO_THRESHOLD;
+    }
+  }
+
+  public Integer getWorkloadRefreshPeriodInSeconds() {
+    if (containsKey(WORKLOAD_REFRESH_PERIOD_IN_SECONDS)) {
+      return (Integer) getProperty(WORKLOAD_REFRESH_PERIOD_IN_SECONDS);
+    } else {
+      return DEFAULT_WORKLOAD_REFRESH_PERIOD_IN_SECONDS;
     }
   }
 
@@ -311,6 +391,8 @@ public class ControllerConf extends PropertiesConfiguration {
         .addOption("instanceId", true, "InstanceId")
         .addOption("graphiteHost", true, "Graphite Host")
         .addOption("graphitePort", true, "Graphite Port")
+        .addOption("c3Host", true, "Chaperone3 Host")
+        .addOption("c3Port", true, "Chaperone3 Port")
         .addOption("enableAutoWhitelist", true, "Enable Auto Whitelist")
         .addOption("enableAutoTopicExpansion", true, "Enable Auto Topic Expansion during Source Kafka Validation")
         .addOption("patternToExcludeTopics", true, "Exclude specific topics by pattern")
@@ -320,6 +402,10 @@ public class ControllerConf extends PropertiesConfiguration {
         .addOption("autoRebalanceDelayInSeconds", true, "Auto Rebalance Delay in seconds")
         .addOption("refreshTimeInSeconds", true, "Controller Refresh Time in seconds")
         .addOption("initWaitTimeInSeconds", true, "Controller Init Delay in seconds")
+        .addOption("autoRebalancePeriodInSeconds", true, "Auto rebalance period in seconds")
+        .addOption("workloadRefreshPeriodInSeconds", true, "The period to refresh workload information in seconds")
+        .addOption("autoRebalanceWorkloadRatioThreshold", true,
+            "The ratio of workload compared to average for auto workload rebalance")
         .addOption("backUpToGit", true, "Backup controller metadata to git (true) or local file (false)")
         .addOption("remoteBackupRepo", true, "Remote Backup Repo to store cluster state")
         .addOption("localGitRepoClonePath", true, "Clone location of the remote git backup repo")
@@ -371,6 +457,16 @@ public class ControllerConf extends PropertiesConfiguration {
     } else {
       controllerConf.setGraphitePort("0");
     }
+    if (cmd.hasOption("c3Host")) {
+      controllerConf.setC3Host(cmd.getOptionValue("c3Host"));
+    } else {
+      controllerConf.setC3Host(DEFAULT_C3_HOST);
+    }
+    if (cmd.hasOption("c3Port")) {
+      controllerConf.setC3Port(cmd.getOptionValue("c3Port"));
+    } else {
+      controllerConf.setC3Port(Integer.toString(DEFAULT_C3_PORT));
+    }
     if (cmd.hasOption("enableAutoWhitelist")) {
       controllerConf.setEnableAutoWhitelist(cmd.getOptionValue("enableAutoWhitelist"));
     }
@@ -404,6 +500,22 @@ public class ControllerConf extends PropertiesConfiguration {
       controllerConf.setInitWaitTimeInSeconds(cmd.getOptionValue("initWaitTimeInSeconds"));
     } else {
       controllerConf.setInitWaitTimeInSeconds("120");
+    }
+    if (cmd.hasOption("autoRebalancePeriodInSeconds")) {
+      controllerConf.setAutoRebalancePeriodInSeconds(cmd.getOptionValue("autoRebalancePeriodInSeconds"));
+    } else {
+      controllerConf.setAutoRebalancePeriodInSeconds("0");
+    }
+    if (cmd.hasOption("workloadRefreshPeriodInSeconds")) {
+      controllerConf.setWorkloadRefreshPeriodInSeconds(cmd.getOptionValue("workloadRefreshPeriodInSeconds"));
+    } else {
+      controllerConf.setWorkloadRefreshPeriodInSeconds(Integer.toString(DEFAULT_WORKLOAD_REFRESH_PERIOD_IN_SECONDS));
+    }
+    if (cmd.hasOption("autoRebalanceWorkloadRatioThreshold")) {
+      controllerConf.setAutoRebalanceWorkloadRatioThreshold(cmd.getOptionValue("autoRebalanceWorkloadRatioThreshold"));
+    } else {
+      controllerConf.setAutoRebalanceWorkloadRatioThreshold(
+          Double.toString(DEFAULT_AUTO_REBALANCE_WORKLOAD_RATIO_THRESHOLD));
     }
     if (cmd.hasOption("backUpToGit")) {
       controllerConf.setBackUpToGit(cmd.getOptionValue("backUpToGit"));

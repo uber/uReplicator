@@ -17,6 +17,7 @@ package com.uber.stream.kafka.mirrormaker.controller.core;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import java.util.Comparator;
 
 /**
  * Simple data structure for holding topic and partitions.
@@ -68,4 +69,29 @@ public class TopicPartition {
     jsonObject.put("numPartitions", _partition);
     return jsonObject;
   }
+
+  public static Comparator<TopicPartition> getWorkloadComparator(
+      final WorkloadInfoRetriever infoRetriever) {
+    return new Comparator<TopicPartition>() {
+      @Override
+      public int compare(TopicPartition o1, TopicPartition o2) {
+        TopicWorkload workload1 = infoRetriever.topicWorkload(o1.getTopic());
+        TopicWorkload workload2 = infoRetriever.topicWorkload(o2.getTopic());
+        if (workload1 == workload2) {
+          return 0;
+        }
+        int cmp = workload1.compareTo(workload2);
+        if (cmp != 0) {
+          return cmp;
+        }
+        // if workload is the same, compare them based on the name and partition
+        cmp = o1.getTopic().compareTo(o2.getTopic());
+        if (cmp != 0) {
+          return cmp;
+        }
+        return Integer.compare(o1.getPartition(), o2.getPartition());
+      }
+    };
+  }
+
 }

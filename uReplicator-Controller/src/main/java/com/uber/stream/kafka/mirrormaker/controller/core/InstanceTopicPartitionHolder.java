@@ -53,10 +53,27 @@ public class InstanceTopicPartitionHolder {
     _topicPartitionSet.remove(topicPartitionInfo);
   }
 
-  public static Comparator<InstanceTopicPartitionHolder> getComparator() {
+  public TopicWorkload totalWorkload(WorkloadInfoRetriever infoRetriever) {
+    TopicWorkload total = new TopicWorkload(0, 0, 0);
+    for (TopicPartition part : _topicPartitionSet) {
+      TopicWorkload tw = infoRetriever.topicWorkload(part.getTopic());
+      total.add(tw.getBytesPerSecondPerPartition(), tw.getMsgsPerSecondPerPartition());
+    }
+    return total;
+  }
+
+  public static Comparator<InstanceTopicPartitionHolder> getTotalWorkloadComparator(
+      final WorkloadInfoRetriever infoRetriever) {
     return new Comparator<InstanceTopicPartitionHolder>() {
       @Override
       public int compare(InstanceTopicPartitionHolder o1, InstanceTopicPartitionHolder o2) {
+        TopicWorkload workload1 = (o1 == null) ? new TopicWorkload(0, 0) : o1.totalWorkload(infoRetriever);
+        TopicWorkload workload2 = (o2 == null) ? new TopicWorkload(0, 0) : o2.totalWorkload(infoRetriever);
+        int cmp = workload1.compareTotal(workload2);
+        if (cmp != 0) {
+          return cmp;
+        }
+        // if workload is the same, compare them based on the number of partitions
         int size1 = (o1 == null) ? -1 : o1.getNumServingTopicPartitions();
         int size2 = (o2 == null) ? -1 : o2.getNumServingTopicPartitions();
         if (size1 != size2) {
@@ -71,6 +88,11 @@ public class InstanceTopicPartitionHolder {
 
   public void addTopicPartitions(Collection<TopicPartition> topicPartitionInfos) {
     _topicPartitionSet.addAll(topicPartitionInfos);
+  }
+
+  @Override
+  public String toString() {
+    return String.format("{%s=%s}", _instanceName, _topicPartitionSet);
   }
 
   @Override

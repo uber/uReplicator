@@ -68,6 +68,7 @@ public class IdealStateBuilder {
         // No worker added into the cluster.
       }
     }
+    // TODO: avoid to assign to the same worker
     for (int i = numOldPartitions; i < newNumTopicPartitions; ++i) {
       InstanceTopicPartitionHolder liveInstance = instanceToNumServingTopicPartitionMap.poll();
       customModeIdealStateBuilder.assignInstanceAndState(Integer.toString(i),
