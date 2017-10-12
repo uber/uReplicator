@@ -19,6 +19,8 @@
   <properties>
     <slf4j.version>1.7.6</slf4j.version>
     <log4j.version>1.2.17</log4j.version>
+    <commons.lang3.version>3.3.2</commons.lang3.version>
+    <googlecode.json.simple.version>1.1</googlecode.json.simple.version>
   </properties>
 
   <dependencies>
@@ -36,6 +38,16 @@
       <groupId>log4j</groupId>
       <artifactId>log4j</artifactId>
       <version>${log4j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>${commons.lang3.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.googlecode.json-simple</groupId>
+      <artifactId>json-simple</artifactId>
+      <version>${googlecode.json.simple.version}</version>
     </dependency>
   </dependencies>
 

@@ -94,4 +94,18 @@ public class TopicPartition {
     };
   }
 
+  @Override
+  public boolean equals(Object that) {
+    if (that == null || !(that instanceof TopicPartition)) {
+      return false;
+    }
+    TopicPartition tp2 = (TopicPartition) that;
+    return this._partition == tp2._partition && this._topic.equals(tp2._topic);
+  }
+
+  @Override
+  public int hashCode() {
+    return _topic.hashCode() + _partition;
+  }
+
 }

@@ -51,11 +51,18 @@ public class ControllerConf extends PropertiesConfiguration {
   private static final String ENABLE_AUTO_WHITELIST = "controller.enable.auto.whitelist";
   private static final String ENABLE_AUTO_TOPIC_EXPANSION =
       "controller.enable.auto.topic.expansion";
-
   private static final String ENABLE_SRC_KAFKA_VALIDATION =
       "controller.enable.src.kafka.validation";
-  private static final String BACKUP_TO_GIT = "controller.backup.to.git";
 
+  private static final String NUM_OFFSET_THREAD = "controller.num.offset.thread";
+  private static final int DEFAULT_NUM_OFFSET_THREAD = 10;
+
+  private static final String OFFSET_REFRESH_INTERVAL_IN_SEC = "controller.offset.refresh.interval.in.sec";
+  private static final int DEFAULT_OFFSET_REFRESH_INTERVAL_IN_SEC = 300;
+
+  private static final String GROUP_ID = "controller.group.id";
+
+  private static final String BACKUP_TO_GIT = "controller.backup.to.git";
   private static final String REMOTE_BACKUP_REPO = "controller.remote.backup.git";
   private static final String LOCAL_GIT_REPO = "controller.local.git.repo";
   private static final String LOCAL_FILE_BACKUP = "controller.local.backup.file.path";
@@ -67,9 +74,9 @@ public class ControllerConf extends PropertiesConfiguration {
 
   private static final int DEFAULT_AUTO_REBALANCE_DELAY_IN_SECONDS = 120;
 
-  private static final String REFRESH_TIME_IN_SECONDS = "controller.refresh.time.in.seconds";
+  private static final String WHITELIST_REFRESH_TIME_IN_SECONDS = "controller.refresh.time.in.seconds";
 
-  private static final int DEFAULT_REFRESH_TIME_IN_SECONDS = 600;
+  private static final int DEFAULT_WHITELIST_REFRESH_TIME_IN_SECONDS = 600;
 
   private static final String INIT_WAIT_TIME_IN_SECONDS = "controller.init.wait.time.in.seconds";
 
@@ -159,6 +166,18 @@ public class ControllerConf extends PropertiesConfiguration {
     setProperty(ENABLE_SRC_KAFKA_VALIDATION, enableSrcKafkaValidation);
   }
 
+  public void setNumOffsetThread(String numOffsetThread) {
+    setProperty(NUM_OFFSET_THREAD, Integer.valueOf(numOffsetThread));
+  }
+
+  public void setOffsetRefreshIntervalInSec(String offsetRefreshIntervalInSec) {
+    setProperty(OFFSET_REFRESH_INTERVAL_IN_SEC, Integer.valueOf(offsetRefreshIntervalInSec));
+  }
+
+  public void setGroupId(String groupId) {
+    setProperty(GROUP_ID, groupId);
+  }
+
   public void setBackUpToGit(String backUpOption) {
     setProperty(BACKUP_TO_GIT, Boolean.valueOf(backUpOption));
   }
@@ -179,8 +198,8 @@ public class ControllerConf extends PropertiesConfiguration {
     setProperty(AUTO_REBALANCE_DELAY_IN_SECONDS, Integer.parseInt(autoRebalanceDelayInSeconds));
   }
 
-  public void setRefreshTimeInSeconds(String refreshTimeInSeconds) {
-    setProperty(REFRESH_TIME_IN_SECONDS, Integer.parseInt(refreshTimeInSeconds));
+  public void setWhitelistRefreshTimeInSeconds(String refreshTimeInSeconds) {
+    setProperty(WHITELIST_REFRESH_TIME_IN_SECONDS, Integer.parseInt(refreshTimeInSeconds));
   }
 
   public void setInitWaitTimeInSeconds(String initWaitTimeInSeconds) {
@@ -298,11 +317,11 @@ public class ControllerConf extends PropertiesConfiguration {
     }
   }
 
-  public Integer getRefreshTimeInSeconds() {
-    if (containsKey(REFRESH_TIME_IN_SECONDS)) {
-      return (Integer) getProperty(REFRESH_TIME_IN_SECONDS);
+  public Integer getWhitelistRefreshTimeInSeconds() {
+    if (containsKey(WHITELIST_REFRESH_TIME_IN_SECONDS)) {
+      return (Integer) getProperty(WHITELIST_REFRESH_TIME_IN_SECONDS);
     } else {
-      return DEFAULT_REFRESH_TIME_IN_SECONDS;
+      return DEFAULT_WHITELIST_REFRESH_TIME_IN_SECONDS;
     }
   }
 
@@ -363,6 +382,24 @@ public class ControllerConf extends PropertiesConfiguration {
     return false;
   }
 
+  public Integer getNumOffsetThread() {
+    if (containsKey(NUM_OFFSET_THREAD)) {
+      return (Integer) getProperty(NUM_OFFSET_THREAD);
+    }
+    return DEFAULT_NUM_OFFSET_THREAD;
+  }
+
+  public Integer getOffsetRefreshIntervalInSec() {
+    if (containsKey(OFFSET_REFRESH_INTERVAL_IN_SEC)) {
+      return (Integer) getProperty(OFFSET_REFRESH_INTERVAL_IN_SEC);
+    }
+    return DEFAULT_OFFSET_REFRESH_INTERVAL_IN_SEC;
+  }
+
+  public String getGroupId() {
+    return (String) getProperty(GROUP_ID);
+  }
+
   @SuppressWarnings("rawtypes")
   @Override
   public String toString() {
@@ -400,12 +437,15 @@ public class ControllerConf extends PropertiesConfiguration {
         .addOption("srcKafkaZkPath", true, "Source Kafka Zookeeper Path")
         .addOption("destKafkaZkPath", true, "Destination Kafka Zookeeper Path")
         .addOption("autoRebalanceDelayInSeconds", true, "Auto Rebalance Delay in seconds")
-        .addOption("refreshTimeInSeconds", true, "Controller Refresh Time in seconds")
+        .addOption("refreshTimeInSeconds", true, "Controller Whitelist Manager Refresh Time in seconds")
         .addOption("initWaitTimeInSeconds", true, "Controller Init Delay in seconds")
         .addOption("autoRebalancePeriodInSeconds", true, "Auto rebalance period in seconds")
         .addOption("workloadRefreshPeriodInSeconds", true, "The period to refresh workload information in seconds")
         .addOption("autoRebalanceWorkloadRatioThreshold", true,
             "The ratio of workload compared to average for auto workload rebalance")
+        .addOption("numOffsetThread", true, "Number of threads to fetch topic offsets")
+        .addOption("offsetRefreshIntervalInSec", true, "Topic offset monitor refresh interval")
+        .addOption("groupId", true, "Consumer group id")
         .addOption("backUpToGit", true, "Backup controller metadata to git (true) or local file (false)")
         .addOption("remoteBackupRepo", true, "Remote Backup Repo to store cluster state")
         .addOption("localGitRepoClonePath", true, "Clone location of the remote git backup repo")
@@ -492,14 +532,14 @@ public class ControllerConf extends PropertiesConfiguration {
       controllerConf.setAutoRebalanceDelayInSeconds("120");
     }
     if (cmd.hasOption("refreshTimeInSeconds")) {
-      controllerConf.setInitWaitTimeInSeconds(cmd.getOptionValue("refreshTimeInSeconds"));
+      controllerConf.setWhitelistRefreshTimeInSeconds(cmd.getOptionValue("refreshTimeInSeconds"));
     } else {
-      controllerConf.setInitWaitTimeInSeconds("600");
+      controllerConf.setWhitelistRefreshTimeInSeconds(Integer.toString(DEFAULT_WHITELIST_REFRESH_TIME_IN_SECONDS));
     }
     if (cmd.hasOption("initWaitTimeInSeconds")) {
       controllerConf.setInitWaitTimeInSeconds(cmd.getOptionValue("initWaitTimeInSeconds"));
     } else {
-      controllerConf.setInitWaitTimeInSeconds("120");
+      controllerConf.setInitWaitTimeInSeconds(Integer.toString(DEFAULT_INIT_WAIT_TIME_IN_SECONDS));
     }
     if (cmd.hasOption("autoRebalancePeriodInSeconds")) {
       controllerConf.setAutoRebalancePeriodInSeconds(cmd.getOptionValue("autoRebalancePeriodInSeconds"));
@@ -516,6 +556,19 @@ public class ControllerConf extends PropertiesConfiguration {
     } else {
       controllerConf.setAutoRebalanceWorkloadRatioThreshold(
           Double.toString(DEFAULT_AUTO_REBALANCE_WORKLOAD_RATIO_THRESHOLD));
+    }
+    if (cmd.hasOption("numOffsetThread")) {
+      controllerConf.setNumOffsetThread(cmd.getOptionValue("numOffsetThread"));
+    } else {
+      controllerConf.setNumOffsetThread(Integer.toString(DEFAULT_NUM_OFFSET_THREAD));
+    }
+    if (cmd.hasOption("offsetRefreshIntervalInSec")) {
+      controllerConf.setOffsetRefreshIntervalInSec(cmd.getOptionValue("offsetRefreshIntervalInSec"));
+    } else {
+      controllerConf.setOffsetRefreshIntervalInSec(Integer.toString(DEFAULT_OFFSET_REFRESH_INTERVAL_IN_SEC));
+    }
+    if (cmd.hasOption("groupId")) {
+      controllerConf.setGroupId(cmd.getOptionValue("groupId"));
     }
     if (cmd.hasOption("backUpToGit")) {
       controllerConf.setBackUpToGit(cmd.getOptionValue("backUpToGit"));
