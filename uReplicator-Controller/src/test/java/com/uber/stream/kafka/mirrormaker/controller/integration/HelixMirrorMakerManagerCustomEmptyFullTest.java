@@ -111,7 +111,7 @@ public class HelixMirrorMakerManagerCustomEmptyFullTest {
         fakeInstances.get(i / 2).start();
         totalInstancesSize++;
       }
-      Thread.sleep(2000);
+      Thread.sleep(4000);
       assertInstanceOwnedTopicPartitionsBalanced(helixMirrorMakerManager, totalInstancesSize,
           16 * numTotalTopics);
     }
@@ -121,7 +121,7 @@ public class HelixMirrorMakerManagerCustomEmptyFullTest {
       LOGGER.info("Trying to bring down: " + fakeInstances.get(i).getInstanceId());
       fakeInstances.get(i).stop();
       totalInstancesSize--;
-      Thread.sleep(2000);
+      Thread.sleep(3000);
       assertInstanceOwnedTopicPartitionsBalanced(helixMirrorMakerManager, totalInstancesSize,
           16 * numTotalTopics);
     }
@@ -131,7 +131,7 @@ public class HelixMirrorMakerManagerCustomEmptyFullTest {
       LOGGER.info("Trying to bring up: " + fakeInstances.get(i).getInstanceId());
       fakeInstances.get(i).start();
       totalInstancesSize++;
-      Thread.sleep(2000);
+      Thread.sleep(3000);
       assertInstanceOwnedTopicPartitionsBalanced(helixMirrorMakerManager, totalInstancesSize,
           16 * numTotalTopics);
     }

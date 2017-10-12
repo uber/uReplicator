@@ -62,15 +62,18 @@ public class HelixMirrorMakerManager {
   private HelixAdmin _helixAdmin;
   private String _instanceId;
 
-  private final PriorityQueue<InstanceTopicPartitionHolder> _currentServingInstance =
-      new PriorityQueue<InstanceTopicPartitionHolder>(1,
-          InstanceTopicPartitionHolder.getComparator());
+  private final PriorityQueue<InstanceTopicPartitionHolder> _currentServingInstance;
+
+  private final WorkloadInfoRetriever _workloadInfoRetriever;
 
   public HelixMirrorMakerManager(ControllerConf controllerConf) {
     _controllerConf = controllerConf;
     _helixZkURL = HelixUtils.getAbsoluteZkPathForHelix(_controllerConf.getZkStr());
     _helixClusterName = _controllerConf.getHelixClusterName();
     _instanceId = controllerConf.getInstanceId();
+    _workloadInfoRetriever = new WorkloadInfoRetriever(this);
+    _currentServingInstance = new PriorityQueue<InstanceTopicPartitionHolder>(1,
+        InstanceTopicPartitionHolder.getTotalWorkloadComparator(_workloadInfoRetriever));
   }
 
   public synchronized void start() {
@@ -80,8 +83,11 @@ public class HelixMirrorMakerManager {
     LOGGER.info("Trying to register AutoRebalanceLiveInstanceChangeListener");
     AutoRebalanceLiveInstanceChangeListener autoRebalanceLiveInstanceChangeListener =
         new AutoRebalanceLiveInstanceChangeListener(this, _helixZkManager,
-            _controllerConf.getAutoRebalanceDelayInSeconds());
+            _controllerConf.getAutoRebalanceDelayInSeconds(),
+            _controllerConf.getAutoRebalancePeriodInSeconds(),
+            _controllerConf.getAutoRebalanceWorkloadRatioThreshold());
     updateCurrentServingInstance();
+    _workloadInfoRetriever.start();
     try {
       _helixZkManager.addLiveInstanceChangeListener(autoRebalanceLiveInstanceChangeListener);
     } catch (Exception e) {
@@ -218,6 +224,18 @@ public class HelixMirrorMakerManager {
 
   public String getHelixClusterName() {
     return _helixClusterName;
+  }
+
+  public ControllerConf getControllerConf() {
+    return _controllerConf;
+  }
+
+  public WorkloadInfoRetriever getWorkloadInfoRetriever() {
+    return _workloadInfoRetriever;
+  }
+
+  public PriorityQueue<InstanceTopicPartitionHolder> getCurrentServingInstance() {
+    return _currentServingInstance;
   }
 
 }
