@@ -57,8 +57,8 @@ public class ControllerConf extends PropertiesConfiguration {
   private static final String NUM_OFFSET_THREAD = "controller.num.offset.thread";
   private static final int DEFAULT_NUM_OFFSET_THREAD = 10;
 
-  private static final String REFRESH_INTERVAL_IN_SEC = "controller.refresh.interval.in.sec";
-  private static final int DEFAULT_REFRESH_INTERVAL_IN_SEC = 300;
+  private static final String OFFSET_REFRESH_INTERVAL_IN_SEC = "controller.offset.refresh.interval.in.sec";
+  private static final int DEFAULT_OFFSET_REFRESH_INTERVAL_IN_SEC = 300;
 
   private static final String GROUP_ID = "controller.group.id";
 
@@ -74,9 +74,9 @@ public class ControllerConf extends PropertiesConfiguration {
 
   private static final int DEFAULT_AUTO_REBALANCE_DELAY_IN_SECONDS = 120;
 
-  private static final String REFRESH_TIME_IN_SECONDS = "controller.refresh.time.in.seconds";
+  private static final String WHITELIST_REFRESH_TIME_IN_SECONDS = "controller.whitelist.refresh.time.in.seconds";
 
-  private static final int DEFAULT_REFRESH_TIME_IN_SECONDS = 600;
+  private static final int DEFAULT_WHITELIST_REFRESH_TIME_IN_SECONDS = 600;
 
   private static final String INIT_WAIT_TIME_IN_SECONDS = "controller.init.wait.time.in.seconds";
 
@@ -170,8 +170,8 @@ public class ControllerConf extends PropertiesConfiguration {
     setProperty(NUM_OFFSET_THREAD, Integer.valueOf(numOffsetThread));
   }
 
-  public void setRefreshIntervalInSec(String refreshIntervalInSec) {
-    setProperty(REFRESH_INTERVAL_IN_SEC, Integer.valueOf(refreshIntervalInSec));
+  public void setOffsetRefreshIntervalInSec(String offsetRefreshIntervalInSec) {
+    setProperty(OFFSET_REFRESH_INTERVAL_IN_SEC, Integer.valueOf(offsetRefreshIntervalInSec));
   }
 
   public void setGroupId(String groupId) {
@@ -198,8 +198,8 @@ public class ControllerConf extends PropertiesConfiguration {
     setProperty(AUTO_REBALANCE_DELAY_IN_SECONDS, Integer.parseInt(autoRebalanceDelayInSeconds));
   }
 
-  public void setRefreshTimeInSeconds(String refreshTimeInSeconds) {
-    setProperty(REFRESH_TIME_IN_SECONDS, Integer.parseInt(refreshTimeInSeconds));
+  public void setWhitelistRefreshTimeInSeconds(String whitelistRefreshTimeInSeconds) {
+    setProperty(WHITELIST_REFRESH_TIME_IN_SECONDS, Integer.parseInt(whitelistRefreshTimeInSeconds));
   }
 
   public void setInitWaitTimeInSeconds(String initWaitTimeInSeconds) {
@@ -317,11 +317,11 @@ public class ControllerConf extends PropertiesConfiguration {
     }
   }
 
-  public Integer getRefreshTimeInSeconds() {
-    if (containsKey(REFRESH_TIME_IN_SECONDS)) {
-      return (Integer) getProperty(REFRESH_TIME_IN_SECONDS);
+  public Integer getWhitelistRefreshTimeInSeconds() {
+    if (containsKey(WHITELIST_REFRESH_TIME_IN_SECONDS)) {
+      return (Integer) getProperty(WHITELIST_REFRESH_TIME_IN_SECONDS);
     } else {
-      return DEFAULT_REFRESH_TIME_IN_SECONDS;
+      return DEFAULT_WHITELIST_REFRESH_TIME_IN_SECONDS;
     }
   }
 
@@ -389,11 +389,11 @@ public class ControllerConf extends PropertiesConfiguration {
     return DEFAULT_NUM_OFFSET_THREAD;
   }
 
-  public Integer getRefreshIntervalInSec() {
-    if (containsKey(REFRESH_INTERVAL_IN_SEC)) {
-      return (Integer) getProperty(REFRESH_INTERVAL_IN_SEC);
+  public Integer getOffsetRefreshIntervalInSec() {
+    if (containsKey(OFFSET_REFRESH_INTERVAL_IN_SEC)) {
+      return (Integer) getProperty(OFFSET_REFRESH_INTERVAL_IN_SEC);
     }
-    return DEFAULT_REFRESH_INTERVAL_IN_SEC;
+    return DEFAULT_OFFSET_REFRESH_INTERVAL_IN_SEC;
   }
 
   public String getGroupId() {
@@ -437,14 +437,14 @@ public class ControllerConf extends PropertiesConfiguration {
         .addOption("srcKafkaZkPath", true, "Source Kafka Zookeeper Path")
         .addOption("destKafkaZkPath", true, "Destination Kafka Zookeeper Path")
         .addOption("autoRebalanceDelayInSeconds", true, "Auto Rebalance Delay in seconds")
-        .addOption("refreshTimeInSeconds", true, "Controller Refresh Time in seconds")
+        .addOption("whitelistRefreshTimeInSeconds", true, "Controller Whitelist Manager Refresh Time in seconds")
         .addOption("initWaitTimeInSeconds", true, "Controller Init Delay in seconds")
         .addOption("autoRebalancePeriodInSeconds", true, "Auto rebalance period in seconds")
         .addOption("workloadRefreshPeriodInSeconds", true, "The period to refresh workload information in seconds")
         .addOption("autoRebalanceWorkloadRatioThreshold", true,
             "The ratio of workload compared to average for auto workload rebalance")
         .addOption("numOffsetThread", true, "Number of threads to fetch topic offsets")
-        .addOption("refreshIntervalInSec", true, "Topic list refresh interval")
+        .addOption("offsetRefreshIntervalInSec", true, "Topic offset monitor refresh interval")
         .addOption("groupId", true, "Consumer group id")
         .addOption("backUpToGit", true, "Backup controller metadata to git (true) or local file (false)")
         .addOption("remoteBackupRepo", true, "Remote Backup Repo to store cluster state")
@@ -531,10 +531,10 @@ public class ControllerConf extends PropertiesConfiguration {
     } else {
       controllerConf.setAutoRebalanceDelayInSeconds("120");
     }
-    if (cmd.hasOption("refreshTimeInSeconds")) {
-      controllerConf.setInitWaitTimeInSeconds(cmd.getOptionValue("refreshTimeInSeconds"));
+    if (cmd.hasOption("whitelistRefreshTimeInSeconds")) {
+      controllerConf.setWhitelistRefreshTimeInSeconds(cmd.getOptionValue("whitelistRefreshTimeInSeconds"));
     } else {
-      controllerConf.setInitWaitTimeInSeconds("600");
+      controllerConf.setWhitelistRefreshTimeInSeconds(Integer.toString(DEFAULT_WHITELIST_REFRESH_TIME_IN_SECONDS));
     }
     if (cmd.hasOption("initWaitTimeInSeconds")) {
       controllerConf.setInitWaitTimeInSeconds(cmd.getOptionValue("initWaitTimeInSeconds"));
@@ -562,10 +562,10 @@ public class ControllerConf extends PropertiesConfiguration {
     } else {
       controllerConf.setNumOffsetThread(Integer.toString(DEFAULT_NUM_OFFSET_THREAD));
     }
-    if (cmd.hasOption("refreshIntervalInSec")) {
-      controllerConf.setRefreshIntervalInSec(cmd.getOptionValue("refreshIntervalInSec"));
+    if (cmd.hasOption("offsetRefreshIntervalInSec")) {
+      controllerConf.setOffsetRefreshIntervalInSec(cmd.getOptionValue("offsetRefreshIntervalInSec"));
     } else {
-      controllerConf.setRefreshIntervalInSec(Integer.toString(DEFAULT_REFRESH_INTERVAL_IN_SEC));
+      controllerConf.setOffsetRefreshIntervalInSec(Integer.toString(DEFAULT_OFFSET_REFRESH_INTERVAL_IN_SEC));
     }
     if (cmd.hasOption("groupId")) {
       controllerConf.setGroupId(cmd.getOptionValue("groupId"));

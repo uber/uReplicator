@@ -85,7 +85,7 @@ public class OffsetMonitor {
       }
     }
 
-    this.refreshIntervalInSec = controllerConf.getRefreshIntervalInSec();
+    this.refreshIntervalInSec = controllerConf.getOffsetRefreshIntervalInSec();
     this.consumerOffsetPath = StringUtils.isEmpty(controllerConf.getGroupId()) ?
         null : "/consumers/" + controllerConf.getGroupId() + "/offsets/";
 
