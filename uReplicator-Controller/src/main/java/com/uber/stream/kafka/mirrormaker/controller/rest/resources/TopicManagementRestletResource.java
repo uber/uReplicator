@@ -150,6 +150,7 @@ public class TopicManagementRestletResource extends ServerResource {
         // Only triggered when srcKafkaObserver is there and curl call has no json blob.
         topicPartitionInfo = _srcKafkaBrokerTopicObserver.getTopicPartition(topicName);
         if (topicPartitionInfo == null) {
+          getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
           return new StringRepresentation(String.format(
               "Failed to add new topic: %s, it's not exsited in source kafka cluster!", topicName));
         }
