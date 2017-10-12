@@ -74,7 +74,7 @@ public class ControllerConf extends PropertiesConfiguration {
 
   private static final int DEFAULT_AUTO_REBALANCE_DELAY_IN_SECONDS = 120;
 
-  private static final String WHITELIST_REFRESH_TIME_IN_SECONDS = "controller.whitelist.refresh.time.in.seconds";
+  private static final String WHITELIST_REFRESH_TIME_IN_SECONDS = "controller.refresh.time.in.seconds";
 
   private static final int DEFAULT_WHITELIST_REFRESH_TIME_IN_SECONDS = 600;
 
@@ -198,8 +198,8 @@ public class ControllerConf extends PropertiesConfiguration {
     setProperty(AUTO_REBALANCE_DELAY_IN_SECONDS, Integer.parseInt(autoRebalanceDelayInSeconds));
   }
 
-  public void setWhitelistRefreshTimeInSeconds(String whitelistRefreshTimeInSeconds) {
-    setProperty(WHITELIST_REFRESH_TIME_IN_SECONDS, Integer.parseInt(whitelistRefreshTimeInSeconds));
+  public void setWhitelistRefreshTimeInSeconds(String refreshTimeInSeconds) {
+    setProperty(WHITELIST_REFRESH_TIME_IN_SECONDS, Integer.parseInt(refreshTimeInSeconds));
   }
 
   public void setInitWaitTimeInSeconds(String initWaitTimeInSeconds) {
@@ -437,7 +437,7 @@ public class ControllerConf extends PropertiesConfiguration {
         .addOption("srcKafkaZkPath", true, "Source Kafka Zookeeper Path")
         .addOption("destKafkaZkPath", true, "Destination Kafka Zookeeper Path")
         .addOption("autoRebalanceDelayInSeconds", true, "Auto Rebalance Delay in seconds")
-        .addOption("whitelistRefreshTimeInSeconds", true, "Controller Whitelist Manager Refresh Time in seconds")
+        .addOption("refreshTimeInSeconds", true, "Controller Whitelist Manager Refresh Time in seconds")
         .addOption("initWaitTimeInSeconds", true, "Controller Init Delay in seconds")
         .addOption("autoRebalancePeriodInSeconds", true, "Auto rebalance period in seconds")
         .addOption("workloadRefreshPeriodInSeconds", true, "The period to refresh workload information in seconds")
@@ -531,15 +531,15 @@ public class ControllerConf extends PropertiesConfiguration {
     } else {
       controllerConf.setAutoRebalanceDelayInSeconds("120");
     }
-    if (cmd.hasOption("whitelistRefreshTimeInSeconds")) {
-      controllerConf.setWhitelistRefreshTimeInSeconds(cmd.getOptionValue("whitelistRefreshTimeInSeconds"));
+    if (cmd.hasOption("refreshTimeInSeconds")) {
+      controllerConf.setWhitelistRefreshTimeInSeconds(cmd.getOptionValue("refreshTimeInSeconds"));
     } else {
       controllerConf.setWhitelistRefreshTimeInSeconds(Integer.toString(DEFAULT_WHITELIST_REFRESH_TIME_IN_SECONDS));
     }
     if (cmd.hasOption("initWaitTimeInSeconds")) {
       controllerConf.setInitWaitTimeInSeconds(cmd.getOptionValue("initWaitTimeInSeconds"));
     } else {
-      controllerConf.setInitWaitTimeInSeconds("120");
+      controllerConf.setInitWaitTimeInSeconds(Integer.toString(DEFAULT_INIT_WAIT_TIME_IN_SECONDS));
     }
     if (cmd.hasOption("autoRebalancePeriodInSeconds")) {
       controllerConf.setAutoRebalancePeriodInSeconds(cmd.getOptionValue("autoRebalancePeriodInSeconds"));
