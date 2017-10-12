@@ -51,11 +51,18 @@ public class ControllerConf extends PropertiesConfiguration {
   private static final String ENABLE_AUTO_WHITELIST = "controller.enable.auto.whitelist";
   private static final String ENABLE_AUTO_TOPIC_EXPANSION =
       "controller.enable.auto.topic.expansion";
-
   private static final String ENABLE_SRC_KAFKA_VALIDATION =
       "controller.enable.src.kafka.validation";
-  private static final String BACKUP_TO_GIT = "controller.backup.to.git";
 
+  private static final String NUM_OFFSET_THREAD = "controller.num.offset.thread";
+  private static final int DEFAULT_NUM_OFFSET_THREAD = 10;
+
+  private static final String REFRESH_INTERVAL_IN_SEC = "controller.refresh.interval.in.sec";
+  private static final int DEFAULT_REFRESH_INTERVAL_IN_SEC = 300;
+
+  private static final String GROUP_ID = "controller.group.id";
+
+  private static final String BACKUP_TO_GIT = "controller.backup.to.git";
   private static final String REMOTE_BACKUP_REPO = "controller.remote.backup.git";
   private static final String LOCAL_GIT_REPO = "controller.local.git.repo";
   private static final String LOCAL_FILE_BACKUP = "controller.local.backup.file.path";
@@ -157,6 +164,18 @@ public class ControllerConf extends PropertiesConfiguration {
 
   public void setEnableSrcKafkaValidation(String enableSrcKafkaValidation) {
     setProperty(ENABLE_SRC_KAFKA_VALIDATION, enableSrcKafkaValidation);
+  }
+
+  public void setNumOffsetThread(String numOffsetThread) {
+    setProperty(NUM_OFFSET_THREAD, Integer.valueOf(numOffsetThread));
+  }
+
+  public void setRefreshIntervalInSec(String refreshIntervalInSec) {
+    setProperty(REFRESH_INTERVAL_IN_SEC, Integer.valueOf(refreshIntervalInSec));
+  }
+
+  public void setGroupId(String groupId) {
+    setProperty(GROUP_ID, groupId);
   }
 
   public void setBackUpToGit(String backUpOption) {
@@ -363,6 +382,24 @@ public class ControllerConf extends PropertiesConfiguration {
     return false;
   }
 
+  public Integer getNumOffsetThread() {
+    if (containsKey(NUM_OFFSET_THREAD)) {
+      return (Integer) getProperty(NUM_OFFSET_THREAD);
+    }
+    return DEFAULT_NUM_OFFSET_THREAD;
+  }
+
+  public Integer getRefreshIntervalInSec() {
+    if (containsKey(REFRESH_INTERVAL_IN_SEC)) {
+      return (Integer) getProperty(REFRESH_INTERVAL_IN_SEC);
+    }
+    return DEFAULT_REFRESH_INTERVAL_IN_SEC;
+  }
+
+  public String getGroupId() {
+    return (String) getProperty(GROUP_ID);
+  }
+
   @SuppressWarnings("rawtypes")
   @Override
   public String toString() {
@@ -406,6 +443,9 @@ public class ControllerConf extends PropertiesConfiguration {
         .addOption("workloadRefreshPeriodInSeconds", true, "The period to refresh workload information in seconds")
         .addOption("autoRebalanceWorkloadRatioThreshold", true,
             "The ratio of workload compared to average for auto workload rebalance")
+        .addOption("numOffsetThread", true, "Number of threads to fetch topic offsets")
+        .addOption("refreshIntervalInSec", true, "Topic list refresh interval")
+        .addOption("groupId", true, "Consumer group id")
         .addOption("backUpToGit", true, "Backup controller metadata to git (true) or local file (false)")
         .addOption("remoteBackupRepo", true, "Remote Backup Repo to store cluster state")
         .addOption("localGitRepoClonePath", true, "Clone location of the remote git backup repo")
@@ -516,6 +556,19 @@ public class ControllerConf extends PropertiesConfiguration {
     } else {
       controllerConf.setAutoRebalanceWorkloadRatioThreshold(
           Double.toString(DEFAULT_AUTO_REBALANCE_WORKLOAD_RATIO_THRESHOLD));
+    }
+    if (cmd.hasOption("numOffsetThread")) {
+      controllerConf.setNumOffsetThread(cmd.getOptionValue("numOffsetThread"));
+    } else {
+      controllerConf.setNumOffsetThread(Integer.toString(DEFAULT_NUM_OFFSET_THREAD));
+    }
+    if (cmd.hasOption("refreshIntervalInSec")) {
+      controllerConf.setRefreshIntervalInSec(cmd.getOptionValue("refreshIntervalInSec"));
+    } else {
+      controllerConf.setRefreshIntervalInSec(Integer.toString(DEFAULT_REFRESH_INTERVAL_IN_SEC));
+    }
+    if (cmd.hasOption("groupId")) {
+      controllerConf.setGroupId(cmd.getOptionValue("groupId"));
     }
     if (cmd.hasOption("backUpToGit")) {
       controllerConf.setBackUpToGit(cmd.getOptionValue("backUpToGit"));

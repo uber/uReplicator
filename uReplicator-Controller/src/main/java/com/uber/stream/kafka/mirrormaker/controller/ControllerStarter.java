@@ -21,6 +21,7 @@ import com.uber.stream.kafka.mirrormaker.controller.core.FileBackUpHandler;
 import com.uber.stream.kafka.mirrormaker.controller.core.GitBackUpHandler;
 import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
 import com.uber.stream.kafka.mirrormaker.controller.core.KafkaBrokerTopicObserver;
+import com.uber.stream.kafka.mirrormaker.controller.core.OffsetMonitor;
 import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import com.uber.stream.kafka.mirrormaker.controller.rest.ControllerRestApplication;
 import com.uber.stream.kafka.mirrormaker.controller.validation.SourceKafkaClusterValidationManager;
@@ -51,6 +52,7 @@ public class ControllerStarter {
   private final ControllerConf _config;
 
   private final Component _component;
+  private final OffsetMonitor _offsetMonitor;
   private final Application _controllerRestApp;
   private final HelixMirrorMakerManager _helixMirrorMakerManager;
   private final ValidationManager _validationManager;
@@ -67,6 +69,7 @@ public class ControllerStarter {
     _component = new Component();
     _controllerRestApp = new ControllerRestApplication(null);
     _helixMirrorMakerManager = new HelixMirrorMakerManager(_config);
+    _offsetMonitor = new OffsetMonitor(_helixMirrorMakerManager, _config);
     _validationManager = new ValidationManager(_helixMirrorMakerManager);
     _srcKafkaValidationManager = getSourceKafkaClusterValidationManager();
     _autoTopicWhitelistingManager = getAutoTopicWhitelistingManager();
@@ -171,6 +174,7 @@ public class ControllerStarter {
       }
       LOGGER.info("starting api component");
       _component.start();
+      _offsetMonitor.start();
     } catch (final Exception e) {
       LOGGER.error("Caught exception while starting controller", e);
       throw e;
