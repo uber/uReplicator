@@ -88,7 +88,8 @@ public class HelixMirrorMakerManager {
         new AutoRebalanceLiveInstanceChangeListener(this, _helixZkManager,
             _controllerConf.getAutoRebalanceDelayInSeconds(),
             _controllerConf.getAutoRebalancePeriodInSeconds(),
-            _controllerConf.getAutoRebalanceWorkloadRatioThreshold());
+            _controllerConf.getAutoRebalanceWorkloadRatioThreshold(),
+            _controllerConf.getMaxDedicatedLaggingInstancesRatio());
     updateCurrentServingInstance();
     _workloadInfoRetriever.start();
     _offsetMonitor.start();

@@ -80,13 +80,20 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
   private static final long DEFAULT_MIN_LAG_TIME_SEC = 300;
   private long _minLagTimeSec = DEFAULT_MIN_LAG_TIME_SEC;
 
+  // the maximum ratio of instances can be used as dedicated for lagging partitions
+  private final double _maxDedicatedInstancesRatio;
+
+  // the maximum valid time for offset
+  private long _offsetMaxValidTimeMillis = 1800 * 1000L;
+
   public AutoRebalanceLiveInstanceChangeListener(HelixMirrorMakerManager helixMirrorMakerManager,
       HelixManager helixManager, int delayedAutoReblanceTimeInSeconds, int autoRebalancePeriodInSeconds,
-      double overloadedRatioThreshold) {
+      double overloadedRatioThreshold, double maxDedicatedInstancesRatio) {
     _helixMirrorMakerManager = helixMirrorMakerManager;
     _helixManager = helixManager;
     _delayedAutoReblanceTimeInSeconds = delayedAutoReblanceTimeInSeconds;
     _overloadedRatioThreshold = overloadedRatioThreshold;
+    _maxDedicatedInstancesRatio = maxDedicatedInstancesRatio;
     LOGGER.info("Delayed Auto Reblance Time In Seconds: {}", _delayedAutoReblanceTimeInSeconds);
     registerMetrics();
 
@@ -219,9 +226,10 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     for (String instanceName : newInstances) {
       instances.add(new InstanceTopicPartitionHolder(instanceName));
     }
-    Set<InstanceTopicPartitionHolder> balanceAssignment = balancePartitions(instances, tpiNeedsToBeAssigned,
-        !newInstances.isEmpty());
-    return balanceAssignment;
+    if (balancePartitions(instances, tpiNeedsToBeAssigned, !newInstances.isEmpty())) {
+      return instances;
+    }
+    return null;
   }
 
   private void assignIdealStates(HelixManager helixManager,
@@ -234,29 +242,41 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     }
   }
 
-  private Set<InstanceTopicPartitionHolder> balancePartitions(Set<InstanceTopicPartitionHolder> instances,
+  private boolean balancePartitions(Set<InstanceTopicPartitionHolder> instances,
       List<TopicPartition> partitionsToBeAssigned, boolean forced) {
     if (instances.isEmpty()) {
       LOGGER.error("No workers to take " + partitionsToBeAssigned.size() + " partitions");
-      return null;
+      return false;
     }
+
+    // collect lag information for all topic partitions
+    final Map<TopicPartition, Long> lagTimeMap = new HashMap<>();
     List<TopicPartition> laggingPartitions = new ArrayList<>();
     List<TopicPartition> nonLaggingPartitions = new ArrayList<>();
     for (TopicPartition tp : partitionsToBeAssigned) {
-      if (getLagTime(tp) > 0) {
+      long lag = getLagTime(tp);
+      if (lag > 0) {
+        lagTimeMap.put(tp, lag);
         laggingPartitions.add(tp);
       } else {
         nonLaggingPartitions.add(tp);
       }
     }
-
-    boolean assignmentChanged = false;
+    for (InstanceTopicPartitionHolder instance : instances) {
+      for (TopicPartition tp : instance.getServingTopicPartitionSet()) {
+        long lag = getLagTime(tp);
+        if (lag > 0) {
+          lagTimeMap.put(tp, lag);
+        }
+      }
+    }
+    LOGGER.info("balancePartitions: Current lagging partitions: " + lagTimeMap);
 
     // re-distribute the lagging partitions first
     ITopicWorkloadWeighter laggingPartitionWeighter = new ITopicWorkloadWeighter() {
       @Override
       public double partitionWeight(TopicPartition tp) {
-        return getLagTime(tp) > 0 ? 1.0 : 0.0;
+        return lagTimeMap.containsKey(tp) ? 1.0 : 0.0;
       }
     };
     TreeSet<InstanceTopicPartitionHolder> instancesSortedByLag = new TreeSet<>(InstanceTopicPartitionHolder
@@ -265,8 +285,41 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     List<TopicPartition> reassignedLaggingPartitions = removeOverloadedParitions(instancesSortedByLag,
         laggingPartitions, null, true, laggingPartitionWeighter);
     laggingPartitions.addAll(reassignedLaggingPartitions);
-    if (assignPartitions(instancesSortedByLag, laggingPartitions)) {
-      assignmentChanged = true;
+    boolean assignmentChanged = assignPartitions(instancesSortedByLag, laggingPartitions);
+
+    // dedicated instances serve only lagging partitions
+    int maxDedicated = (int)(instances.size() * _maxDedicatedInstancesRatio);
+    TreeSet<InstanceTopicPartitionHolder> orderedInstances =
+        new TreeSet<>(InstanceTopicPartitionHolder.getTotalWorkloadComparator(_helixMirrorMakerManager.getWorkloadInfoRetriever(), null));
+    // instancesSortedByLag are sorted by lags, so the instances with lags appear after the instances with non-lags only
+    List<InstanceTopicPartitionHolder> dedicatedInstances = new ArrayList<>();
+    for (InstanceTopicPartitionHolder instance : instancesSortedByLag) {
+      if (dedicatedInstances.size() > maxDedicated) {
+        orderedInstances.add(instance);
+      } else {
+        boolean hasLag = false;
+        for (TopicPartition tp : instance.getServingTopicPartitionSet()) {
+          if (lagTimeMap.containsKey(tp)) {
+            hasLag = true;
+            break;
+          }
+        }
+        if (hasLag) {
+          // this instance is a dedicated one for lagging partitions only
+          dedicatedInstances.add(instance);
+          for (TopicPartition tp : instance.getServingTopicPartitionSet()) {
+            if (!lagTimeMap.containsKey(tp)) {
+              instance.removeTopicPartition(tp);
+              nonLaggingPartitions.add(tp);
+            }
+          }
+        } else {
+          orderedInstances.add(instance);
+        }
+      }
+    }
+    if (!dedicatedInstances.isEmpty()) {
+      LOGGER.info("balancePartitions: dedicated instances: " + dedicatedInstances);
     }
 
     // if the current assignment is overloaded on some workers, re-assign some partitions of these workers
@@ -274,30 +327,22 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
       @Override
       public double partitionWeight(TopicPartition tp) {
         // give 1.0 more weight for each minute lag up to 2 hour
-        return 1.0 + Math.min(120, getLagTime(tp) / 60);
+        Long lag = lagTimeMap.get(tp);
+        if (lag == null) {
+          return 1.0;
+        }
+        return 1.0 + Math.min(120, lag / 60);
       }
     };
-    // the lagging partitions should not be re-assigned again
-    Set<TopicPartition> pinnedPartitions = new HashSet<>();
-    for (InstanceTopicPartitionHolder instance : instances) {
-      for (TopicPartition tp : instance.getServingTopicPartitionSet()) {
-        if (getLagTime(tp) > 0) {
-          pinnedPartitions.add(tp);
-        }
-      }
-    }
-    LOGGER.info("balancePartitions: Current lagging partitions: " + pinnedPartitions);
-    TreeSet<InstanceTopicPartitionHolder> orderedInstances =
-        new TreeSet<>(InstanceTopicPartitionHolder.getTotalWorkloadComparator(_helixMirrorMakerManager.getWorkloadInfoRetriever(), null));
-    orderedInstances.addAll(instances);
+
     List<TopicPartition> reassignedPartitions = removeOverloadedParitions(orderedInstances,
-        nonLaggingPartitions, pinnedPartitions, forced, adjustedWeighter);
+        nonLaggingPartitions, lagTimeMap.keySet(), forced, adjustedWeighter);
     nonLaggingPartitions.addAll(reassignedPartitions);
     if (assignPartitions(orderedInstances, nonLaggingPartitions)) {
       assignmentChanged = true;
     }
 
-    return assignmentChanged ? orderedInstances : null;
+    return assignmentChanged;
   }
 
   private boolean assignPartitions(TreeSet<InstanceTopicPartitionHolder> orderedInstances,
@@ -483,7 +528,8 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
    */
   private long getLagTime(TopicPartition tp) {
     TopicPartitionLag tpl = _helixMirrorMakerManager.getOffsetMonitor().getTopicPartitionOffset(tp);
-    if (tpl == null || tpl.getLatestOffset() < 0 || tpl.getCommitOffset() < 0) {
+    if (tpl == null || tpl.getLatestOffset() < 0 || tpl.getCommitOffset() < 0
+        || System.currentTimeMillis() - tpl.getTimeStamp() > _offsetMaxValidTimeMillis) {
       return 0;
     }
     long lag = tpl.getLatestOffset() - tpl.getCommitOffset();

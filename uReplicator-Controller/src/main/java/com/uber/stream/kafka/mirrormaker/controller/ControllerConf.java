@@ -95,6 +95,10 @@ public class ControllerConf extends PropertiesConfiguration {
 
   private static final int DEFAULT_WORKLOAD_REFRESH_PERIOD_IN_SECONDS = 600;
 
+  private static final String MAX_DEDICATED_LAGGING_INSTANCES_RATIO = "controller.auto.rebalance.max.dedicated.ratio";
+
+  private static final double DEFAULT_MAX_DEDICATED_LAGGING_INSTANCES_RATIO = 0.5;
+
   private static final String defaultLocal = "/var/log/kafka-mirror-maker-controller";
 
   public ControllerConf() {
@@ -216,6 +220,10 @@ public class ControllerConf extends PropertiesConfiguration {
 
   public void setWorkloadRefreshPeriodInSeconds(String workloadRefreshPeriodInSeconds) {
     setProperty(WORKLOAD_REFRESH_PERIOD_IN_SECONDS, Integer.parseInt(workloadRefreshPeriodInSeconds));
+  }
+
+  public void setMaxDedicatedLaggingInstancesRatio(String maxDedicatedLaggingInstancesRatio) {
+    setProperty(MAX_DEDICATED_LAGGING_INSTANCES_RATIO, Double.parseDouble(maxDedicatedLaggingInstancesRatio));
   }
 
   public String getPatternToExcludeTopics() {
@@ -349,6 +357,14 @@ public class ControllerConf extends PropertiesConfiguration {
     }
   }
 
+  public Double getMaxDedicatedLaggingInstancesRatio() {
+    if (containsKey(MAX_DEDICATED_LAGGING_INSTANCES_RATIO)) {
+      return (Double) getProperty(MAX_DEDICATED_LAGGING_INSTANCES_RATIO);
+    } else {
+      return DEFAULT_MAX_DEDICATED_LAGGING_INSTANCES_RATIO;
+    }
+  }
+
   public boolean getEnableAutoWhitelist() {
     if (containsKey(ENABLE_AUTO_WHITELIST)) {
       try {
@@ -443,6 +459,8 @@ public class ControllerConf extends PropertiesConfiguration {
         .addOption("workloadRefreshPeriodInSeconds", true, "The period to refresh workload information in seconds")
         .addOption("autoRebalanceWorkloadRatioThreshold", true,
             "The ratio of workload compared to average for auto workload rebalance")
+        .addOption("maxDedicatedLaggingInstancesRatio", true,
+            "The ratio of instances dedicated for serving lagging partitions")
         .addOption("numOffsetThread", true, "Number of threads to fetch topic offsets")
         .addOption("offsetRefreshIntervalInSec", true, "Topic offset monitor refresh interval")
         .addOption("groupId", true, "Consumer group id")
@@ -556,6 +574,12 @@ public class ControllerConf extends PropertiesConfiguration {
     } else {
       controllerConf.setAutoRebalanceWorkloadRatioThreshold(
           Double.toString(DEFAULT_AUTO_REBALANCE_WORKLOAD_RATIO_THRESHOLD));
+    }
+    if (cmd.hasOption("maxDedicatedLaggingInstancesRatio")) {
+      controllerConf.setMaxDedicatedLaggingInstancesRatio(cmd.getOptionValue("maxDedicatedLaggingInstancesRatio"));
+    } else {
+      controllerConf
+          .setMaxDedicatedLaggingInstancesRatio(Double.toString(DEFAULT_MAX_DEDICATED_LAGGING_INSTANCES_RATIO));
     }
     if (cmd.hasOption("numOffsetThread")) {
       controllerConf.setNumOffsetThread(cmd.getOptionValue("numOffsetThread"));
