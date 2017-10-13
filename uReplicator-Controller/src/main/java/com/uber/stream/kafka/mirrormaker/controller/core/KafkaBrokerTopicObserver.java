@@ -145,13 +145,13 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
   private synchronized void refreshCache() {
     Context context = _refreshLatency.time();
 
-      Set<String> servingTopics;
-      try {
-        servingTopics = ImmutableSet.copyOf(_zkClient.getChildren(KAFKA_TOPICS_PATH));
-      } catch (Exception e) {
-        LOGGER.warn("Failed to get topics from kafka zk: {}", e);
-        return;
-      }
+    Set<String> servingTopics;
+    try {
+      servingTopics = ImmutableSet.copyOf(_zkClient.getChildren(KAFKA_TOPICS_PATH));
+    } catch (Exception e) {
+      LOGGER.warn("Failed to get topics from kafka zk: {}", e);
+      return;
+    }
 
     scala.collection.mutable.Map<String, scala.collection.Map<Object, Seq<Object>>> partitionAssignmentForTopics =
         _zkUtils.getPartitionAssignmentForTopics(JavaConversions.asScalaBuffer(ImmutableList.copyOf(servingTopics)));
