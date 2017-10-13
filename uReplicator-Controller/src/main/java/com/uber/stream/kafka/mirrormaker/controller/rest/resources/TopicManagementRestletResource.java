@@ -153,13 +153,15 @@ public class TopicManagementRestletResource extends ServerResource {
   public Representation post(Representation entity) {
     try {
       final String topicName = (String) getRequest().getAttributes().get("topicName");
+      LOGGER.info("received request to whitelist topic {} on mm ", topicName);
       String jsonRequest = entity.getText();
       TopicPartition topicPartitionInfo = null;
       if ((jsonRequest == null || jsonRequest.isEmpty()) && topicName != null
           && _srcKafkaBrokerTopicObserver != null) {
         // Only triggered when srcKafkaObserver is there and curl call has no json blob.
-        topicPartitionInfo = _srcKafkaBrokerTopicObserver.getTopicPartition(topicName);
+        topicPartitionInfo = _srcKafkaBrokerTopicObserver.getTopicPartitionWithRefresh(topicName);
         if (topicPartitionInfo == null) {
+          LOGGER.warn("failed to whitelist topic {} on mm because of not exists in src cluster", topicName);
           getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
           return new StringRepresentation(String.format(
               "Failed to add new topic: %s, it's not exsited in source kafka cluster!", topicName));
@@ -171,11 +173,13 @@ public class TopicManagementRestletResource extends ServerResource {
         _autoTopicWhitelistingManager.removeFromBlacklist(topicPartitionInfo.getTopic());
       }
       if (_helixMirrorMakerManager.isTopicExisted(topicPartitionInfo.getTopic())) {
+        LOGGER.info("topic {} already on mm", topicName);
         getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
         return new StringRepresentation(String.format(
             "Failed to add new topic: %s, it is already existed!", topicPartitionInfo.getTopic()));
       } else {
         _helixMirrorMakerManager.addTopicToMirrorMaker(topicPartitionInfo);
+        LOGGER.info("successuflly whitelist the topic {}", topicName);
         return new StringRepresentation(
             String.format("Successfully add new topic: %s", topicPartitionInfo));
       }

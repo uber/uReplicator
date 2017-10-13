@@ -180,6 +180,16 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
     }
   }
 
+  public TopicPartition getTopicPartitionWithRefresh(String topic) {
+    TopicPartition topicPartition = getTopicPartition(topic);
+    if (topicPartition == null) {
+      LOGGER.info("couldn't find topic {}, going to refresh cache and retry", topic);
+      refreshCache();
+      topicPartition = getTopicPartition(topic);
+    }
+    return topicPartition;
+  }
+
   public Set<String> getAllTopics() {
     return ImmutableSet.copyOf(_topicPartitionInfoMap.keySet());
   }
