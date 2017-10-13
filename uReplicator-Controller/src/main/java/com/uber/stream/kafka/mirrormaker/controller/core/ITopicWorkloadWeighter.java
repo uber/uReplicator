@@ -15,33 +15,8 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
-public class TopicPartitionLag {
+public interface ITopicWorkloadWeighter {
 
-  private long latestOffset;
-  private long commitOffset;
-  private long timeStamp;
-
-  public TopicPartitionLag(long latestOffset, long commitOffset) {
-    this.latestOffset = latestOffset;
-    this.commitOffset = commitOffset;
-    this.timeStamp = System.currentTimeMillis();
-  }
-
-  public long getLatestOffset() {
-    return latestOffset;
-  }
-
-  public long getCommitOffset() {
-    return commitOffset;
-  }
-
-  public long getTimeStamp() {
-    return timeStamp;
-  }
-
-  @Override
-  public String toString() {
-    return String.format("%d/%d", latestOffset, commitOffset);
-  }
+  public double partitionWeight(TopicPartition tp);
 
 }

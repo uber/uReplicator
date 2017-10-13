@@ -24,6 +24,7 @@ import com.uber.stream.kafka.mirrormaker.controller.utils.HelixUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -68,6 +69,16 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
   // then it is considered to be overloaded. The larger the threshold, the more
   // unbalancing is allowed but it will trigger less partition re-assignments.
   private final double _overloadedRatioThreshold;
+
+  // if the difference between latest offset and commit offset is less than this
+  // threshold, it is not considered as lag
+  private static final long DEFAULT_MIN_LAG_OFFSET = 100000;
+  private long _minLagOffset = DEFAULT_MIN_LAG_OFFSET;
+
+  // if the difference between latest offset and commit offset is less than this
+  // threshold in terms of ingestion time, it is not considered as lag
+  private static final long DEFAULT_MIN_LAG_TIME_SEC = 300;
+  private long _minLagTimeSec = DEFAULT_MIN_LAG_TIME_SEC;
 
   public AutoRebalanceLiveInstanceChangeListener(HelixMirrorMakerManager helixMirrorMakerManager,
       HelixManager helixManager, int delayedAutoReblanceTimeInSeconds, int autoRebalancePeriodInSeconds,
@@ -153,7 +164,7 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
       Set<InstanceTopicPartitionHolder> newAssignment = rescaleInstanceToTopicPartitionMap(liveInstances,
           instanceToTopicPartitionMap, unassignedTopicPartitions, checkInstanceChange);
       if (newAssignment == null) {
-        LOGGER.info("No Live Instances got changed, do nothing!");
+        LOGGER.info("No assignment got changed, do nothing!");
         return;
       }
       LOGGER.info("Trying to fetch IdealStatesMap from current assignment!");
@@ -193,24 +204,22 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     LOGGER.info("Trying to rescale cluster with new instances - " + Arrays.toString(
         newInstances.toArray(new String[0])) + " and removed instances - " + Arrays.toString(
         removedInstances.toArray(new String[0])) + " for unassigned partitions: " + unassignedTopicPartitions);
-    TreeSet<InstanceTopicPartitionHolder> orderedInstances =
-        new TreeSet<>(InstanceTopicPartitionHolder
-            .getTotalWorkloadComparator(_helixMirrorMakerManager.getWorkloadInfoRetriever()));
+    Set<InstanceTopicPartitionHolder> instances = new HashSet<>();
     List<TopicPartition> tpiNeedsToBeAssigned = new ArrayList<>();
     tpiNeedsToBeAssigned.addAll(unassignedTopicPartitions);
     for (String instanceName : instanceToTopicPartitionMap.keySet()) {
       if (!removedInstances.contains(instanceName)) {
         InstanceTopicPartitionHolder instance = new InstanceTopicPartitionHolder(instanceName);
         instance.addTopicPartitions(instanceToTopicPartitionMap.get(instanceName));
-        orderedInstances.add(instance);
+        instances.add(instance);
       } else {
         tpiNeedsToBeAssigned.addAll(instanceToTopicPartitionMap.get(instanceName));
       }
     }
     for (String instanceName : newInstances) {
-      orderedInstances.add(new InstanceTopicPartitionHolder(instanceName));
+      instances.add(new InstanceTopicPartitionHolder(instanceName));
     }
-    Set<InstanceTopicPartitionHolder> balanceAssignment = assignPartitions(orderedInstances, tpiNeedsToBeAssigned,
+    Set<InstanceTopicPartitionHolder> balanceAssignment = balancePartitions(instances, tpiNeedsToBeAssigned,
         !newInstances.isEmpty());
     return balanceAssignment;
   }
@@ -225,29 +234,85 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     }
   }
 
-  private Set<InstanceTopicPartitionHolder> assignPartitions(TreeSet<InstanceTopicPartitionHolder> orderedInstances,
+  private Set<InstanceTopicPartitionHolder> balancePartitions(Set<InstanceTopicPartitionHolder> instances,
       List<TopicPartition> partitionsToBeAssigned, boolean forced) {
-    if (orderedInstances.isEmpty()) {
+    if (instances.isEmpty()) {
       LOGGER.error("No workers to take " + partitionsToBeAssigned.size() + " partitions");
-      return orderedInstances;
+      return null;
     }
-    // if the current assignment is overloaded on some workers, re-assign some partitions of these workers
-    List<TopicPartition> reassignedPartitions = removeOverloadedParitions(orderedInstances, partitionsToBeAssigned,
-        forced);
+    List<TopicPartition> laggingPartitions = new ArrayList<>();
+    List<TopicPartition> nonLaggingPartitions = new ArrayList<>();
+    for (TopicPartition tp : partitionsToBeAssigned) {
+      if (getLagTime(tp) > 0) {
+        laggingPartitions.add(tp);
+      } else {
+        nonLaggingPartitions.add(tp);
+      }
+    }
 
-    partitionsToBeAssigned.addAll(reassignedPartitions);
-    if (partitionsToBeAssigned.isEmpty()) {
-      return orderedInstances;
+    boolean assignmentChanged = false;
+
+    // re-distribute the lagging partitions first
+    ITopicWorkloadWeighter laggingPartitionWeighter = new ITopicWorkloadWeighter() {
+      @Override
+      public double partitionWeight(TopicPartition tp) {
+        return getLagTime(tp) > 0 ? 1.0 : 0.0;
+      }
+    };
+    TreeSet<InstanceTopicPartitionHolder> instancesSortedByLag = new TreeSet<>(InstanceTopicPartitionHolder
+        .getTotalWorkloadComparator(_helixMirrorMakerManager.getWorkloadInfoRetriever(), laggingPartitionWeighter));
+    instancesSortedByLag.addAll(instances);
+    List<TopicPartition> reassignedLaggingPartitions = removeOverloadedParitions(instancesSortedByLag,
+        laggingPartitions, null, true, laggingPartitionWeighter);
+    laggingPartitions.addAll(reassignedLaggingPartitions);
+    if (assignPartitions(instancesSortedByLag, laggingPartitions)) {
+      assignmentChanged = true;
+    }
+
+    // if the current assignment is overloaded on some workers, re-assign some partitions of these workers
+    ITopicWorkloadWeighter adjustedWeighter = new ITopicWorkloadWeighter() {
+      @Override
+      public double partitionWeight(TopicPartition tp) {
+        // give 1.0 more weight for each minute lag up to 2 hour
+        return 1.0 + Math.min(120, getLagTime(tp) / 60);
+      }
+    };
+    // the lagging partitions should not be re-assigned again
+    Set<TopicPartition> pinnedPartitions = new HashSet<>();
+    for (InstanceTopicPartitionHolder instance : instances) {
+      for (TopicPartition tp : instance.getServingTopicPartitionSet()) {
+        if (getLagTime(tp) > 0) {
+          pinnedPartitions.add(tp);
+        }
+      }
+    }
+    LOGGER.info("balancePartitions: Current lagging partitions: " + pinnedPartitions);
+    TreeSet<InstanceTopicPartitionHolder> orderedInstances =
+        new TreeSet<>(InstanceTopicPartitionHolder.getTotalWorkloadComparator(_helixMirrorMakerManager.getWorkloadInfoRetriever(), null));
+    orderedInstances.addAll(instances);
+    List<TopicPartition> reassignedPartitions = removeOverloadedParitions(orderedInstances,
+        nonLaggingPartitions, pinnedPartitions, forced, adjustedWeighter);
+    nonLaggingPartitions.addAll(reassignedPartitions);
+    if (assignPartitions(orderedInstances, nonLaggingPartitions)) {
+      assignmentChanged = true;
+    }
+
+    return assignmentChanged ? orderedInstances : null;
+  }
+
+  private boolean assignPartitions(TreeSet<InstanceTopicPartitionHolder> orderedInstances,
+      List<TopicPartition> partitionsToBeAssigned) {
+    if (orderedInstances.isEmpty() || partitionsToBeAssigned.isEmpty()) {
+      return false;
     }
     // sort partitions based on workload in reverse order (high -> low)
     Collections.sort(partitionsToBeAssigned,
-        Collections
-            .reverseOrder(TopicPartition.getWorkloadComparator(_helixMirrorMakerManager.getWorkloadInfoRetriever())));
+        Collections.reverseOrder(TopicPartition.getWorkloadComparator(_helixMirrorMakerManager.getWorkloadInfoRetriever())));
     // assign partitions of the same topic to different workers if possible
-    // TODO: check whether the other partitions of a new assigned topic is already assigned to the worker
+
     List<TopicPartition> sameTopic = new ArrayList<>();
     List<InstanceTopicPartitionHolder> lowestInstances = new ArrayList<>();
-    for (int i = 0; i < partitionsToBeAssigned.size(); ) {
+    for (int i = 0; i < partitionsToBeAssigned.size();) {
       sameTopic.clear();
       lowestInstances.clear();
 
@@ -267,7 +332,7 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
       }
       orderedInstances.addAll(lowestInstances);
     }
-    return orderedInstances;
+    return true;
   }
 
   /**
@@ -281,43 +346,60 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
    * @return the partitions taken from the instances. orderedInstances will be modified accordingly.
    */
   private List<TopicPartition> removeOverloadedParitions(TreeSet<InstanceTopicPartitionHolder> orderedInstances,
-      List<TopicPartition> partitionsToBeAssigned, boolean forced) {
+      List<TopicPartition> partitionsToBeAssigned, Set<TopicPartition> pinnedPartitions, boolean forced,
+      ITopicWorkloadWeighter weighter) {
+    List<TopicPartition> overloaded = new ArrayList<>();
     WorkloadInfoRetriever retriever = _helixMirrorMakerManager.getWorkloadInfoRetriever();
-    Set<String> topics = new HashSet<>();
-    // calculate the total workload including the assigned and unassigned topics
     TopicWorkload totalWorkload = new TopicWorkload(0, 0, 0);
+    boolean noPartitions = true;
     for (TopicPartition tp : partitionsToBeAssigned) {
-      String topic = tp.getTopic();
-      if (!topics.contains(topic)) {
-        totalWorkload.add(retriever.topicWorkload(topic));
-        topics.add(topic);
+      double weight = weighter.partitionWeight(tp);
+      // weight == 0 means the partition is not considered for workload
+      if (weight > 0) {
+        TopicWorkload tw = retriever.topicWorkload(tp.getTopic());
+        totalWorkload.add(weight * tw.getBytesPerSecondPerPartition(), weight * tw.getMsgsPerSecondPerPartition());
+        noPartitions = false;
       }
     }
+
+    // instancesPartitionsCount count how many partitions are considered for workload for each instance
+    Map<String, Integer> instancesPartitionsCount = new HashMap<>();
     for (InstanceTopicPartitionHolder instance : orderedInstances) {
+      int partitionCount = 0;
       for (TopicPartition tp : instance.getServingTopicPartitionSet()) {
-        String topic = tp.getTopic();
-        if (!topics.contains(topic)) {
-          totalWorkload.add(retriever.topicWorkload(topic));
-          topics.add(topic);
+        double weight = weighter.partitionWeight(tp);
+        if (weight > 0) {
+          partitionCount++;
+          TopicWorkload tw = retriever.topicWorkload(tp.getTopic());
+          totalWorkload.add(weight * tw.getBytesPerSecondPerPartition(), weight * tw.getMsgsPerSecondPerPartition());
+          noPartitions = false;
         }
       }
+      instancesPartitionsCount.put(instance.getInstanceName(), partitionCount);
+    }
+    if (noPartitions) {
+      return overloaded;
     }
 
     TopicWorkload averageWorkload = new TopicWorkload(totalWorkload.getBytesPerSecond() / orderedInstances.size(),
         totalWorkload.getMsgsPerSecond() / orderedInstances.size());
-    // adjust average by excluding the instances that have a single partition but exceed the average workload
+    // adjust average by excluding the instances that have a single partition but exceeds the average workload
     // because the workload cannot be further divided to multiple workers
     int excludeInstances = 0;
     for (InstanceTopicPartitionHolder instance : orderedInstances) {
-      Set<TopicPartition> partitions = instance.getServingTopicPartitionSet();
-      if (partitions.size() != 1) {
-        continue;
-      }
-      TopicWorkload workerWorkload = instance.totalWorkload(retriever);
-      if (workerWorkload.compareTotal(averageWorkload) > 0) {
-        excludeInstances++;
-        totalWorkload.setMsgsPerSecond(totalWorkload.getMsgsPerSecond() - workerWorkload.getMsgsPerSecond());
-        totalWorkload.setBytesPerSecond(totalWorkload.getBytesPerSecond() - workerWorkload.getBytesPerSecond());
+      if (instancesPartitionsCount.get(instance.getInstanceName()) == 1) {
+        for (TopicPartition tp : instance.getServingTopicPartitionSet()) {
+          if (weighter.partitionWeight(tp) > 0) {
+            double weight = weighter.partitionWeight(tp);
+            TopicWorkload tw = retriever.topicWorkload(tp.getTopic());
+            if (tw.compareTotal(averageWorkload) > 0) {
+              excludeInstances++;
+              totalWorkload.setMsgsPerSecond(totalWorkload.getMsgsPerSecond() - weight * tw.getMsgsPerSecondPerPartition());
+              totalWorkload.setBytesPerSecond(totalWorkload.getBytesPerSecond() - weight * tw.getBytesPerSecondPerPartition());
+            }
+            break;
+          }
+        }
       }
     }
     int numInstances = orderedInstances.size() - excludeInstances;
@@ -330,16 +412,15 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
         : new TopicWorkload(averageWorkload.getBytesPerSecond() * _overloadedRatioThreshold,
             averageWorkload.getMsgsPerSecond() * _overloadedRatioThreshold);
 
-    List<TopicPartition> overloaded = new ArrayList<>();
     List<InstanceTopicPartitionHolder> processedInstances = new ArrayList<>();
     while (!orderedInstances.isEmpty()) {
       InstanceTopicPartitionHolder highest = orderedInstances.pollLast();
       processedInstances.add(highest);
-      if (highest.getNumServingTopicPartitions() <= 1) {
-        // no need to rebalance to other worker because it is a single partition
+      if (instancesPartitionsCount.get(highest.getInstanceName()) <= 1) {
+        // no need to rebalance to other worker because it is a single or no partition
         continue;
       }
-      TopicWorkload workerWorkload = highest.totalWorkload(retriever);
+      TopicWorkload workerWorkload = highest.totalWorkload(retriever, weighter);
       if (workerWorkload.compareTotal(maxWorkload) <= 0) {
         break;
       }
@@ -348,9 +429,14 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
       TopicWorkload workloadToRemove = new TopicWorkload(0, 0, 0);
       List<TopicPartition> partitions = new ArrayList<>(highest.getServingTopicPartitionSet());
       Collections.shuffle(partitions); // choose random partitions
-      for (TopicPartition tp : partitions.subList(0, partitions.size() - 1)) {
+      for (TopicPartition tp : partitions) {
+        double weight = weighter.partitionWeight(tp);
+        if (weight == 0 || pinnedPartitions != null && pinnedPartitions.contains(tp)) {
+          continue;
+        }
         TopicWorkload tpWorkload = retriever.topicWorkload(tp.getTopic());
-        workloadToRemove.add(tpWorkload.getBytesPerSecondPerPartition(), tpWorkload.getMsgsPerSecondPerPartition());
+        workloadToRemove.add(weight * tpWorkload.getBytesPerSecondPerPartition(),
+            weight * tpWorkload.getMsgsPerSecondPerPartition());
         highest.removeTopicPartition(tp);
         overloaded.add(tp);
         if (workloadToRemove.compareTotal(diff) >= 0) {
@@ -387,6 +473,33 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     removedInstances.addAll(currentInstances);
     removedInstances.removeAll(liveInstances);
     return removedInstances;
+  }
+
+  /**
+   * Return the lagging time if the given partition has lag.
+   *
+   * @param tp topic partition
+   * @return the lagging time in seconds if the given partition has lag; otherwise return 0.
+   */
+  private long getLagTime(TopicPartition tp) {
+    TopicPartitionLag tpl = _helixMirrorMakerManager.getOffsetMonitor().getTopicPartitionOffset(tp);
+    if (tpl == null || tpl.getLatestOffset() < 0 || tpl.getCommitOffset() < 0) {
+      return 0;
+    }
+    long lag = tpl.getLatestOffset() - tpl.getCommitOffset();
+    if (lag <= _minLagOffset) {
+      return 0;
+    }
+    double msgRate = _helixMirrorMakerManager.getWorkloadInfoRetriever().topicWorkload(tp.getTopic())
+        .getMsgsPerSecondPerPartition();
+    if (msgRate < 1) {
+      msgRate = 1;
+    }
+    double lagTime = lag / msgRate;
+    if (lagTime > _minLagTimeSec) {
+      return Math.round(lagTime);
+    }
+    return 0;
   }
 
 }

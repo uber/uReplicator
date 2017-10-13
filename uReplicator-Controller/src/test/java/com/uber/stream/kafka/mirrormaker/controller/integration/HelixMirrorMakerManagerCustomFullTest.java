@@ -107,7 +107,7 @@ public class HelixMirrorMakerManagerCustomFullTest {
         fakeInstances.get(i / 2).start();
         totalInstancesSize++;
       }
-      Thread.sleep(5000);
+      Thread.sleep(6000);
       assertInstanceOwnedTopicPartitionsBalanced(helixMirrorMakerManager,
           totalInstancesSize, 16 * numTotalTopics);
     }

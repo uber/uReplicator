@@ -90,6 +90,10 @@ public class WorkloadInfoRetriever {
     }
   }
 
+  public void stop() {
+    _periodicalScheduler.shutdown();
+  }
+
   public TopicWorkload topicWorkload(String topic) {
     TopicWorkload tw = _topicWorkloadMap.get(topic);
     if (tw != null && System.currentTimeMillis() - tw.getLastUpdate() < _maxValidTimeMillis) {

@@ -7,11 +7,9 @@ import com.uber.stream.kafka.mirrormaker.controller.core.InstanceTopicPartitionH
 import com.uber.stream.kafka.mirrormaker.controller.core.TopicPartition;
 import java.util.Iterator;
 import java.util.PriorityQueue;
-import org.restlet.data.MediaType;
 import org.restlet.data.Status;
 import org.restlet.representation.Representation;
 import org.restlet.representation.StringRepresentation;
-import org.restlet.representation.Variant;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
@@ -25,9 +23,6 @@ public class MirrorMakerManagerRestletResource extends ServerResource {
   private final HelixMirrorMakerManager _helixMirrorMakerManager;
 
   public MirrorMakerManagerRestletResource() {
-    getVariants().add(new Variant(MediaType.TEXT_PLAIN));
-    getVariants().add(new Variant(MediaType.APPLICATION_JSON));
-    setNegotiated(false);
     _helixMirrorMakerManager = (HelixMirrorMakerManager) getApplication().getContext()
         .getAttributes().get(HelixMirrorMakerManager.class.toString());
   }
