@@ -53,22 +53,23 @@ public class InstanceTopicPartitionHolder {
     _topicPartitionSet.remove(topicPartitionInfo);
   }
 
-  public TopicWorkload totalWorkload(WorkloadInfoRetriever infoRetriever) {
+  public TopicWorkload totalWorkload(WorkloadInfoRetriever infoRetriever, ITopicWorkloadWeighter weighter) {
     TopicWorkload total = new TopicWorkload(0, 0, 0);
     for (TopicPartition part : _topicPartitionSet) {
       TopicWorkload tw = infoRetriever.topicWorkload(part.getTopic());
-      total.add(tw.getBytesPerSecondPerPartition(), tw.getMsgsPerSecondPerPartition());
+      double weight = (weighter == null) ? 1.0 : weighter.partitionWeight(part);
+      total.add(tw.getBytesPerSecondPerPartition() * weight, tw.getMsgsPerSecondPerPartition() * weight);
     }
     return total;
   }
 
   public static Comparator<InstanceTopicPartitionHolder> getTotalWorkloadComparator(
-      final WorkloadInfoRetriever infoRetriever) {
+      final WorkloadInfoRetriever infoRetriever, final ITopicWorkloadWeighter weighter) {
     return new Comparator<InstanceTopicPartitionHolder>() {
       @Override
       public int compare(InstanceTopicPartitionHolder o1, InstanceTopicPartitionHolder o2) {
-        TopicWorkload workload1 = (o1 == null) ? new TopicWorkload(0, 0) : o1.totalWorkload(infoRetriever);
-        TopicWorkload workload2 = (o2 == null) ? new TopicWorkload(0, 0) : o2.totalWorkload(infoRetriever);
+        TopicWorkload workload1 = (o1 == null) ? new TopicWorkload(0, 0) : o1.totalWorkload(infoRetriever, weighter);
+        TopicWorkload workload2 = (o2 == null) ? new TopicWorkload(0, 0) : o2.totalWorkload(infoRetriever, weighter);
         int cmp = workload1.compareTotal(workload2);
         if (cmp != 0) {
           return cmp;

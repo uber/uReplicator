@@ -66,6 +66,8 @@ public class HelixMirrorMakerManager {
 
   private final WorkloadInfoRetriever _workloadInfoRetriever;
 
+  private final OffsetMonitor _offsetMonitor;
+
   public HelixMirrorMakerManager(ControllerConf controllerConf) {
     _controllerConf = controllerConf;
     _helixZkURL = HelixUtils.getAbsoluteZkPathForHelix(_controllerConf.getZkStr());
@@ -73,7 +75,8 @@ public class HelixMirrorMakerManager {
     _instanceId = controllerConf.getInstanceId();
     _workloadInfoRetriever = new WorkloadInfoRetriever(this);
     _currentServingInstance = new PriorityQueue<InstanceTopicPartitionHolder>(1,
-        InstanceTopicPartitionHolder.getTotalWorkloadComparator(_workloadInfoRetriever));
+        InstanceTopicPartitionHolder.getTotalWorkloadComparator(_workloadInfoRetriever, null));
+    _offsetMonitor = new OffsetMonitor(this, controllerConf);
   }
 
   public synchronized void start() {
@@ -88,6 +91,7 @@ public class HelixMirrorMakerManager {
             _controllerConf.getAutoRebalanceWorkloadRatioThreshold());
     updateCurrentServingInstance();
     _workloadInfoRetriever.start();
+    _offsetMonitor.start();
     try {
       _helixZkManager.addLiveInstanceChangeListener(autoRebalanceLiveInstanceChangeListener);
     } catch (Exception e) {
@@ -97,6 +101,12 @@ public class HelixMirrorMakerManager {
 
   public synchronized void stop() {
     LOGGER.info("Trying to stop HelixMirrorMakerManager!");
+    _workloadInfoRetriever.stop();
+    try {
+      _offsetMonitor.stop();
+    } catch (InterruptedException e) {
+      LOGGER.info("Stopping kafkaMonitor got interrupted.");
+    }
     _helixZkManager.disconnect();
   }
 
@@ -236,6 +246,10 @@ public class HelixMirrorMakerManager {
 
   public PriorityQueue<InstanceTopicPartitionHolder> getCurrentServingInstance() {
     return _currentServingInstance;
+  }
+
+  public OffsetMonitor getOffsetMonitor() {
+    return _offsetMonitor;
   }
 
 }

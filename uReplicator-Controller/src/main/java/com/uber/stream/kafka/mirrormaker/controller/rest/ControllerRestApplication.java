@@ -20,6 +20,7 @@ import com.uber.stream.kafka.mirrormaker.controller.rest.resources.HealthCheckRe
 import com.uber.stream.kafka.mirrormaker.controller.rest.resources.MirrorMakerManagerRestletResource;
 import com.uber.stream.kafka.mirrormaker.controller.rest.resources.TopicManagementRestletResource;
 import com.uber.stream.kafka.mirrormaker.controller.rest.resources.ValidationRestletResource;
+import com.uber.stream.kafka.mirrormaker.controller.rest.resources.TopicParitionOffsetRestletResource;
 import org.restlet.Application;
 import org.restlet.Context;
 import org.restlet.Restlet;
@@ -62,7 +63,14 @@ public class ControllerRestApplication extends Application {
 
     // MirrorMakerManager Servlet
     router.attach("/instances", MirrorMakerManagerRestletResource.class);
+    router.attach("/instances/", MirrorMakerManagerRestletResource.class);
     router.attach("/instances/{instanceName}", MirrorMakerManagerRestletResource.class);
+    router.attach("/instances/{instanceName}/", MirrorMakerManagerRestletResource.class);
+
+    router.attach("/offset", TopicParitionOffsetRestletResource.class);
+    router.attach("/offset/", TopicParitionOffsetRestletResource.class);
+    router.attach("/offset/{topic}/{partition}", TopicParitionOffsetRestletResource.class);
+    router.attach("/offset/{topic}/{partition}/", TopicParitionOffsetRestletResource.class);
 
     return router;
   }

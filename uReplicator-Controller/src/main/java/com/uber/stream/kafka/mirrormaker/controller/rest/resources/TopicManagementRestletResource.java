@@ -78,26 +78,34 @@ public class TopicManagementRestletResource extends ServerResource {
         JSONObject responseJson = new JSONObject();
         responseJson.put("topic", topicName);
         JSONObject externalViewPartitionToServerMappingJson = new JSONObject();
-        for (String partition : externalViewForTopic.getPartitionSet()) {
-          Map<String, String> stateMap = externalViewForTopic.getStateMap(partition);
-          for (String server : stateMap.keySet()) {
-            if (!externalViewPartitionToServerMappingJson.containsKey(partition)) {
-              externalViewPartitionToServerMappingJson.put(partition, new JSONArray());
+        if (externalViewForTopic == null) {
+          LOGGER.info("External view for topic " + topicName + " is NULL");
+        } else {
+          for (String partition : externalViewForTopic.getPartitionSet()) {
+            Map<String, String> stateMap = externalViewForTopic.getStateMap(partition);
+            for (String server : stateMap.keySet()) {
+              if (!externalViewPartitionToServerMappingJson.containsKey(partition)) {
+                externalViewPartitionToServerMappingJson.put(partition, new JSONArray());
+              }
+              externalViewPartitionToServerMappingJson.getJSONArray(partition).add(server);
             }
-            externalViewPartitionToServerMappingJson.getJSONArray(partition).add(server);
           }
         }
         responseJson.put("externalView", externalViewPartitionToServerMappingJson);
 
         JSONObject idealStatePartitionToServerMappingJson = new JSONObject();
-        for (String partition : idealStateForTopic.getPartitionSet()) {
-          Map<String, String> stateMap = idealStateForTopic.getInstanceStateMap(partition);
-          if (stateMap != null) {
-            for (String server : stateMap.keySet()) {
-              if (!idealStatePartitionToServerMappingJson.containsKey(partition)) {
-                idealStatePartitionToServerMappingJson.put(partition, new JSONArray());
+        if (idealStateForTopic == null) {
+          LOGGER.info("Ideal state for topic " + topicName + " is NULL");
+        } else {
+          for (String partition : idealStateForTopic.getPartitionSet()) {
+            Map<String, String> stateMap = idealStateForTopic.getInstanceStateMap(partition);
+            if (stateMap != null) {
+              for (String server : stateMap.keySet()) {
+                if (!idealStatePartitionToServerMappingJson.containsKey(partition)) {
+                  idealStatePartitionToServerMappingJson.put(partition, new JSONArray());
+                }
+                idealStatePartitionToServerMappingJson.getJSONArray(partition).add(server);
               }
-              idealStatePartitionToServerMappingJson.getJSONArray(partition).add(server);
             }
           }
         }
@@ -106,19 +114,21 @@ public class TopicManagementRestletResource extends ServerResource {
         JSONObject serverToPartitionMappingJson = new JSONObject();
         JSONObject serverToNumPartitionsMappingJson = new JSONObject();
 
-        for (String partition : externalViewForTopic.getPartitionSet()) {
-          Map<String, String> stateMap = externalViewForTopic.getStateMap(partition);
-          for (String server : stateMap.keySet()) {
-            if (stateMap.get(server).equals("ONLINE")) {
-              if (!serverToPartitionMapping.containsKey(server)) {
-                serverToPartitionMapping.put(server, new ArrayList<String>());
-                serverToPartitionMappingJson.put(server, new JSONArray());
-                serverToNumPartitionsMappingJson.put(server, 0);
+        if (externalViewForTopic != null) {
+          for (String partition : externalViewForTopic.getPartitionSet()) {
+            Map<String, String> stateMap = externalViewForTopic.getStateMap(partition);
+            for (String server : stateMap.keySet()) {
+              if (stateMap.get(server).equals("ONLINE")) {
+                if (!serverToPartitionMapping.containsKey(server)) {
+                  serverToPartitionMapping.put(server, new ArrayList<String>());
+                  serverToPartitionMappingJson.put(server, new JSONArray());
+                  serverToNumPartitionsMappingJson.put(server, 0);
+                }
+                serverToPartitionMapping.get(server).add(partition);
+                serverToPartitionMappingJson.getJSONArray(server).add(partition);
+                serverToNumPartitionsMappingJson.put(server,
+                    serverToNumPartitionsMappingJson.getInteger(server) + 1);
               }
-              serverToPartitionMapping.get(server).add(partition);
-              serverToPartitionMappingJson.getJSONArray(server).add(partition);
-              serverToNumPartitionsMappingJson.put(server,
-                  serverToNumPartitionsMappingJson.getInteger(server) + 1);
             }
           }
         }

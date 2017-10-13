@@ -86,8 +86,7 @@ public class OffsetMonitor {
     }
 
     this.refreshIntervalInSec = controllerConf.getOffsetRefreshIntervalInSec();
-    this.consumerOffsetPath = StringUtils.isEmpty(controllerConf.getGroupId()) ?
-        null : "/consumers/" + controllerConf.getGroupId() + "/offsets/";
+    this.consumerOffsetPath = "/consumers/" + controllerConf.getGroupId() + "/offsets/";
 
     this.refreshExecutor = Executors.newSingleThreadScheduledExecutor(
         new ThreadFactoryBuilder().setNameFormat("topic-list-cron-%d").setDaemon(true).build());
@@ -242,6 +241,14 @@ public class OffsetMonitor {
 
   public TopicPartitionLag getTopicPartitionOffset(TopicPartition topicPartition) {
     return topicPartitionToOffsetMap.get(toTopicAndPartition(topicPartition));
+  }
+
+  /**
+   * Expose the internal offset map. Use for REST GET only.
+   * @return the internal offset map
+   */
+  public Map<TopicAndPartition, TopicPartitionLag> getTopicToOffsetMap() {
+    return topicPartitionToOffsetMap;
   }
 
 }

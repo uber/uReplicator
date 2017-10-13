@@ -79,7 +79,6 @@ public class C3QueryUtils {
       for (String topic : topics) {
         JSONArray arr = jsonObj.getJSONArray(topic);
         if (arr == null || arr.size() == 0) {
-          LOGGER.info("No info in C3 result for topic '" + topic + "'");
           continue;
         }
         JSONObject metrics = arr.getJSONObject(0);

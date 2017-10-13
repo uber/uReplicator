@@ -76,7 +76,7 @@ public class HelixMirrorMakerManagerCustomEmptyWorkerTest {
     fakeInstances.addAll(ControllerTestUtils
         .addFakeDataInstancesToAutoJoinHelixCluster(helixClusterName, ZkStarter.DEFAULT_ZK_STR, 1,
             1));
-    Thread.sleep(5000);
+    Thread.sleep(6000);
     assertTopicExternalViewWithGivenPartitions(helixMirrorMakerManager, "testTopic0", 8, 2);
     helixMirrorMakerManager.stop();
   }
