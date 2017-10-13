@@ -71,7 +71,7 @@ public class WorkloadInfoRetriever {
     LOGGER.info("Start workload retriever");
     try {
       refreshWorkloads();
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOGGER.error("Got exception during retrieve initial topic workloads! ", e);
     }
 
@@ -142,7 +142,6 @@ public class WorkloadInfoRetriever {
         }
       }
     }
-    LOGGER.info("Current workloads: " + _topicWorkloadMap);
   }
 
 }

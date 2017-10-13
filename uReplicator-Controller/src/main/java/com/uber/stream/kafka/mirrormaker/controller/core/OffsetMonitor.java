@@ -85,8 +85,14 @@ public class OffsetMonitor {
       }
     }
 
-    this.refreshIntervalInSec = controllerConf.getOffsetRefreshIntervalInSec();
     this.consumerOffsetPath = "/consumers/" + controllerConf.getGroupId() + "/offsets/";
+    // disable monitor if GROUP_ID is not set
+    if (controllerConf.getGroupId().isEmpty()) {
+      logger.warn("Consumer GROUP_ID is not set. Offset manager is disabled");
+      this.refreshIntervalInSec = 0;
+    } else {
+      this.refreshIntervalInSec = controllerConf.getOffsetRefreshIntervalInSec();
+    }
 
     this.refreshExecutor = Executors.newSingleThreadScheduledExecutor(
         new ThreadFactoryBuilder().setNameFormat("topic-list-cron-%d").setDaemon(true).build());
@@ -100,17 +106,21 @@ public class OffsetMonitor {
   }
 
   public void start() {
-    logger.info("OffsetMonitor starts updating offsets every {} seconds", refreshIntervalInSec);
-    logger.info("OffsetMonitor starts with brokerList=" + srcBrokerList);
+    if (refreshIntervalInSec > 0) {
+      logger.info("OffsetMonitor starts updating offsets every {} seconds", refreshIntervalInSec);
+      logger.info("OffsetMonitor starts with brokerList=" + srcBrokerList);
 
-    refreshExecutor.scheduleAtFixedRate(new Runnable() {
-      @Override
-      public void run() {
-        logger.info("TopicList starts updating");
-        updateTopicList();
-        updateOffset();
-      }
-    }, 130, refreshIntervalInSec, TimeUnit.SECONDS);
+      refreshExecutor.scheduleAtFixedRate(new Runnable() {
+        @Override
+        public void run() {
+          logger.info("TopicList starts updating");
+          updateTopicList();
+          updateOffset();
+        }
+      }, 130, refreshIntervalInSec, TimeUnit.SECONDS);
+    } else {
+      logger.info("OffsetMonitor is disabled");
+    }
   }
 
   public void stop() throws InterruptedException {
