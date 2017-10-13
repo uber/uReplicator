@@ -413,7 +413,10 @@ public class ControllerConf extends PropertiesConfiguration {
   }
 
   public String getGroupId() {
-    return (String) getProperty(GROUP_ID);
+    if (containsKey(GROUP_ID)) {
+      return (String) getProperty(GROUP_ID);
+    }
+    return "";
   }
 
   @SuppressWarnings("rawtypes")
