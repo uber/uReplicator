@@ -39,18 +39,18 @@ public class C3QueryUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(C3QueryUtils.class);
 
   private static final String DEFAULT_QUERY_PATH = "/chaperone3/rawmetrics?";
-  private static final long DEFAULT_QUERY_PERIOD_SEC = 600;
   private static final long DEFAULT_QUERY_MINIMUM_END_TO_CURRENT_SEC = 600;
   private static final int DEFAULT_BATCH_TOPICS = 100;
 
-  public static Map<String, TopicWorkload> retrieveTopicInRate(long timeInMs, String c3Host, int c3Port,
-      String kafkaCluster, List<String> topics) throws IOException {
+  public static Map<String, TopicWorkload> retrieveTopicInRate(long timeInMs, long windowInMs, String c3Host,
+      int c3Port, String kafkaCluster, List<String> topics) throws IOException {
     Map<String, TopicWorkload> workloads = new HashMap<>();
     if (c3Port == 0) {
       return workloads;
     }
     long endSec = (timeInMs / 1000 - DEFAULT_QUERY_MINIMUM_END_TO_CURRENT_SEC) / 600 * 600;
-    long startSec = endSec - DEFAULT_QUERY_PERIOD_SEC;
+    long startSec = endSec - windowInMs / 1000L;
+    LOGGER.info("Retrieve workload for [{}, {}]", startSec, endSec);
     for (int i = 0; i < topics.size(); i += DEFAULT_BATCH_TOPICS) {
       StringBuilder query = new StringBuilder();
       query.append("startSec=");
