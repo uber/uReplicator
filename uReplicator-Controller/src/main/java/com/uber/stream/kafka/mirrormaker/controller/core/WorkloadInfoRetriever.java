@@ -51,6 +51,9 @@ public class WorkloadInfoRetriever {
   private long _lastRefreshTimeMillis = 0;
   private final long _minRefreshIntervalMillis = 60000;
 
+  private static final long DEFAULT_WORKLOAD_WINDOW_MILLIS = TimeUnit.MINUTES.toMillis(10);
+  private static final long DEFAULT_WORKLOAD_COARSE_WINDOW_MILLIS = TimeUnit.HOURS.toMillis(3);
+
   // valid for a day so that it can be adaptive for traffic with day-pattern
   private long _maxValidTimeMillis = TimeUnit.HOURS.toMillis(25);
 
@@ -153,16 +156,10 @@ public class WorkloadInfoRetriever {
         }
       }
     }
-    retrieveWorkload(current, topicsPartitions);
+    retrieveWorkload(current, DEFAULT_WORKLOAD_WINDOW_MILLIS, topicsPartitions);
   }
 
   public void initializeWorkloads() throws IOException {
-    long current = System.currentTimeMillis();
-    long c3TimeWindowMs = TimeUnit.MINUTES.toMillis(10);
-    long from = current - _maxValidTimeMillis + c3TimeWindowMs;
-    LOGGER.info("Initialize workload for source {} for time range [{}, {}]" , _srcKafkaCluster, from, current);
-    _lastRefreshTimeMillis = current;
-
     List<String> topics = _helixMirrorMakerManager.getTopicLists();
     Map<String, Integer> topicsPartitions = new HashMap<>();
     for (String topic : topics) {
@@ -174,15 +171,27 @@ public class WorkloadInfoRetriever {
         }
       }
     }
-    for (long tsInMs = from; tsInMs <= current; tsInMs += c3TimeWindowMs) {
-      retrieveWorkload(tsInMs, topicsPartitions);
+    // use coarse granularity for the time windows older than 1 hour
+    long current = System.currentTimeMillis();
+    long fromMs = current - _maxValidTimeMillis;
+    long toCoarseMs = current - TimeUnit.HOURS.toMillis(1);
+    LOGGER.info("Initialize workload for source {} for time range [{}, {}]", _srcKafkaCluster, fromMs, current);
+    _lastRefreshTimeMillis = current;
+    for (long tsInMs = fromMs; tsInMs <= toCoarseMs; tsInMs += DEFAULT_WORKLOAD_COARSE_WINDOW_MILLIS) {
+      retrieveWorkload(tsInMs, DEFAULT_WORKLOAD_COARSE_WINDOW_MILLIS, topicsPartitions);
+    }
+    // use fine granularity for the last hour
+    for (long tsInMs = toCoarseMs + DEFAULT_WORKLOAD_WINDOW_MILLIS; tsInMs <= current;
+        tsInMs += DEFAULT_WORKLOAD_WINDOW_MILLIS) {
+      retrieveWorkload(tsInMs, DEFAULT_WORKLOAD_WINDOW_MILLIS, topicsPartitions);
     }
     LOGGER.info("Finished initializing workload for source " + _srcKafkaCluster);
   }
 
-  private void retrieveWorkload(long timeInMs, Map<String, Integer> topicsPartitions) throws IOException {
+  private void retrieveWorkload(long timeInMs, long windowInMs, Map<String, Integer> topicsPartitions)
+      throws IOException {
     long current = System.currentTimeMillis();
-    Map<String, TopicWorkload> topicWorkloads = C3QueryUtils.retrieveTopicInRate(timeInMs,
+    Map<String, TopicWorkload> topicWorkloads = C3QueryUtils.retrieveTopicInRate(timeInMs, windowInMs,
         _helixMirrorMakerManager.getControllerConf().getC3Host(),
         _helixMirrorMakerManager.getControllerConf().getC3Port(), _srcKafkaCluster,
         new ArrayList<>(topicsPartitions.keySet()));
