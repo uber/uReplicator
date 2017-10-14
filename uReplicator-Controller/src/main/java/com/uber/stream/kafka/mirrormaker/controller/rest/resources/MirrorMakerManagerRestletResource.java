@@ -5,6 +5,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
 import com.uber.stream.kafka.mirrormaker.controller.core.InstanceTopicPartitionHolder;
 import com.uber.stream.kafka.mirrormaker.controller.core.TopicPartition;
+import com.uber.stream.kafka.mirrormaker.controller.core.WorkloadInfoRetriever;
 import java.util.Iterator;
 import java.util.PriorityQueue;
 import org.restlet.data.Status;
@@ -36,18 +37,25 @@ public class MirrorMakerManagerRestletResource extends ServerResource {
 
       PriorityQueue<InstanceTopicPartitionHolder> currentServingInstance = _helixMirrorMakerManager
           .getCurrentServingInstance();
+      WorkloadInfoRetriever workloadRetriever = _helixMirrorMakerManager.getWorkloadInfoRetriever();
       Iterator<InstanceTopicPartitionHolder> iter = currentServingInstance.iterator();
       JSONObject instanceMapJson = new JSONObject();
       while (iter.hasNext()) {
         InstanceTopicPartitionHolder instance = iter.next();
         String name = instance.getInstanceName();
         if (instanceName == null || instanceName.equals(name)) {
-          for (TopicPartition tp : instance.getServingTopicPartitionSet()) {
-            if (!instanceMapJson.containsKey(name)) {
-              instanceMapJson.put(name, new JSONArray());
-            }
-            instanceMapJson.getJSONArray(name).add(tp.getTopic() + ":" + tp.getPartition());
+
+          if (!instanceMapJson.containsKey(name)) {
+            instanceMapJson.put(name, new JSONArray());
           }
+          double totalWorkload = 0;
+          for (TopicPartition tp : instance.getServingTopicPartitionSet()) {
+            double tpw = workloadRetriever.topicWorkload(tp.getTopic()).getBytesPerSecondPerPartition();
+            totalWorkload += tpw;
+            instanceMapJson.getJSONArray(name).add(tp.getTopic() + "." + tp.getPartition() + ":" + Math.round(tpw));
+          }
+          instanceMapJson.getJSONArray(name).add("TOTALWORKLOAD." + instance.getServingTopicPartitionSet().size()
+              + ":" + Math.round(totalWorkload));
         }
       }
       responseJson.put("instances", instanceMapJson);
