@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -107,7 +108,9 @@ public class OffsetMonitor {
 
   public void start() {
     if (refreshIntervalInSec > 0) {
-      logger.info("OffsetMonitor starts updating offsets every {} seconds", refreshIntervalInSec);
+      // delay for 1-5 minutes
+      int delaySec = 60 + new Random().nextInt(240);
+      logger.info("OffsetMonitor starts updating offsets every {} seconds with delay {} seconds", refreshIntervalInSec, delaySec);
       logger.info("OffsetMonitor starts with brokerList=" + srcBrokerList);
 
       refreshExecutor.scheduleAtFixedRate(new Runnable() {
@@ -117,7 +120,7 @@ public class OffsetMonitor {
           updateTopicList();
           updateOffset();
         }
-      }, 130, refreshIntervalInSec, TimeUnit.SECONDS);
+      }, delaySec, refreshIntervalInSec, TimeUnit.SECONDS);
     } else {
       logger.info("OffsetMonitor is disabled");
     }
