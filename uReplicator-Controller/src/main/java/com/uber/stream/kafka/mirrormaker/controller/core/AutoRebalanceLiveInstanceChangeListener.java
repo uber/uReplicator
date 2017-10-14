@@ -104,7 +104,9 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
             @Override
             public void run() {
               try {
-                rebalanceCurrentCluster(_helixMirrorMakerManager.getCurrentLiveInstances(), false);
+                if (_helixMirrorMakerManager.getWorkloadInfoRetriever().isInitialized()) {
+                  rebalanceCurrentCluster(_helixMirrorMakerManager.getCurrentLiveInstances(), false);
+                }
               } catch (Exception e) {
                 LOGGER.error("Got exception during periodically rebalancing the whole cluster! ", e);
               }

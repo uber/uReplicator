@@ -19,8 +19,10 @@ import com.uber.stream.kafka.mirrormaker.controller.utils.C3QueryUtils;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -36,18 +38,21 @@ public class WorkloadInfoRetriever {
   public static final TopicWorkload DEFAULT_WORKLOAD = new TopicWorkload(TopicWorkload.DEFAULT_BYTES_PER_SECOND,
       TopicWorkload.DEFAULT_MSGS_PER_SECOND);
 
-  private final Map<String, TopicWorkload> _topicWorkloadMap = new ConcurrentHashMap<>();
+  private final Map<String, LinkedList<TopicWorkload>> _topicWorkloadMap = new ConcurrentHashMap<>();
   private TopicWorkload _defaultTopicWorkload = DEFAULT_WORKLOAD;
 
   private final HelixMirrorMakerManager _helixMirrorMakerManager;
   private final String _srcKafkaCluster;
+
+  private boolean _initialized = false;
 
   private final ScheduledExecutorService _periodicalScheduler = Executors.newSingleThreadScheduledExecutor();
   private final long _refreshPeriodInSeconds;
   private long _lastRefreshTimeMillis = 0;
   private final long _minRefreshIntervalMillis = 60000;
 
-  private long _maxValidTimeMillis = 3600 * 1000L;
+  // valid for a day so that it can be adaptive for traffic with day-pattern
+  private long _maxValidTimeMillis = TimeUnit.HOURS.toMillis(25);
 
   public WorkloadInfoRetriever(HelixMirrorMakerManager helixMirrorMakerManager) {
     this._helixMirrorMakerManager = helixMirrorMakerManager;
@@ -69,24 +74,31 @@ public class WorkloadInfoRetriever {
       return;
     }
     LOGGER.info("Start workload retriever");
-    try {
-      refreshWorkloads();
-    } catch (Exception e) {
-      LOGGER.error("Got exception during retrieve initial topic workloads! ", e);
-    }
 
     if (_refreshPeriodInSeconds > 0) {
-      LOGGER.info("Trying to schedule periodical refreshing workload at rate " + _refreshPeriodInSeconds + " seconds");
+      // delay initialization for 0-5 minutes
+      int delaySec = new Random().nextInt(300);
+      LOGGER.info("Schedule periodical refreshing workload at rate {} seconds with delay {} seconds",
+          _refreshPeriodInSeconds, delaySec);
       _periodicalScheduler.scheduleWithFixedDelay(new Runnable() {
         @Override
         public void run() {
-          try {
-            refreshWorkloads();
-          } catch (Exception e) {
-            LOGGER.error("Got exception during refresh topic workloads! ", e);
+          if (!_initialized) {
+            try {
+              initializeWorkloads();
+              _initialized = true;
+            } catch (Exception e) {
+              LOGGER.error("Got exception during retrieve initial topic workloads! ", e);
+            }
+          } else {
+            try {
+              refreshWorkloads();
+            } catch (Exception e) {
+              LOGGER.error("Got exception during refresh topic workloads! ", e);
+            }
           }
         }
-      }, _refreshPeriodInSeconds, _refreshPeriodInSeconds, TimeUnit.SECONDS);
+      }, delaySec, _refreshPeriodInSeconds, TimeUnit.SECONDS);
     }
   }
 
@@ -94,29 +106,41 @@ public class WorkloadInfoRetriever {
     _periodicalScheduler.shutdown();
   }
 
+  public boolean isInitialized() {
+    return _initialized;
+  }
+
   public TopicWorkload topicWorkload(String topic) {
-    TopicWorkload tw = _topicWorkloadMap.get(topic);
-    if (tw != null && System.currentTimeMillis() - tw.getLastUpdate() < _maxValidTimeMillis) {
-      return tw;
+    LinkedList<TopicWorkload> tws = _topicWorkloadMap.get(topic);
+    if (tws == null || tws.isEmpty()) {
+      return _defaultTopicWorkload;
     }
-    return _defaultTopicWorkload;
+    // return the maximum bytes-in-rate during the valid window
+    TopicWorkload maxTw = null;
+    long current = System.currentTimeMillis();
+    for (TopicWorkload tw : tws) {
+      if (current - tw.getLastUpdate() > _maxValidTimeMillis) {
+        continue;
+      }
+      if (maxTw == null || maxTw.getBytesPerSecond() < tw.getBytesPerSecond()) {
+        maxTw = tw;
+      }
+    }
+    return (maxTw != null) ? maxTw : _defaultTopicWorkload;
   }
 
   public void setTopicDefaultWorkload(TopicWorkload defaultWorkload) {
     _defaultTopicWorkload = defaultWorkload;
   }
 
-  public Map<String, TopicWorkload> getWorkloadMap() {
-    return _topicWorkloadMap;
-  }
-
   public void refreshWorkloads() throws IOException {
-    if (_lastRefreshTimeMillis + _minRefreshIntervalMillis > System.currentTimeMillis()) {
+    long current = System.currentTimeMillis();
+    if (_lastRefreshTimeMillis + _minRefreshIntervalMillis > current) {
       LOGGER.info("Too soon to refresh workload, skip");
       return;
     }
     LOGGER.info("Refreshing workload for source " + _srcKafkaCluster);
-    _lastRefreshTimeMillis = System.currentTimeMillis();
+    _lastRefreshTimeMillis = current;
 
     List<String> topics = _helixMirrorMakerManager.getTopicLists();
     Map<String, Integer> topicsPartitions = new HashMap<>();
@@ -129,16 +153,58 @@ public class WorkloadInfoRetriever {
         }
       }
     }
-    Map<String, TopicWorkload> topicWorkloads = C3QueryUtils.retrieveTopicInRate(
+    retrieveWorkload(current, topicsPartitions);
+  }
+
+  public void initializeWorkloads() throws IOException {
+    long current = System.currentTimeMillis();
+    long c3TimeWindowMs = TimeUnit.MINUTES.toMillis(10);
+    long from = current - _maxValidTimeMillis + c3TimeWindowMs;
+    LOGGER.info("Initialize workload for source {} for time range [{}, {}]" , _srcKafkaCluster, from, current);
+    _lastRefreshTimeMillis = current;
+
+    List<String> topics = _helixMirrorMakerManager.getTopicLists();
+    Map<String, Integer> topicsPartitions = new HashMap<>();
+    for (String topic : topics) {
+      IdealState idealState = _helixMirrorMakerManager.getIdealStateForTopic(topic);
+      if (idealState != null) {
+        int partitions = idealState.getNumPartitions();
+        if (partitions > 0) {
+          topicsPartitions.put(topic, partitions);
+        }
+      }
+    }
+    for (long tsInMs = from; tsInMs <= current; tsInMs += c3TimeWindowMs) {
+      retrieveWorkload(tsInMs, topicsPartitions);
+    }
+    LOGGER.info("Finished initializing workload for source " + _srcKafkaCluster);
+  }
+
+  private void retrieveWorkload(long timeInMs, Map<String, Integer> topicsPartitions) throws IOException {
+    long current = System.currentTimeMillis();
+    Map<String, TopicWorkload> topicWorkloads = C3QueryUtils.retrieveTopicInRate(timeInMs,
         _helixMirrorMakerManager.getControllerConf().getC3Host(),
         _helixMirrorMakerManager.getControllerConf().getC3Port(), _srcKafkaCluster,
-        new ArrayList<String>(topicsPartitions.keySet()));
+        new ArrayList<>(topicsPartitions.keySet()));
     synchronized (_topicWorkloadMap) {
       for (Map.Entry<String, TopicWorkload> entry : topicWorkloads.entrySet()) {
-        Integer partitions = topicsPartitions.get(entry.getKey());
+        String topic = entry.getKey();
+        TopicWorkload workload = entry.getValue();
+        Integer partitions = topicsPartitions.get(topic);
         if (partitions != null) {
-          entry.getValue().setParitions(partitions);
-          _topicWorkloadMap.put(entry.getKey(), entry.getValue());
+          workload.setParitions(partitions);
+          LinkedList<TopicWorkload> tws = _topicWorkloadMap.get(topic);
+          if (tws == null) {
+            tws = new LinkedList<>();
+            _topicWorkloadMap.put(topic, tws);
+          }
+          if (tws.isEmpty() || tws.getLast().getLastUpdate() < workload.getLastUpdate()) {
+            tws.add(workload);
+          }
+          // purge the data points out of the valid window
+          while (!tws.isEmpty() && (current - tws.getFirst().getLastUpdate() > _maxValidTimeMillis)) {
+            tws.removeFirst();
+          }
         }
       }
     }

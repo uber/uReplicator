@@ -39,17 +39,17 @@ public class C3QueryUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(C3QueryUtils.class);
 
   private static final String DEFAULT_QUERY_PATH = "/chaperone3/rawmetrics?";
-  private static final long DEFAULT_QUERY_PERIOD_SEC = 3600;
+  private static final long DEFAULT_QUERY_PERIOD_SEC = 600;
   private static final long DEFAULT_QUERY_MINIMUM_END_TO_CURRENT_SEC = 600;
   private static final int DEFAULT_BATCH_TOPICS = 100;
 
-  public static Map<String, TopicWorkload> retrieveTopicInRate(String c3Host, int c3Port, String kafkaCluster,
-      List<String> topics) throws IOException {
+  public static Map<String, TopicWorkload> retrieveTopicInRate(long timeInMs, String c3Host, int c3Port,
+      String kafkaCluster, List<String> topics) throws IOException {
     Map<String, TopicWorkload> workloads = new HashMap<>();
     if (c3Port == 0) {
       return workloads;
     }
-    long endSec = (System.currentTimeMillis() / 1000 - DEFAULT_QUERY_MINIMUM_END_TO_CURRENT_SEC) / 600 * 600;
+    long endSec = (timeInMs / 1000 - DEFAULT_QUERY_MINIMUM_END_TO_CURRENT_SEC) / 600 * 600;
     long startSec = endSec - DEFAULT_QUERY_PERIOD_SEC;
     for (int i = 0; i < topics.size(); i += DEFAULT_BATCH_TOPICS) {
       StringBuilder query = new StringBuilder();
@@ -75,7 +75,6 @@ public class C3QueryUtils {
         LOGGER.info("Failed to parse C3 result: " + jsonStr);
         return;
       }
-      long now = System.currentTimeMillis();
       for (String topic : topics) {
         JSONArray arr = jsonObj.getJSONArray(topic);
         if (arr == null || arr.size() == 0) {
@@ -101,7 +100,7 @@ public class C3QueryUtils {
           continue;
         }
         TopicWorkload tw = new TopicWorkload(totalBytes / period, totalCount / period);
-        tw.setLastUpdate(now);
+        tw.setLastUpdate(endTimeSec * 1000);
         workloads.put(topic, tw);
       }
     } catch (Exception e) {
