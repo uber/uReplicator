@@ -15,8 +15,11 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.MetricRegistry;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
+import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -119,6 +122,7 @@ public class OffsetMonitor {
           logger.info("TopicList starts updating");
           updateTopicList();
           updateOffset();
+          updateOffsetMetrics();
         }
       }, delaySec, refreshIntervalInSec, TimeUnit.SECONDS);
     } else {
@@ -262,6 +266,37 @@ public class OffsetMonitor {
    */
   public Map<TopicAndPartition, TopicPartitionLag> getTopicToOffsetMap() {
     return topicPartitionToOffsetMap;
+  }
+
+  private static String getOffsetLagName(TopicAndPartition tp) {
+    return "OffsetMonitorLag." + tp.topic().replace('.', '_') + "." + tp.partition();
+  }
+
+  private void updateOffsetMetrics() {
+    MetricRegistry metricRegistry = HelixKafkaMirrorMakerMetricsReporter.get().getRegistry();
+    @SuppressWarnings("rawtypes")
+    Map<String, Gauge> gauges = metricRegistry.getGauges();
+    for (final TopicAndPartition topicPartition : topicPartitionToOffsetMap.keySet()) {
+      String metricName = getOffsetLagName(topicPartition);
+      if (!gauges.containsKey(metricName)) {
+        Gauge<Long> gauge = new Gauge<Long>() {
+          @Override
+          public Long getValue() {
+            TopicPartitionLag lag = topicPartitionToOffsetMap.get(topicPartition);
+            if (lag == null || lag.getLatestOffset() < 0 || lag.getCommitOffset() < 0
+                || lag.getLatestOffset() <= lag.getCommitOffset()) {
+              return 0L;
+            }
+            return lag.getLatestOffset() - lag.getCommitOffset();
+          }
+        };
+        try {
+          metricRegistry.register(metricName, gauge);
+        } catch (Exception e) {
+          logger.error("Error while registering lag metric " + metricName, e);
+        }
+      }
+    }
   }
 
 }
