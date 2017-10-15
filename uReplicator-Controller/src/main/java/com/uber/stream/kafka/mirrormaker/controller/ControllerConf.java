@@ -48,6 +48,7 @@ public class ControllerConf extends PropertiesConfiguration {
 
   private static final String SRC_KAFKA_ZK_PATH = "controller.srckafka.zkStr";
   private static final String DEST_KAFKA_ZK_PATH = "controller.destkafka.zkStr";
+  private static final String CONSUMER_COMMIT_ZK_PATH = "controller.consumerCommit.zkStr";
   private static final String ENABLE_AUTO_WHITELIST = "controller.enable.auto.whitelist";
   private static final String ENABLE_AUTO_TOPIC_EXPANSION =
       "controller.enable.auto.topic.expansion";
@@ -161,6 +162,10 @@ public class ControllerConf extends PropertiesConfiguration {
 
   public void setDestKafkaZkPath(String destKafkaZkPath) {
     setProperty(DEST_KAFKA_ZK_PATH, destKafkaZkPath);
+  }
+
+  public void setConsumerCommitZkPath(String consumerCommitZkPath) {
+    setProperty(CONSUMER_COMMIT_ZK_PATH, consumerCommitZkPath);
   }
 
   public void setEnableAutoWhitelist(String enableAutoWhitelist) {
@@ -312,6 +317,13 @@ public class ControllerConf extends PropertiesConfiguration {
 
   public String getDestKafkaZkPath() {
     return (String) getProperty(DEST_KAFKA_ZK_PATH);
+  }
+
+  public String getConsumerCommitZkPath() {
+    if (containsKey(CONSUMER_COMMIT_ZK_PATH)) {
+      return (String) getProperty(CONSUMER_COMMIT_ZK_PATH);
+    }
+    return "";
   }
 
   public Boolean getBackUpToGit() {
@@ -472,6 +484,7 @@ public class ControllerConf extends PropertiesConfiguration {
         .addOption("enableSrcKafkaValidation", true, "Enable Source Kafka Validation")
         .addOption("srcKafkaZkPath", true, "Source Kafka Zookeeper Path")
         .addOption("destKafkaZkPath", true, "Destination Kafka Zookeeper Path")
+        .addOption("consumerCommitZkPath", true, "Consumer commit Zookeeper Path")
         .addOption("autoRebalanceDelayInSeconds", true, "Auto Rebalance Delay in seconds")
         .addOption("refreshTimeInSeconds", true, "Controller Whitelist Manager Refresh Time in seconds")
         .addOption("initWaitTimeInSeconds", true, "Controller Init Delay in seconds")
@@ -563,6 +576,9 @@ public class ControllerConf extends PropertiesConfiguration {
     }
     if (cmd.hasOption("destKafkaZkPath")) {
       controllerConf.setDestKafkaZkPath(cmd.getOptionValue("destKafkaZkPath"));
+    }
+    if (cmd.hasOption("consumerCommitZkPath")) {
+      controllerConf.setConsumerCommitZkPath(cmd.getOptionValue("consumerCommitZkPath"));
     }
     if (cmd.hasOption("autoRebalanceDelayInSeconds")) {
       controllerConf.setAutoRebalanceDelayInSeconds(cmd.getOptionValue("autoRebalanceDelayInSeconds"));
