@@ -53,6 +53,7 @@ public class HelixMirrorMakerManager {
   private static final String ENABLE = "enable";
   private static final String DISABLE = "disable";
   private static final String AUTO_BALANCING = "AutoBalancing";
+  private static final String BLACKLIST_TAG = "blacklisted";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(HelixMirrorMakerManager.class);
 
@@ -152,7 +153,7 @@ public class HelixMirrorMakerManager {
     _helixAdmin.setConfig(
         new HelixConfigScopeBuilder(ConfigScopeProperty.RESOURCE).forCluster(_helixClusterName)
             .forResource(topicName).build(),
-        new HashMap<String, String>());
+        new HashMap<>());
   }
 
   public synchronized void expandTopicInMirrorMaker(TopicPartition topicPartitionInfo) {
@@ -227,6 +228,18 @@ public class HelixMirrorMakerManager {
     PropertyKey liveInstancePropertyKey = new Builder(_helixClusterName).liveInstances();
     List<LiveInstance> liveInstances = helixDataAccessor.getChildValues(liveInstancePropertyKey);
     return liveInstances;
+  }
+
+  public void blacklistInstance(String instanceName) {
+    _helixAdmin.addInstanceTag(_helixClusterName, instanceName, BLACKLIST_TAG);
+  }
+
+  public void whitelistInstance(String instanceName) {
+    _helixAdmin.removeInstanceTag(_helixClusterName, instanceName, BLACKLIST_TAG);
+  }
+
+  public List<String> getBlacklistedInstances() {
+    return _helixAdmin.getInstancesInClusterWithTag(_helixClusterName, BLACKLIST_TAG);
   }
 
   public String getHelixZkURL() {

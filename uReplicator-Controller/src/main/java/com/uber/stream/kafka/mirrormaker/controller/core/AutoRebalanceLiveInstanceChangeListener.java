@@ -63,6 +63,7 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
 
   private final Counter _numLiveInstances = new Counter();
   private final Counter _numIdleInstances = new Counter();
+  private final Counter _numBlacklistedInstances = new Counter();
   private final Meter _rebalanceRate = new Meter();
   private final Timer _rebalanceTimer = new Timer();
 
@@ -125,7 +126,8 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
               try {
                 if (_helixMirrorMakerManager.getWorkloadInfoRetriever().isInitialized()
                     && System.currentTimeMillis() - _lastRebalanceTimeMillis > 1000L * minIntervalInSeconds) {
-                  rebalanceCurrentCluster(_helixMirrorMakerManager.getCurrentLiveInstances(), false, false);
+                  rebalanceCurrentCluster(_helixMirrorMakerManager.getCurrentLiveInstances(),
+                      _helixMirrorMakerManager.getBlacklistedInstances(), false, false);
                 }
               } catch (Exception e) {
                 LOGGER.error("Got exception during periodically rebalancing the whole cluster! ", e);
@@ -142,6 +144,8 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
           _numLiveInstances);
       HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("worker.idleInstances",
           _numIdleInstances);
+      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("worker.blacklistedInstances",
+          _numBlacklistedInstances);
       HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("worker.rebalance.rate",
           _rebalanceRate);
       HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("worker.rebalance.timer",
@@ -159,7 +163,8 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
       @Override
       public void run() {
         try {
-          rebalanceCurrentCluster(_helixMirrorMakerManager.getCurrentLiveInstances(), true, false);
+          rebalanceCurrentCluster(_helixMirrorMakerManager.getCurrentLiveInstances(),
+              _helixMirrorMakerManager.getBlacklistedInstances(), true, false);
         } catch (Exception e) {
           LOGGER.error("Got exception during rebalance the whole cluster! ", e);
         }
@@ -172,7 +177,8 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
       if (!_helixMirrorMakerManager.getWorkloadInfoRetriever().isInitialized()) {
         return false;
       }
-      rebalanceCurrentCluster(_helixMirrorMakerManager.getCurrentLiveInstances(), false, true);
+      rebalanceCurrentCluster(_helixMirrorMakerManager.getCurrentLiveInstances(),
+          _helixMirrorMakerManager.getBlacklistedInstances(), false, true);
       return true;
     } catch (Exception e) {
       LOGGER.error("Got exception during manually triggering rebalance the whole cluster! ", e);
@@ -181,11 +187,12 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
   }
 
   private synchronized void rebalanceCurrentCluster(List<LiveInstance> liveInstances,
-      boolean checkInstanceChange, boolean forced) {
+      List<String> excludedInstances, boolean checkInstanceChange, boolean forced) {
     Context context = _rebalanceTimer.time();
     LOGGER.info("AutoRebalanceLiveInstanceChangeListener.rebalanceCurrentCluster() wakes up!");
     try {
       _numLiveInstances.inc(liveInstances.size() - _numLiveInstances.getCount());
+      _numBlacklistedInstances.inc(excludedInstances.size() - _numBlacklistedInstances.getCount());
       if (!_helixManager.isLeader()) {
         LOGGER.info("Not leader, do nothing!");
         return;
@@ -207,7 +214,7 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
         return;
       }
       Set<InstanceTopicPartitionHolder> newAssignment = rescaleInstanceToTopicPartitionMap(liveInstances,
-          instanceToTopicPartitionMap, unassignedTopicPartitions, checkInstanceChange, forced);
+          excludedInstances, instanceToTopicPartitionMap, unassignedTopicPartitions, checkInstanceChange, forced);
       if (newAssignment == null) {
         LOGGER.info("No assignment got changed, do nothing!");
         return;
@@ -227,13 +234,13 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
   }
 
   private Set<InstanceTopicPartitionHolder> rescaleInstanceToTopicPartitionMap(List<LiveInstance> liveInstances,
-      Map<String, Set<TopicPartition>> instanceToTopicPartitionMap, Set<TopicPartition> unassignedTopicPartitions,
-      boolean checkInstanceChange, boolean forced) {
-    Set<String> liveInstanceNames = getLiveInstanceName(liveInstances);
+      List<String> excludedInstances, Map<String, Set<TopicPartition>> instanceToTopicPartitionMap,
+      Set<TopicPartition> unassignedTopicPartitions, boolean checkInstanceChange, boolean forced) {
+    Set<String> liveInstanceNames = getLiveInstanceName(liveInstances, excludedInstances);
+    // removedInstances contains the excludedInstances that currently have workload too
     Set<String> removedInstances = getRemovedInstanceSet(liveInstanceNames, instanceToTopicPartitionMap.keySet());
 
     Set<String> idleInstances = getIdleInstanceSet(liveInstanceNames, instanceToTopicPartitionMap);
-    _numIdleInstances.inc(idleInstances.size() - _numIdleInstances.getCount());
     int numIdleInstancesToAssign;
     if (_maxWorkingInstances == 0) {
       numIdleInstancesToAssign = idleInstances.size();
@@ -246,16 +253,23 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
       }
     }
 
+    if (numIdleInstancesToAssign > 0) {
+      _numIdleInstances.inc(idleInstances.size() - numIdleInstancesToAssign - _numIdleInstances.getCount());
+    } else {
+      _numIdleInstances.inc(idleInstances.size() - _numIdleInstances.getCount());
+    }
+
     if (!forced && numIdleInstancesToAssign <= 0 && checkInstanceChange && removedInstances.isEmpty()
         && (_maxWorkingInstances <= 0 || _maxWorkingInstances >= instanceToTopicPartitionMap.size())) {
       // no instance change
       return null;
     }
 
-    LOGGER.info("Trying to rescale cluster with " + liveInstanceNames.size() + " live instances, using "
-        + numIdleInstancesToAssign + " out of " + idleInstances.size()
-        + " idle instances, and removed instances - " + Arrays.toString(removedInstances.toArray(new String[0]))
-        + " for unassigned partitions: " + unassignedTopicPartitions);
+    LOGGER.info("Trying to rescale cluster with " + liveInstanceNames.size() + " live instances ("
+        + excludedInstances.size() + " excluded - " + excludedInstances + "), using " + numIdleInstancesToAssign
+        + " out of " + idleInstances.size() + " idle instances, and removed " + removedInstances.size()
+        + " instances - " + Arrays.toString(removedInstances.toArray(new String[0])) + " for unassigned partitions: "
+        + unassignedTopicPartitions);
     Set<InstanceTopicPartitionHolder> instances = new HashSet<>();
     List<TopicPartition> tpiNeedsToBeAssigned = new ArrayList<TopicPartition>();
     tpiNeedsToBeAssigned.addAll(unassignedTopicPartitions);
@@ -312,6 +326,12 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     }
 
     if (balancePartitions(instances, tpiNeedsToBeAssigned, forced)) {
+      assignmentChanged = true;
+    }
+
+    // add empty task for the removed/excluded instances
+    for (String ri : removedInstances) {
+      instances.add(new InstanceTopicPartitionHolder(ri));
       assignmentChanged = true;
     }
     return assignmentChanged ? instances : null;
@@ -678,10 +698,12 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     return overloaded;
   }
 
-  private Set<String> getLiveInstanceName(List<LiveInstance> liveInstances) {
+  private Set<String> getLiveInstanceName(List<LiveInstance> liveInstances, List<String> excludedInstances) {
     Set<String> liveInstanceNames = new HashSet<>();
     for (LiveInstance liveInstance : liveInstances) {
-      liveInstanceNames.add(liveInstance.getInstanceName());
+      if (!excludedInstances.contains(liveInstance.getInstanceName())) {
+        liveInstanceNames.add(liveInstance.getInstanceName());
+      }
     }
     return liveInstanceNames;
   }

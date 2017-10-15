@@ -53,6 +53,10 @@ public class InstanceTopicPartitionHolder {
     _topicPartitionSet.remove(topicPartitionInfo);
   }
 
+  public void clearTopicPartitions() {
+    _topicPartitionSet.clear();
+  }
+
   public TopicWorkload totalWorkload(WorkloadInfoRetriever infoRetriever, ITopicWorkloadWeighter weighter) {
     TopicWorkload total = new TopicWorkload(0, 0, 0);
     for (TopicPartition part : _topicPartitionSet) {
