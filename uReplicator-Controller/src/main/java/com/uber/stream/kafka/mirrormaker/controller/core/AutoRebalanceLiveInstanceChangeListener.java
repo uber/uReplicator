@@ -648,7 +648,7 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
    */
   private long getLagTime(TopicPartition tp) {
     TopicPartitionLag tpl = _helixMirrorMakerManager.getOffsetMonitor().getTopicPartitionOffset(tp);
-    if (tpl == null || tpl.getLatestOffset() < 0 || tpl.getCommitOffset() < 0
+    if (tpl == null || tpl.getLatestOffset() <= 0 || tpl.getCommitOffset() <= 0
         || System.currentTimeMillis() - tpl.getTimeStamp() > _offsetMaxValidTimeMillis) {
       return 0;
     }

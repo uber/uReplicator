@@ -327,7 +327,7 @@ public class OffsetMonitor {
           @Override
           public Long getValue() {
             TopicPartitionLag lag = topicPartitionToOffsetMap.get(topicPartition);
-            if (lag == null || lag.getLatestOffset() < 0 || lag.getCommitOffset() < 0
+            if (lag == null || lag.getLatestOffset() <= 0 || lag.getCommitOffset() <= 0
                 || lag.getLatestOffset() <= lag.getCommitOffset()) {
               return 0L;
             }
@@ -368,7 +368,7 @@ public class OffsetMonitor {
     List<TopicAndPartition> tps = new ArrayList<>();
     for (Map.Entry<TopicAndPartition, TopicPartitionLag> entry : noProgressMap.entrySet()) {
       TopicPartitionLag currentLag = topicPartitionToOffsetMap.get(entry.getKey());
-      if (currentLag == null || currentLag.getCommitOffset() < 0 || currentLag.getLatestOffset() < 0
+      if (currentLag == null || currentLag.getCommitOffset() <= 0 || currentLag.getLatestOffset() <= 0
           || currentLag.getLatestOffset() <= currentLag.getCommitOffset()) {
         continue;
       }
