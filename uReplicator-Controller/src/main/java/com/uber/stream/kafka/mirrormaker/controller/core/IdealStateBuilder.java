@@ -81,8 +81,11 @@ public class IdealStateBuilder {
     String zkString = controllerConf.getConsumerCommitZkPath().isEmpty() ?
         controllerConf.getSrcKafkaZkPath() : controllerConf.getConsumerCommitZkPath();
     ZkClient zkClient = new ZkClient(zkString, 30000, 30000, ZKStringSerializer$.MODULE$);
-    String consumerOffsetPath = "/consumers/" + controllerConf.getGroupId() + "/offsets/" + topicName + "/";
-
+    String topicPath = "/consumers/" + controllerConf.getGroupId() + "/offsets/" + topicName;
+    if (!zkClient.exists(topicPath)) {
+      zkClient.createPersistent(topicPath);
+    }
+    String consumerOffsetPath = topicPath + "/";
     // Assign new partitions to as many workers as possible
     List<InstanceTopicPartitionHolder> instancesForNewPartitions = new ArrayList<>();
     while (instancesForNewPartitions.size() < newNumTopicPartitions - numOldPartitions
