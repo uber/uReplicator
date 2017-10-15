@@ -19,6 +19,7 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
 import com.codahale.metrics.Timer.Context;
+import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import com.uber.stream.kafka.mirrormaker.controller.utils.HelixUtils;
 import java.util.ArrayList;
@@ -72,33 +73,35 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
 
   // if the difference between latest offset and commit offset is less than this
   // threshold, it is not considered as lag
-  private static final long DEFAULT_MIN_LAG_OFFSET = 100000;
-  private long _minLagOffset = DEFAULT_MIN_LAG_OFFSET;
+  private final long _minLagOffset;
 
   // if the difference between latest offset and commit offset is less than this
   // threshold in terms of ingestion time, it is not considered as lag
-  private static final long DEFAULT_MIN_LAG_TIME_SEC = 300;
-  private long _minLagTimeSec = DEFAULT_MIN_LAG_TIME_SEC;
+  private final long _minLagTimeSec;
 
   // the maximum ratio of instances can be used as dedicated for lagging partitions
   private final double _maxDedicatedInstancesRatio;
 
   // the maximum valid time for offset
-  private long _offsetMaxValidTimeMillis = 1800 * 1000L;
+  private final long _offsetMaxValidTimeMillis;
 
   private long _lastRebalanceTimeMillis = 0;
 
   public AutoRebalanceLiveInstanceChangeListener(HelixMirrorMakerManager helixMirrorMakerManager,
-      HelixManager helixManager, int delayedAutoReblanceTimeInSeconds, int autoRebalancePeriodInSeconds,
-      final int autoRebalanceMinIntervalInSeconds, double overloadedRatioThreshold, double maxDedicatedInstancesRatio) {
+      HelixManager helixManager, ControllerConf controllerConf) {
     _helixMirrorMakerManager = helixMirrorMakerManager;
     _helixManager = helixManager;
-    _delayedAutoReblanceTimeInSeconds = delayedAutoReblanceTimeInSeconds;
-    _overloadedRatioThreshold = overloadedRatioThreshold;
-    _maxDedicatedInstancesRatio = maxDedicatedInstancesRatio;
+    _delayedAutoReblanceTimeInSeconds = controllerConf.getAutoRebalanceDelayInSeconds();
+    _overloadedRatioThreshold = controllerConf.getAutoRebalanceWorkloadRatioThreshold();
+    _maxDedicatedInstancesRatio = controllerConf.getMaxDedicatedLaggingInstancesRatio();
+    _minLagTimeSec = controllerConf.getAutoRebalanceMinLagTimeInSeconds();
+    _minLagOffset = controllerConf.getAutoRebalanceMinLagOffset();
+    _offsetMaxValidTimeMillis = TimeUnit.SECONDS.toMillis(controllerConf.getAutoRebalanceMaxOffsetInfoValidInSeconds());
     LOGGER.info("Delayed Auto Reblance Time In Seconds: {}", _delayedAutoReblanceTimeInSeconds);
     registerMetrics();
 
+    int autoRebalancePeriodInSeconds = controllerConf.getAutoRebalancePeriodInSeconds();
+    final int minIntervalInSeconds = controllerConf.getAutoRebalanceMinIntervalInSeconds();
     if (autoRebalancePeriodInSeconds > 0) {
       LOGGER.info("Trying to schedule auto rebalancing at rate " + autoRebalancePeriodInSeconds + " seconds");
       _delayedScheuler.scheduleWithFixedDelay(
@@ -107,16 +110,15 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
             public void run() {
               try {
                 if (_helixMirrorMakerManager.getWorkloadInfoRetriever().isInitialized()
-                    && System.currentTimeMillis() - _lastRebalanceTimeMillis
-                    > 1000L * autoRebalanceMinIntervalInSeconds) {
+                    && System.currentTimeMillis() - _lastRebalanceTimeMillis > 1000L * minIntervalInSeconds) {
                   rebalanceCurrentCluster(_helixMirrorMakerManager.getCurrentLiveInstances(), false, false);
                 }
               } catch (Exception e) {
                 LOGGER.error("Got exception during periodically rebalancing the whole cluster! ", e);
               }
             }
-          }, Math.max(_delayedAutoReblanceTimeInSeconds, autoRebalancePeriodInSeconds),
-          autoRebalancePeriodInSeconds, TimeUnit.SECONDS);
+          }, Math.max(_delayedAutoReblanceTimeInSeconds, autoRebalancePeriodInSeconds), autoRebalancePeriodInSeconds,
+          TimeUnit.SECONDS);
     }
   }
 
