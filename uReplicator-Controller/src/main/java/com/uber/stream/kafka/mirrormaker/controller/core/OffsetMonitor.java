@@ -312,6 +312,10 @@ public class OffsetMonitor {
     return "OffsetMonitorLag." + tp.topic().replace('.', '_') + "." + tp.partition();
   }
 
+  Map<TopicAndPartition, TopicPartitionLag> getNoProgressTopicToOffsetMap() {
+    return noProgressMap;
+  }
+
   private synchronized void updateOffsetMetrics() {
     MetricRegistry metricRegistry = HelixKafkaMirrorMakerMetricsReporter.get().getRegistry();
     @SuppressWarnings("rawtypes")

@@ -27,13 +27,16 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import kafka.common.TopicAndPartition;
 import org.apache.helix.HelixAdmin;
 import org.apache.helix.HelixManager;
 import org.apache.helix.LiveInstanceChangeListener;
@@ -87,6 +90,11 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
 
   private long _lastRebalanceTimeMillis = 0;
 
+  private final int _maxStuckPartitionMovements;
+  private final long _movePartitionAfterStuckMillis;
+
+  private Map<TopicPartition, List<Long>> _movePartitionHistoryMap = new HashMap<>();
+
   public AutoRebalanceLiveInstanceChangeListener(HelixMirrorMakerManager helixMirrorMakerManager,
       HelixManager helixManager, ControllerConf controllerConf) {
     _helixMirrorMakerManager = helixMirrorMakerManager;
@@ -94,6 +102,8 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     _delayedAutoReblanceTimeInSeconds = controllerConf.getAutoRebalanceDelayInSeconds();
     _overloadedRatioThreshold = controllerConf.getAutoRebalanceWorkloadRatioThreshold();
     _maxDedicatedInstancesRatio = controllerConf.getMaxDedicatedLaggingInstancesRatio();
+    _maxStuckPartitionMovements = controllerConf.getMaxStuckPartitionMovements();
+    _movePartitionAfterStuckMillis = TimeUnit.MINUTES.toMillis(controllerConf.getMoveStuckPartitionAfterMinutes());
     _minLagTimeSec = controllerConf.getAutoRebalanceMinLagTimeInSeconds();
     _minLagOffset = controllerConf.getAutoRebalanceMinLagOffset();
     _offsetMaxValidTimeMillis = TimeUnit.SECONDS.toMillis(controllerConf.getAutoRebalanceMaxOffsetInfoValidInSeconds());
@@ -196,8 +206,8 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
         LOGGER.info("No assignment got changed, do nothing!");
         return;
       }
+      LOGGER.info("New assignment: " + newAssignment);
       _lastRebalanceTimeMillis = System.currentTimeMillis();
-      LOGGER.info("Trying to fetch IdealStatesMap from current assignment!");
       Map<String, IdealState> idealStatesFromAssignment =
           HelixUtils.getIdealStatesFromAssignment(newAssignment);
       LOGGER.info("Trying to assign new IdealStatesMap!");
@@ -214,9 +224,9 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
       Map<String, Set<TopicPartition>> instanceToTopicPartitionMap, Set<TopicPartition> unassignedTopicPartitions,
       boolean checkInstanceChange, boolean forced) {
     Set<String> newInstances = getAddedInstanceSet(getLiveInstanceName(liveInstances),
-            instanceToTopicPartitionMap.keySet());
+        instanceToTopicPartitionMap.keySet());
     Set<String> removedInstances = getRemovedInstanceSet(getLiveInstanceName(liveInstances),
-            instanceToTopicPartitionMap.keySet());
+        instanceToTopicPartitionMap.keySet());
     if (!forced && checkInstanceChange && newInstances.isEmpty() && removedInstances.isEmpty()) {
       return null;
     }
@@ -254,11 +264,96 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     }
   }
 
+  /**
+   * Move stuck partitions to other instances.
+   *
+   * @param instances non-empty set of current instances
+   * @return the partitions that have been moved. Null if no movement happens.
+   */
+  private Set<TopicPartition> moveStuckPartitions(Set<InstanceTopicPartitionHolder> instances) {
+    if (_maxStuckPartitionMovements <= 0 || _movePartitionAfterStuckMillis <= 0) {
+      return null;
+    }
+
+    Set<TopicPartition> allStuckPartitions = getStuckTopicPartitions();
+    if (allStuckPartitions.isEmpty()) {
+      _movePartitionHistoryMap.clear();
+      return null;
+    }
+
+    // clean up move history if the partition has progress
+    Iterator<Entry<TopicPartition, List<Long>>> iter = _movePartitionHistoryMap.entrySet().iterator();
+    while (iter.hasNext()) {
+      Entry<TopicPartition, List<Long>> entry = iter.next();
+      if (!allStuckPartitions.contains(entry.getKey())) {
+        iter.remove();
+      }
+    }
+
+    // find the corresponding stuck instances
+    Set<TopicPartition> stuckPartitionsToMove = new HashSet<>();
+    TreeSet<InstanceTopicPartitionHolder> nonStuckInstances = new TreeSet<>(InstanceTopicPartitionHolder
+        .getTotalWorkloadComparator(_helixMirrorMakerManager.getWorkloadInfoRetriever(), null));
+    long now = System.currentTimeMillis();
+    for (InstanceTopicPartitionHolder itph : instances) {
+      boolean isStuckInstance = false;
+      for (TopicPartition tp : allStuckPartitions) {
+        if (itph.getServingTopicPartitionSet().contains(tp)) {
+          isStuckInstance = true;
+          List<Long> moveHistory = _movePartitionHistoryMap.get(tp);
+          if (moveHistory == null) {
+            moveHistory = new ArrayList<>();
+            _movePartitionHistoryMap.put(tp, moveHistory);
+          } else if (moveHistory.size() >= _maxStuckPartitionMovements) {
+            LOGGER.info("moveStuckPartitions: Skip moving stuck partition " + tp + " from "
+                + itph.getInstanceName() + " because moving reaches upper bound of " + _maxStuckPartitionMovements);
+            continue;
+          } else if (!moveHistory.isEmpty()
+              && moveHistory.get(moveHistory.size() - 1) + _movePartitionAfterStuckMillis > now) {
+            LOGGER.info("moveStuckPartitions: Skip moving stuck partition " + tp + " from "
+                + itph.getInstanceName() + " because it was moved recently");
+            continue;
+          }
+          LOGGER.info("moveStuckPartitions: Trying to move stuck partition " + tp + " from " + itph.getInstanceName());
+          moveHistory.add(now);
+          itph.removeTopicPartition(tp);
+          stuckPartitionsToMove.add(tp);
+        }
+      }
+      if (!isStuckInstance) {
+        nonStuckInstances.add(itph);
+      }
+    }
+
+    if (stuckPartitionsToMove.isEmpty()) {
+      LOGGER.info("moveStuckPartitions: No stuck partitions can be moved");
+      return null;
+    }
+
+    // try to move the partitions to non-stuck instances
+    if (nonStuckInstances.isEmpty()) {
+      // No non-stuck instance. Shuffle the stuck partitions across all
+      // instances but some partitions may still stay at the same instance
+      LOGGER.info("moveStuckPartitions: All instances are stuck. Shuffle the stuck partitions instead");
+      nonStuckInstances.addAll(instances);
+    }
+    assignPartitions(nonStuckInstances, new ArrayList<>(stuckPartitionsToMove));
+
+    return stuckPartitionsToMove;
+  }
+
   private boolean balancePartitions(Set<InstanceTopicPartitionHolder> instances,
       List<TopicPartition> partitionsToBeAssigned, boolean forced) {
     if (instances.isEmpty()) {
       LOGGER.error("No workers to take " + partitionsToBeAssigned.size() + " partitions");
       return false;
+    }
+
+    boolean assignmentChanged = false;
+
+    Set<TopicPartition> stuckPartitionsMoved = moveStuckPartitions(instances);
+    if (stuckPartitionsMoved != null && !stuckPartitionsMoved.isEmpty()) {
+      assignmentChanged = true;
     }
 
     // collect lag information for all topic partitions
@@ -297,7 +392,10 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     List<TopicPartition> reassignedLaggingPartitions = removeOverloadedParitions(instancesSortedByLag,
         laggingPartitions, null, true, laggingPartitionWeighter);
     laggingPartitions.addAll(reassignedLaggingPartitions);
-    boolean assignmentChanged = assignPartitions(instancesSortedByLag, laggingPartitions);
+
+    if (assignPartitions(instancesSortedByLag, laggingPartitions)) {
+      assignmentChanged = true;
+    }
 
     // dedicated instances serve only lagging partitions
     int maxDedicated = (int) (instances.size() * _maxDedicatedInstancesRatio);
@@ -348,8 +446,14 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
       }
     };
 
+    Set<TopicPartition> pinnedPartitions = new HashSet<>();
+    pinnedPartitions.addAll(lagTimeMap.keySet());
+    if (stuckPartitionsMoved != null) {
+      pinnedPartitions.addAll(stuckPartitionsMoved);
+    }
+
     List<TopicPartition> reassignedPartitions = removeOverloadedParitions(orderedInstances,
-        nonLaggingPartitions, lagTimeMap.keySet(), forced, adjustedWeighter);
+        nonLaggingPartitions, pinnedPartitions, forced, adjustedWeighter);
     nonLaggingPartitions.addAll(reassignedPartitions);
     if (assignPartitions(orderedInstances, nonLaggingPartitions)) {
       assignmentChanged = true;
@@ -562,6 +666,28 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
       return Math.round(lagTime);
     }
     return 0;
+  }
+
+  /**
+   * Get stuck topic partitions via offset manager.
+   *
+   * @return the topic partitions that have been stuck for at least _movePartitionAfterStuckMillis.
+   */
+  private Set<TopicPartition> getStuckTopicPartitions() {
+    Set<TopicPartition> partitions = new HashSet<>();
+    if (_movePartitionAfterStuckMillis <= 0) {
+      return partitions;
+    }
+    Map<TopicAndPartition, TopicPartitionLag> noProgressMap = _helixMirrorMakerManager.getOffsetMonitor()
+        .getNoProgressTopicToOffsetMap();
+    long now = System.currentTimeMillis();
+    for (Map.Entry<TopicAndPartition, TopicPartitionLag> entry : noProgressMap.entrySet()) {
+      TopicPartitionLag lastLag = entry.getValue();
+      if (now - lastLag.getTimeStamp() > _movePartitionAfterStuckMillis) {
+        partitions.add(new TopicPartition(entry.getKey().topic(), entry.getKey().partition()));
+      }
+    }
+    return partitions;
   }
 
 }
