@@ -65,7 +65,7 @@ public class HelixKafkaMirrorMakerMetricsReporter {
     _registry = new MetricRegistry();
     final Boolean enabledGraphiteReporting = true;
     final Boolean enabledJmxReporting = true;
-    final long graphiteReportFreqSec = 10L;
+    final long graphiteReportFreqSec = 60L;
 
     // Init jmx reporter
     if (enabledJmxReporting) {
