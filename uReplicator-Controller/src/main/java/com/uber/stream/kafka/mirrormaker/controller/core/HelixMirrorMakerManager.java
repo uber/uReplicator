@@ -86,13 +86,8 @@ public class HelixMirrorMakerManager {
     _helixZkManager = HelixSetupUtils.setup(_helixClusterName, _helixZkURL, _instanceId);
     _helixAdmin = _helixZkManager.getClusterManagmentTool();
     LOGGER.info("Trying to register AutoRebalanceLiveInstanceChangeListener");
-    _autoRebalanceLiveInstanceChangeListener =
-        new AutoRebalanceLiveInstanceChangeListener(this, _helixZkManager,
-            _controllerConf.getAutoRebalanceDelayInSeconds(),
-            _controllerConf.getAutoRebalancePeriodInSeconds(),
-            _controllerConf.getAutoRebalanceMinIntervalInSeconds(),
-            _controllerConf.getAutoRebalanceWorkloadRatioThreshold(),
-            _controllerConf.getMaxDedicatedLaggingInstancesRatio());
+    _autoRebalanceLiveInstanceChangeListener = new AutoRebalanceLiveInstanceChangeListener(this, _helixZkManager,
+        _controllerConf);
     updateCurrentServingInstance();
     _workloadInfoRetriever.start();
     _offsetMonitor.start();

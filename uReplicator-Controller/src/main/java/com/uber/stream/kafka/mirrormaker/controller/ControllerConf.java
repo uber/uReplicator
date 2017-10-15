@@ -91,6 +91,18 @@ public class ControllerConf extends PropertiesConfiguration {
 
   private static final int DEFAULT_AUTO_REBALANCE_MIN_INTERVAL_IN_SECONDS = 600;
 
+  private static final String AUTO_REBALANCE_MIN_LAG_TIME_IN_SECONDS = "controller.auto.rebalance.min.lag.in.seconds";
+
+  private static final int DEFAULT_AUTO_REBALANCE_MIN_LAG_TIME_IN_SECONDS = 900;
+
+  private static final String AUTO_REBALANCE_MIN_LAG_OFFSET = "controller.auto.rebalance.min.lag.offset";
+
+  private static final long DEFAULT_AUTO_REBALANCE_MIN_LAG_OFFSET = 100000;
+
+  private static final String AUTO_REBALANCE_MAX_OFFSET_INFO_VALID_IN_SECONDS = "controller.auto.rebalance.max.offset.valid.in.seconds";
+
+  private static final int DEFAULT_AUTO_REBALANCE_MAX_OFFSET_INFO_VALID_IN_SECONDS = 1800;
+
   private static final String AUTO_REBALANCE_WORKLOAD_RATIO_THRESHOLD =
       "controller.auto.rebalance.workload.ratio.threshold";
 
@@ -226,6 +238,19 @@ public class ControllerConf extends PropertiesConfiguration {
 
   public void setAutoRebalanceMinIntervalInSeconds(String autoRebalanceMinIntervalInSeconds) {
     setProperty(AUTO_REBALANCE_MIN_INTERVAL_IN_SECONDS, Integer.parseInt(autoRebalanceMinIntervalInSeconds));
+  }
+
+  public void setAutoRebalanceMinLagTimeInSeconds(String autoRebalanceMinLagTimeInSeconds) {
+    setProperty(AUTO_REBALANCE_MIN_LAG_TIME_IN_SECONDS, Integer.parseInt(autoRebalanceMinLagTimeInSeconds));
+  }
+
+  public void setAutoRebalanceMinLagOffset(String autoRebalanceMinLagOffset) {
+    setProperty(AUTO_REBALANCE_MIN_LAG_OFFSET, Long.parseLong(autoRebalanceMinLagOffset));
+  }
+
+  public void setAutoRebalanceMaxOffsetInfoValidInSeconds(String autoRebalanceMaxOffsetInfoValidInSeconds) {
+    setProperty(AUTO_REBALANCE_MAX_OFFSET_INFO_VALID_IN_SECONDS,
+        Integer.parseInt(autoRebalanceMaxOffsetInfoValidInSeconds));
   }
 
   public void setAutoRebalanceWorkloadRatioThreshold(String autoRebalanceWorkloadRatioThreshold) {
@@ -370,6 +395,30 @@ public class ControllerConf extends PropertiesConfiguration {
     }
   }
 
+  public Integer getAutoRebalanceMinLagTimeInSeconds() {
+    if (containsKey(AUTO_REBALANCE_MIN_LAG_TIME_IN_SECONDS)) {
+      return (Integer) getProperty(AUTO_REBALANCE_MIN_LAG_TIME_IN_SECONDS);
+    } else {
+      return DEFAULT_AUTO_REBALANCE_MIN_LAG_TIME_IN_SECONDS;
+    }
+  }
+
+  public Long getAutoRebalanceMinLagOffset() {
+    if (containsKey(AUTO_REBALANCE_MIN_LAG_OFFSET)) {
+      return (Long) getProperty(AUTO_REBALANCE_MIN_LAG_OFFSET);
+    } else {
+      return DEFAULT_AUTO_REBALANCE_MIN_LAG_OFFSET;
+    }
+  }
+
+  public Integer getAutoRebalanceMaxOffsetInfoValidInSeconds() {
+    if (containsKey(AUTO_REBALANCE_MAX_OFFSET_INFO_VALID_IN_SECONDS)) {
+      return (Integer) getProperty(AUTO_REBALANCE_MAX_OFFSET_INFO_VALID_IN_SECONDS);
+    } else {
+      return DEFAULT_AUTO_REBALANCE_MAX_OFFSET_INFO_VALID_IN_SECONDS;
+    }
+  }
+
   public Double getAutoRebalanceWorkloadRatioThreshold() {
     if (containsKey(AUTO_REBALANCE_WORKLOAD_RATIO_THRESHOLD)) {
       return (Double) getProperty(AUTO_REBALANCE_WORKLOAD_RATIO_THRESHOLD);
@@ -490,6 +539,11 @@ public class ControllerConf extends PropertiesConfiguration {
         .addOption("initWaitTimeInSeconds", true, "Controller Init Delay in seconds")
         .addOption("autoRebalancePeriodInSeconds", true, "Period to try auto rebalancing in seconds")
         .addOption("autoRebalanceMinIntervalInSeconds", true, "Minimum interval between auto rebalancing in seconds")
+        .addOption("autoRebalanceMinLagTimeInSeconds", true,
+            "Minimum time in seconds to be considered as lag to trigger rebalancing")
+        .addOption("autoRebalanceMinLagOffset", true, "Minimum offset to be considered as lag to trigger rebalancing")
+        .addOption("autoRebalanceMaxOffsetInfoValidInSeconds", true,
+            "Maximum time in seconds for the offset information to be considered as still valid")
         .addOption("workloadRefreshPeriodInSeconds", true, "The period to refresh workload information in seconds")
         .addOption("autoRebalanceWorkloadRatioThreshold", true,
             "The ratio of workload compared to average for auto workload rebalance")
@@ -605,6 +659,24 @@ public class ControllerConf extends PropertiesConfiguration {
     } else {
       controllerConf.setAutoRebalanceMinIntervalInSeconds(
           Integer.toString(DEFAULT_AUTO_REBALANCE_MIN_INTERVAL_IN_SECONDS));
+    }
+    if (cmd.hasOption("autoRebalanceMinLagTimeInSeconds")) {
+      controllerConf.setAutoRebalanceMinLagTimeInSeconds(cmd.getOptionValue("autoRebalanceMinLagTimeInSeconds"));
+    } else {
+      controllerConf.setAutoRebalanceMinLagTimeInSeconds(
+          Integer.toString(DEFAULT_AUTO_REBALANCE_MIN_LAG_TIME_IN_SECONDS));
+    }
+    if (cmd.hasOption("autoRebalanceMinLagOffset")) {
+      controllerConf.setAutoRebalanceMinLagOffset(cmd.getOptionValue("autoRebalanceMinLagOffset"));
+    } else {
+      controllerConf.setAutoRebalanceMinLagOffset(Long.toString(DEFAULT_AUTO_REBALANCE_MIN_LAG_OFFSET));
+    }
+    if (cmd.hasOption("autoRebalanceMaxOffsetInfoValidInSeconds")) {
+      controllerConf.setAutoRebalanceMaxOffsetInfoValidInSeconds(
+          cmd.getOptionValue("autoRebalanceMaxOffsetInfoValidInSeconds"));
+    } else {
+      controllerConf.setAutoRebalanceMaxOffsetInfoValidInSeconds(
+          Integer.toString(DEFAULT_AUTO_REBALANCE_MAX_OFFSET_INFO_VALID_IN_SECONDS));
     }
     if (cmd.hasOption("workloadRefreshPeriodInSeconds")) {
       controllerConf.setWorkloadRefreshPeriodInSeconds(cmd.getOptionValue("workloadRefreshPeriodInSeconds"));
