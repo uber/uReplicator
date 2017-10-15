@@ -15,14 +15,21 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
+import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import java.util.PriorityQueue;
+import kafka.utils.ZKStringSerializer$;
+import org.I0Itec.zkclient.ZkClient;
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.builder.CustomModeISBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Handle idealStates changes for new topic added and expanded.
  */
 public class IdealStateBuilder {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(IdealStateBuilder.class);
 
   public static IdealState buildCustomIdealStateFor(String topicName,
       int numTopicPartitions,
@@ -48,7 +55,7 @@ public class IdealStateBuilder {
   }
 
   public static IdealState expandCustomRebalanceModeIdealStateFor(IdealState oldIdealState,
-      String topicName, int newNumTopicPartitions,
+      String topicName, int newNumTopicPartitions, ControllerConf controllerConf,
       PriorityQueue<InstanceTopicPartitionHolder> instanceToNumServingTopicPartitionMap) {
     final CustomModeISBuilder customModeIdealStateBuilder = new CustomModeISBuilder(topicName);
 
@@ -68,14 +75,27 @@ public class IdealStateBuilder {
         // No worker added into the cluster.
       }
     }
+
+    String zkString = controllerConf.getConsumerCommitZkPath().isEmpty() ?
+        controllerConf.getSrcKafkaZkPath() : controllerConf.getConsumerCommitZkPath();
+    ZkClient zkClient = new ZkClient(zkString, 30000, 30000, ZKStringSerializer$.MODULE$);
+    String consumerOffsetPath = "/consumers/" + controllerConf.getGroupId() + "/offsets/" + topicName + "/";
+
     // TODO: avoid to assign to the same worker
     for (int i = numOldPartitions; i < newNumTopicPartitions; ++i) {
+      Object obj = zkClient.readData(consumerOffsetPath + i, true);
+      if (obj == null) {
+        zkClient.createPersistent(consumerOffsetPath + i, "0");
+        LOGGER.info("Create new zk node " + zkString + consumerOffsetPath + i);
+      }
+
       InstanceTopicPartitionHolder liveInstance = instanceToNumServingTopicPartitionMap.poll();
       customModeIdealStateBuilder.assignInstanceAndState(Integer.toString(i),
           liveInstance.getInstanceName(), "ONLINE");
       liveInstance.addTopicPartition(new TopicPartition(topicName, i));
       instanceToNumServingTopicPartitionMap.add(liveInstance);
     }
+    zkClient.close();
     return customModeIdealStateBuilder.build();
   }
 
