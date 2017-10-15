@@ -62,8 +62,11 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
   private final HelixManager _helixManager;
 
   private final Counter _numLiveInstances = new Counter();
+  private final Counter _numIdleInstances = new Counter();
   private final Meter _rebalanceRate = new Meter();
   private final Timer _rebalanceTimer = new Timer();
+
+  private final int _maxWorkingInstances;
 
   private final int _delayedAutoReblanceTimeInSeconds;
 
@@ -99,6 +102,7 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
       HelixManager helixManager, ControllerConf controllerConf) {
     _helixMirrorMakerManager = helixMirrorMakerManager;
     _helixManager = helixManager;
+    _maxWorkingInstances = controllerConf.getMaxWorkingInstances();
     _delayedAutoReblanceTimeInSeconds = controllerConf.getAutoRebalanceDelayInSeconds();
     _overloadedRatioThreshold = controllerConf.getAutoRebalanceWorkloadRatioThreshold();
     _maxDedicatedInstancesRatio = controllerConf.getMaxDedicatedLaggingInstancesRatio();
@@ -136,6 +140,8 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     try {
       HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("worker.liveInstances",
           _numLiveInstances);
+      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("worker.idleInstances",
+          _numIdleInstances);
       HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("worker.rebalance.rate",
           _rebalanceRate);
       HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("worker.rebalance.timer",
@@ -223,35 +229,92 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
   private Set<InstanceTopicPartitionHolder> rescaleInstanceToTopicPartitionMap(List<LiveInstance> liveInstances,
       Map<String, Set<TopicPartition>> instanceToTopicPartitionMap, Set<TopicPartition> unassignedTopicPartitions,
       boolean checkInstanceChange, boolean forced) {
-    Set<String> newInstances = getAddedInstanceSet(getLiveInstanceName(liveInstances),
-        instanceToTopicPartitionMap.keySet());
-    Set<String> removedInstances = getRemovedInstanceSet(getLiveInstanceName(liveInstances),
-        instanceToTopicPartitionMap.keySet());
-    if (!forced && checkInstanceChange && newInstances.isEmpty() && removedInstances.isEmpty()) {
-      return null;
-    }
-    LOGGER.info("Trying to rescale cluster with new instances - " + Arrays.toString(
-        newInstances.toArray(new String[0])) + " and removed instances - " + Arrays.toString(
-        removedInstances.toArray(new String[0])) + " for unassigned partitions: " + unassignedTopicPartitions);
-    Set<InstanceTopicPartitionHolder> instances = new HashSet<>();
-    List<TopicPartition> tpiNeedsToBeAssigned = new ArrayList<>();
-    tpiNeedsToBeAssigned.addAll(unassignedTopicPartitions);
-    for (String instanceName : instanceToTopicPartitionMap.keySet()) {
-      if (!removedInstances.contains(instanceName)) {
-        InstanceTopicPartitionHolder instance = new InstanceTopicPartitionHolder(instanceName);
-        instance.addTopicPartitions(instanceToTopicPartitionMap.get(instanceName));
-        instances.add(instance);
-      } else {
-        tpiNeedsToBeAssigned.addAll(instanceToTopicPartitionMap.get(instanceName));
+    Set<String> liveInstanceNames = getLiveInstanceName(liveInstances);
+    Set<String> removedInstances = getRemovedInstanceSet(liveInstanceNames, instanceToTopicPartitionMap.keySet());
+
+    Set<String> idleInstances = getIdleInstanceSet(liveInstanceNames, instanceToTopicPartitionMap);
+    _numIdleInstances.inc(idleInstances.size() - _numIdleInstances.getCount());
+    int numIdleInstancesToAssign;
+    if (_maxWorkingInstances == 0) {
+      numIdleInstancesToAssign = idleInstances.size();
+    } else {
+      numIdleInstancesToAssign = _maxWorkingInstances - (instanceToTopicPartitionMap.size() - removedInstances.size());
+      if (numIdleInstancesToAssign < 0) {
+        numIdleInstancesToAssign = 0;
+      } else if (numIdleInstancesToAssign > idleInstances.size()) {
+        numIdleInstancesToAssign = idleInstances.size();
       }
     }
-    for (String instanceName : newInstances) {
-      instances.add(new InstanceTopicPartitionHolder(instanceName));
+
+    if (!forced && numIdleInstancesToAssign <= 0 && checkInstanceChange && removedInstances.isEmpty()
+        && (_maxWorkingInstances <= 0 || _maxWorkingInstances >= instanceToTopicPartitionMap.size())) {
+      // no instance change
+      return null;
     }
-    if (balancePartitions(instances, tpiNeedsToBeAssigned, forced || !newInstances.isEmpty())) {
-      return instances;
+
+    LOGGER.info("Trying to rescale cluster with " + liveInstanceNames.size() + " live instances, using "
+        + numIdleInstancesToAssign + " out of " + idleInstances.size()
+        + " idle instances, and removed instances - " + Arrays.toString(removedInstances.toArray(new String[0]))
+        + " for unassigned partitions: " + unassignedTopicPartitions);
+    Set<InstanceTopicPartitionHolder> instances = new HashSet<>();
+    List<TopicPartition> tpiNeedsToBeAssigned = new ArrayList<TopicPartition>();
+    tpiNeedsToBeAssigned.addAll(unassignedTopicPartitions);
+
+    boolean assignmentChanged = false;
+    for (Map.Entry<String, Set<TopicPartition>> entry : instanceToTopicPartitionMap.entrySet()) {
+      String instanceName = entry.getKey();
+      if (entry.getValue().isEmpty()) {
+        // it is an idle instance, do nothing
+      } else if (!removedInstances.contains(instanceName)) {
+        // keep the instance assignment as it
+        InstanceTopicPartitionHolder instance = new InstanceTopicPartitionHolder(instanceName);
+        instance.addTopicPartitions(entry.getValue());
+        instances.add(instance);
+      } else if (!idleInstances.isEmpty() && numIdleInstancesToAssign > 0) {
+        // assign all the workload to another idle instance
+        String idleInstanceToAssign = idleInstances.iterator().next();
+        idleInstances.remove(idleInstanceToAssign);
+        numIdleInstancesToAssign--;
+        InstanceTopicPartitionHolder instance = new InstanceTopicPartitionHolder(idleInstanceToAssign);
+        instance.addTopicPartitions(entry.getValue());
+        instances.add(instance);
+        assignmentChanged = true;
+        LOGGER.info(
+            "Move workload from instance " + instanceName + " to " + idleInstanceToAssign + ": " + entry.getValue());
+      } else {
+        // assign the workload to all instances
+        tpiNeedsToBeAssigned.addAll(entry.getValue());
+      }
     }
-    return null;
+
+    if (_maxWorkingInstances > 0 && instances.size() > _maxWorkingInstances) {
+      // there are working instances more than the expected number, move them to idle pool
+      Iterator<InstanceTopicPartitionHolder> iter = instances.iterator();
+      while (instances.size() > _maxWorkingInstances && iter.hasNext()) {
+        InstanceTopicPartitionHolder itph = iter.next();
+        LOGGER.info("Move workload from instance " + itph.getInstanceName() + " to become idle: "
+            + itph.getServingTopicPartitionSet());
+        tpiNeedsToBeAssigned.addAll(itph.getServingTopicPartitionSet());
+        iter.remove();
+      }
+    } else if (numIdleInstancesToAssign > 0) {
+      // put more idle instances to the list for rebalancing
+      for (String instanceName : idleInstances) {
+        if (numIdleInstancesToAssign <= 0) {
+          break;
+        }
+        instances.add(new InstanceTopicPartitionHolder(instanceName));
+        forced = true; // force to rebalance so as to assign partitions to the idle instances
+        numIdleInstancesToAssign--;
+      }
+
+
+    }
+
+    if (balancePartitions(instances, tpiNeedsToBeAssigned, forced)) {
+      assignmentChanged = true;
+    }
+    return assignmentChanged ? instances : null;
   }
 
   private void assignIdealStates(HelixManager helixManager,
@@ -616,25 +679,27 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
   }
 
   private Set<String> getLiveInstanceName(List<LiveInstance> liveInstances) {
-    Set<String> liveInstanceNames = new HashSet<String>();
+    Set<String> liveInstanceNames = new HashSet<>();
     for (LiveInstance liveInstance : liveInstances) {
       liveInstanceNames.add(liveInstance.getInstanceName());
     }
     return liveInstanceNames;
   }
 
-  private Set<String> getAddedInstanceSet(Set<String> liveInstances,
-      Set<String> currentInstances) {
-
-    Set<String> addedInstances = new HashSet<String>();
-    addedInstances.addAll(liveInstances);
-    addedInstances.removeAll(currentInstances);
-    return addedInstances;
+  private Set<String> getIdleInstanceSet(Set<String> liveInstances,
+      Map<String, Set<TopicPartition>> instanceToTopicPartitionMap) {
+    Set<String> idleInstances = new HashSet<>();
+    for (String instance : liveInstances) {
+      Set<TopicPartition> tps = instanceToTopicPartitionMap.get(instance);
+      if (tps == null || tps.isEmpty()) {
+        idleInstances.add(instance);
+      }
+    }
+    return idleInstances;
   }
 
-  private Set<String> getRemovedInstanceSet(Set<String> liveInstances,
-      Set<String> currentInstances) {
-    Set<String> removedInstances = new HashSet<String>();
+  private Set<String> getRemovedInstanceSet(Set<String> liveInstances, Set<String> currentInstances) {
+    Set<String> removedInstances = new HashSet<>();
     removedInstances.addAll(currentInstances);
     removedInstances.removeAll(liveInstances);
     return removedInstances;

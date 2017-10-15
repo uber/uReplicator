@@ -73,6 +73,8 @@ public class ControllerConf extends PropertiesConfiguration {
 
   private static final String PATTERN_TO_EXCLUDE_TOPICS = "controller.pattern.exclude.topics";
 
+  private static final String MAX_WORKING_INSTANCES = "controller.max.working.instances";
+
   private static final String AUTO_REBALANCE_DELAY_IN_SECONDS =
       "controller.auto.rebalance.delay.in.seconds";
 
@@ -235,6 +237,10 @@ public class ControllerConf extends PropertiesConfiguration {
     setProperty(LOCAL_FILE_BACKUP, localBackupFilePath);
   }
 
+  public void setMaxWorkingInstances(String maxWorkingInstances) {
+    setProperty(MAX_WORKING_INSTANCES, Integer.parseInt(maxWorkingInstances));
+  }
+
   public void setAutoRebalanceDelayInSeconds(String autoRebalanceDelayInSeconds) {
     setProperty(AUTO_REBALANCE_DELAY_IN_SECONDS, Integer.parseInt(autoRebalanceDelayInSeconds));
   }
@@ -376,6 +382,14 @@ public class ControllerConf extends PropertiesConfiguration {
 
   public Boolean getBackUpToGit() {
     return (Boolean) getProperty(BACKUP_TO_GIT);
+  }
+
+  public Integer getMaxWorkingInstances() {
+    if (containsKey(MAX_WORKING_INSTANCES)) {
+      return (Integer) getProperty(MAX_WORKING_INSTANCES);
+    } else {
+      return 0;
+    }
   }
 
   public Integer getAutoRebalanceDelayInSeconds() {
@@ -580,6 +594,8 @@ public class ControllerConf extends PropertiesConfiguration {
         .addOption("srcKafkaZkPath", true, "Source Kafka Zookeeper Path")
         .addOption("destKafkaZkPath", true, "Destination Kafka Zookeeper Path")
         .addOption("consumerCommitZkPath", true, "Consumer commit Zookeeper Path")
+        .addOption("maxWorkingInstances", true,
+            "The maximum number of instances that are assigned with workload. All other instances will be standby. 0 means no limit")
         .addOption("autoRebalanceDelayInSeconds", true, "Auto Rebalance Delay in seconds")
         .addOption("refreshTimeInSeconds", true, "Controller Whitelist Manager Refresh Time in seconds")
         .addOption("initWaitTimeInSeconds", true, "Controller Init Delay in seconds")
@@ -685,6 +701,11 @@ public class ControllerConf extends PropertiesConfiguration {
     }
     if (cmd.hasOption("consumerCommitZkPath")) {
       controllerConf.setConsumerCommitZkPath(cmd.getOptionValue("consumerCommitZkPath"));
+    }
+    if (cmd.hasOption("maxWorkingInstances")) {
+      controllerConf.setMaxWorkingInstances(cmd.getOptionValue("maxWorkingInstances"));
+    } else {
+      controllerConf.setMaxWorkingInstances("0");
     }
     if (cmd.hasOption("autoRebalanceDelayInSeconds")) {
       controllerConf.setAutoRebalanceDelayInSeconds(cmd.getOptionValue("autoRebalanceDelayInSeconds"));
