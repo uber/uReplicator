@@ -95,6 +95,7 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
       throws Exception {
     if (!tryToRefreshCache()) {
       synchronized (_lock) {
+        LOGGER.info("starting to refresh topic list due to zk child change");
         Set<String> newAddedTopics = new HashSet<>(currentChilds);
         Set<String> currentServingTopics = getAllTopics();
         newAddedTopics.removeAll(currentServingTopics);
@@ -117,12 +118,13 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
             LOGGER.warn("Failed to get topicPartition info for {} from kafka zk: {}", topic, e);
           }
         }
+        LOGGER.info("added {} new topics to topic list in zk child change", newAddedTopics.size());
         _kafkaTopicsCounter.inc(_topicPartitionInfoMap.size() - _kafkaTopicsCounter.getCount());
       }
     }
   }
 
-  private synchronized void tryAddTopic(String topic) {
+  private void tryAddTopic(String topic) {
     scala.collection.mutable.Map<String, scala.collection.Map<Object, Seq<Object>>> partitionAssignmentForTopics =
         _zkUtils.getPartitionAssignmentForTopics(JavaConversions.asScalaBuffer(ImmutableList.of(topic)));
     if (partitionAssignmentForTopics.get(topic).isEmpty()
@@ -131,6 +133,7 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
       return;
     }
     synchronized (_lock) {
+      LOGGER.info("starting to refresh for adding topic {}", topic);
       if (!getAllTopics().contains(topic)) {
         try {
           _topicPartitionInfoMap.put(topic, new TopicPartition(topic,
@@ -139,10 +142,11 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
           LOGGER.warn("Failed to get topicPartition info for {} from kafka zk: {}", topic, e);
         }
       }
+      LOGGER.info("finished refreshing for adding topic {}", topic);
     }
   }
 
-  private synchronized void refreshCache() {
+  private void refreshCache() {
     Context context = _refreshLatency.time();
 
     Set<String> servingTopics;
@@ -157,6 +161,7 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
         _zkUtils.getPartitionAssignmentForTopics(JavaConversions.asScalaBuffer(ImmutableList.copyOf(servingTopics)));
 
     synchronized (_lock) {
+      LOGGER.info("updating topic cache map for {} new topics", servingTopics.size());
       for (String existedTopic : getAllTopics()) {
         if (!servingTopics.contains(existedTopic)) {
           _topicPartitionInfoMap.remove(existedTopic);
@@ -181,7 +186,7 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
     context.stop();
   }
 
-  private synchronized boolean tryToRefreshCache() {
+  private boolean tryToRefreshCache() {
     if (_refreshTimeIntervalInMillis + _lastRefreshTime.get() < System.currentTimeMillis()) {
       refreshCache();
       return true;
