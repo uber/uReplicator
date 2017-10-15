@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
+import org.I0Itec.zkclient.ZkClient;
 import org.apache.helix.HelixAdmin;
 import org.apache.helix.HelixDataAccessor;
 import org.apache.helix.HelixManager;
@@ -61,6 +62,7 @@ public class HelixMirrorMakerManager {
   private HelixManager _helixZkManager;
   private HelixAdmin _helixAdmin;
   private String _instanceId;
+  private ZkClient _zkClient;
 
   private final PriorityQueue<InstanceTopicPartitionHolder> _currentServingInstance;
 
@@ -91,6 +93,7 @@ public class HelixMirrorMakerManager {
     updateCurrentServingInstance();
     _workloadInfoRetriever.start();
     _offsetMonitor.start();
+
     try {
       _helixZkManager.addLiveInstanceChangeListener(_autoRebalanceLiveInstanceChangeListener);
     } catch (Exception e) {
@@ -162,8 +165,7 @@ public class HelixMirrorMakerManager {
       _helixAdmin.setResourceIdealState(_helixClusterName, topicName,
           IdealStateBuilder.expandCustomRebalanceModeIdealStateFor(
               _helixAdmin.getResourceIdealState(_helixClusterName, topicName), topicName,
-              newNumTopicPartitions,
-              _currentServingInstance));
+              newNumTopicPartitions, _controllerConf, _currentServingInstance));
     }
   }
 
