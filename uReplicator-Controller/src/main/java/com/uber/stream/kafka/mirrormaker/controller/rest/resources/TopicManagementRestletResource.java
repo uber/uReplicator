@@ -209,7 +209,7 @@ public class TopicManagementRestletResource extends ServerResource {
         return new StringRepresentation(String.format(
             "Failed to expand topic, topic: %s is not existed!", topicPartitionInfo.getTopic()));
       }
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOGGER.error("Got error during processing Put request", e);
       getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
       return new StringRepresentation(
