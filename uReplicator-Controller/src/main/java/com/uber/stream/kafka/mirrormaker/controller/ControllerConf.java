@@ -58,6 +58,9 @@ public class ControllerConf extends PropertiesConfiguration {
   private static final String NUM_OFFSET_THREAD = "controller.num.offset.thread";
   private static final int DEFAULT_NUM_OFFSET_THREAD = 10;
 
+  private static final String BLOCKING_QUEUE_SIZE = "controller.blocking.queue.size";
+  private static final int DEFAULT_BLOCKING_QUEUE_SIZE = 30000;
+
   private static final String OFFSET_REFRESH_INTERVAL_IN_SEC = "controller.offset.refresh.interval.in.sec";
   private static final int DEFAULT_OFFSET_REFRESH_INTERVAL_IN_SEC = 300;
 
@@ -194,6 +197,10 @@ public class ControllerConf extends PropertiesConfiguration {
 
   public void setNumOffsetThread(String numOffsetThread) {
     setProperty(NUM_OFFSET_THREAD, Integer.valueOf(numOffsetThread));
+  }
+
+  public void setBlockingQueueSize(String blockingQueueSize) {
+    setProperty(BLOCKING_QUEUE_SIZE, Integer.valueOf(blockingQueueSize));
   }
 
   public void setOffsetRefreshIntervalInSec(String offsetRefreshIntervalInSec) {
@@ -483,6 +490,13 @@ public class ControllerConf extends PropertiesConfiguration {
     return DEFAULT_NUM_OFFSET_THREAD;
   }
 
+  public Integer getBlockingQueueSize() {
+    if (containsKey(BLOCKING_QUEUE_SIZE)) {
+      return (Integer) getProperty(BLOCKING_QUEUE_SIZE);
+    }
+    return DEFAULT_BLOCKING_QUEUE_SIZE;
+  }
+
   public Integer getOffsetRefreshIntervalInSec() {
     if (containsKey(OFFSET_REFRESH_INTERVAL_IN_SEC)) {
       return (Integer) getProperty(OFFSET_REFRESH_INTERVAL_IN_SEC);
@@ -550,6 +564,7 @@ public class ControllerConf extends PropertiesConfiguration {
         .addOption("maxDedicatedLaggingInstancesRatio", true,
             "The ratio of instances dedicated for serving lagging partitions")
         .addOption("numOffsetThread", true, "Number of threads to fetch topic offsets")
+        .addOption("blockingQueueSize", true, "Size of OffsetMonitor blocking queue size")
         .addOption("offsetRefreshIntervalInSec", true, "Topic offset monitor refresh interval")
         .addOption("groupId", true, "Consumer group id")
         .addOption("backUpToGit", true, "Backup controller metadata to git (true) or local file (false)")
@@ -699,6 +714,11 @@ public class ControllerConf extends PropertiesConfiguration {
       controllerConf.setNumOffsetThread(cmd.getOptionValue("numOffsetThread"));
     } else {
       controllerConf.setNumOffsetThread(Integer.toString(DEFAULT_NUM_OFFSET_THREAD));
+    }
+    if (cmd.hasOption("blockingQueueSize")) {
+      controllerConf.setBlockingQueueSize(cmd.getOptionValue("blockingQueueSize"));
+    } else {
+      controllerConf.setBlockingQueueSize(Integer.toString(DEFAULT_BLOCKING_QUEUE_SIZE));
     }
     if (cmd.hasOption("offsetRefreshIntervalInSec")) {
       controllerConf.setOffsetRefreshIntervalInSec(cmd.getOptionValue("offsetRefreshIntervalInSec"));

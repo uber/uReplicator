@@ -26,9 +26,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import kafka.api.PartitionOffsetRequestInfo;
@@ -58,7 +61,7 @@ public class OffsetMonitor {
   private final String consumerOffsetPath;
 
   private final ScheduledExecutorService refreshExecutor;
-  private final ScheduledExecutorService cronExecutor;
+  private final ExecutorService cronExecutor;
 
   private List<String> srcBrokerList;
   private List<String> topicList;
@@ -107,7 +110,8 @@ public class OffsetMonitor {
 
     this.refreshExecutor = Executors.newSingleThreadScheduledExecutor(
         new ThreadFactoryBuilder().setNameFormat("topic-list-cron-%d").setDaemon(true).build());
-    this.cronExecutor = Executors.newScheduledThreadPool(10,
+    this.cronExecutor = new ThreadPoolExecutor(numOffsetThread, numOffsetThread, 0L, TimeUnit.MILLISECONDS,
+        new LinkedBlockingQueue<>(controllerConf.getBlockingQueueSize()),
         new ThreadFactoryBuilder().setNameFormat("topic-offset-cron-%d").setDaemon(true).build());
 
     this.topicList = new ArrayList<>();
@@ -188,7 +192,16 @@ public class OffsetMonitor {
       if (StringUtils.isEmpty(leaderBroker)) {
         logger.warn("{} does not have leader partition", tp);
       } else {
-        cronExecutor.submit(updateOffsetTask(leaderBroker, tp));
+        try {
+          cronExecutor.submit(updateOffsetTask(leaderBroker, tp));
+        } catch (RejectedExecutionException re) {
+          logger.warn(String.format("cronExecutor is full! Drop task for topic: %s, partition: %d",
+              tp.topic(), tp.partition()), re);
+        } catch (Throwable t) {
+          logger.error(String.format("cronExecutor got throwable! Drop task for topic: %s, partition: %d",
+              tp.topic(), tp.partition()), t);
+          throw t;
+        }
       }
     }
   }
