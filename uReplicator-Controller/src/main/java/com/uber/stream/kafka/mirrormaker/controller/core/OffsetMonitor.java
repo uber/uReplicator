@@ -75,17 +75,18 @@ public class OffsetMonitor {
       ControllerConf controllerConf) {
     int numOffsetThread = controllerConf.getNumOffsetThread();
     this.helixMirrorMakerManager = helixMirrorMakerManager;
-    String zkString = controllerConf.getSrcKafkaZkPath();
+    String zkString = controllerConf.getConsumerCommitZkPath().isEmpty() ?
+        controllerConf.getSrcKafkaZkPath() : controllerConf.getConsumerCommitZkPath();
     this.zkClientQueue = new LinkedBlockingQueue<>(numOffsetThread);
     for (int i = 0; i < numOffsetThread; i++) {
       ZkClient zkClient = new ZkClient(zkString, 30000, 30000, ZKStringSerializer$.MODULE$);
       zkClientQueue.add(zkClient);
     }
 
-    ZkClient zkClient = zkClientQueue.peek();
+    ZkClient zkClient = new ZkClient(controllerConf.getSrcKafkaZkPath(), 30000, 30000, ZKStringSerializer$.MODULE$);
     List<String> brokerIdList = zkClient.getChildren("/brokers/ids");
     JSONParser parser = new JSONParser();
-    this.srcBrokerList = new ArrayList<String>();
+    this.srcBrokerList = new ArrayList<>();
     for (String id : brokerIdList) {
       try {
         JSONObject json = (JSONObject) parser.parse(zkClient.readData("/brokers/ids/" + id).toString());
