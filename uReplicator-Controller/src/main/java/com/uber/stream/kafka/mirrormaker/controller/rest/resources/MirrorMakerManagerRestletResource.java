@@ -2,6 +2,7 @@ package com.uber.stream.kafka.mirrormaker.controller.rest.resources;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.uber.stream.kafka.mirrormaker.controller.core.AutoRebalanceLiveInstanceChangeListener;
 import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
 import com.uber.stream.kafka.mirrormaker.controller.core.InstanceTopicPartitionHolder;
 import com.uber.stream.kafka.mirrormaker.controller.core.TopicPartition;
@@ -12,6 +13,7 @@ import org.restlet.data.Status;
 import org.restlet.representation.Representation;
 import org.restlet.representation.StringRepresentation;
 import org.restlet.resource.Get;
+import org.restlet.resource.Post;
 import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,6 +68,22 @@ public class MirrorMakerManagerRestletResource extends ServerResource {
       return new StringRepresentation(String
           .format("Failed to get serving topics for %s, with exception: %s",
               instanceName == null ? "all instances" : instanceName, e));
+    }
+  }
+
+  @Override
+  @Post
+  public Representation post(Representation entity) {
+    try {
+      AutoRebalanceLiveInstanceChangeListener rebalancer = _helixMirrorMakerManager.getRebalancer();
+      if (rebalancer.triggerRebalanceCluster()) {
+        return new StringRepresentation("Cluster is rebalanced\n");
+      }
+      return new StringRepresentation("Skipped rebalancing cluster\n");
+    } catch (Exception e) {
+      LOGGER.error("Got error during processing POST request", e);
+      getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
+      return new StringRepresentation(String.format("Failed to rebalance cluster with exception: %s", e));
     }
   }
 
