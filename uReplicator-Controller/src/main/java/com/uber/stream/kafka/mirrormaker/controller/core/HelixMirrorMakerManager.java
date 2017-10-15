@@ -68,6 +68,8 @@ public class HelixMirrorMakerManager {
 
   private final OffsetMonitor _offsetMonitor;
 
+  private AutoRebalanceLiveInstanceChangeListener _autoRebalanceLiveInstanceChangeListener = null;
+
   public HelixMirrorMakerManager(ControllerConf controllerConf) {
     _controllerConf = controllerConf;
     _helixZkURL = HelixUtils.getAbsoluteZkPathForHelix(_controllerConf.getZkStr());
@@ -84,17 +86,18 @@ public class HelixMirrorMakerManager {
     _helixZkManager = HelixSetupUtils.setup(_helixClusterName, _helixZkURL, _instanceId);
     _helixAdmin = _helixZkManager.getClusterManagmentTool();
     LOGGER.info("Trying to register AutoRebalanceLiveInstanceChangeListener");
-    AutoRebalanceLiveInstanceChangeListener autoRebalanceLiveInstanceChangeListener =
+    _autoRebalanceLiveInstanceChangeListener =
         new AutoRebalanceLiveInstanceChangeListener(this, _helixZkManager,
             _controllerConf.getAutoRebalanceDelayInSeconds(),
             _controllerConf.getAutoRebalancePeriodInSeconds(),
+            _controllerConf.getAutoRebalanceMinIntervalInSeconds(),
             _controllerConf.getAutoRebalanceWorkloadRatioThreshold(),
             _controllerConf.getMaxDedicatedLaggingInstancesRatio());
     updateCurrentServingInstance();
     _workloadInfoRetriever.start();
     _offsetMonitor.start();
     try {
-      _helixZkManager.addLiveInstanceChangeListener(autoRebalanceLiveInstanceChangeListener);
+      _helixZkManager.addLiveInstanceChangeListener(_autoRebalanceLiveInstanceChangeListener);
     } catch (Exception e) {
       LOGGER.error("Failed to add LiveInstanceChangeListener");
     }
@@ -243,6 +246,10 @@ public class HelixMirrorMakerManager {
 
   public WorkloadInfoRetriever getWorkloadInfoRetriever() {
     return _workloadInfoRetriever;
+  }
+
+  public AutoRebalanceLiveInstanceChangeListener getRebalancer() {
+    return _autoRebalanceLiveInstanceChangeListener;
   }
 
   public PriorityQueue<InstanceTopicPartitionHolder> getCurrentServingInstance() {

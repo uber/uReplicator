@@ -85,6 +85,11 @@ public class ControllerConf extends PropertiesConfiguration {
   private static final String AUTO_REBALANCE_PERIOD_IN_SECONDS =
       "controller.auto.rebalance.period.in.seconds";
 
+  private static final String AUTO_REBALANCE_MIN_INTERVAL_IN_SECONDS =
+      "controller.auto.rebalance.min.interval.in.seconds";
+
+  private static final int DEFAULT_AUTO_REBALANCE_MIN_INTERVAL_IN_SECONDS = 600;
+
   private static final String AUTO_REBALANCE_WORKLOAD_RATIO_THRESHOLD =
       "controller.auto.rebalance.workload.ratio.threshold";
 
@@ -214,6 +219,10 @@ public class ControllerConf extends PropertiesConfiguration {
     setProperty(AUTO_REBALANCE_PERIOD_IN_SECONDS, Integer.parseInt(autoRebalancePeriodInSeconds));
   }
 
+  public void setAutoRebalanceMinIntervalInSeconds(String autoRebalanceMinIntervalInSeconds) {
+    setProperty(AUTO_REBALANCE_MIN_INTERVAL_IN_SECONDS, Integer.parseInt(autoRebalanceMinIntervalInSeconds));
+  }
+
   public void setAutoRebalanceWorkloadRatioThreshold(String autoRebalanceWorkloadRatioThreshold) {
     setProperty(AUTO_REBALANCE_WORKLOAD_RATIO_THRESHOLD, Double.parseDouble(autoRebalanceWorkloadRatioThreshold));
   }
@@ -341,6 +350,14 @@ public class ControllerConf extends PropertiesConfiguration {
     }
   }
 
+  public Integer getAutoRebalanceMinIntervalInSeconds() {
+    if (containsKey(AUTO_REBALANCE_MIN_INTERVAL_IN_SECONDS)) {
+      return (Integer) getProperty(AUTO_REBALANCE_MIN_INTERVAL_IN_SECONDS);
+    } else {
+      return DEFAULT_AUTO_REBALANCE_MIN_INTERVAL_IN_SECONDS;
+    }
+  }
+
   public Double getAutoRebalanceWorkloadRatioThreshold() {
     if (containsKey(AUTO_REBALANCE_WORKLOAD_RATIO_THRESHOLD)) {
       return (Double) getProperty(AUTO_REBALANCE_WORKLOAD_RATIO_THRESHOLD);
@@ -458,7 +475,8 @@ public class ControllerConf extends PropertiesConfiguration {
         .addOption("autoRebalanceDelayInSeconds", true, "Auto Rebalance Delay in seconds")
         .addOption("refreshTimeInSeconds", true, "Controller Whitelist Manager Refresh Time in seconds")
         .addOption("initWaitTimeInSeconds", true, "Controller Init Delay in seconds")
-        .addOption("autoRebalancePeriodInSeconds", true, "Auto rebalance period in seconds")
+        .addOption("autoRebalancePeriodInSeconds", true, "Period to try auto rebalancing in seconds")
+        .addOption("autoRebalanceMinIntervalInSeconds", true, "Minimum interval between auto rebalancing in seconds")
         .addOption("workloadRefreshPeriodInSeconds", true, "The period to refresh workload information in seconds")
         .addOption("autoRebalanceWorkloadRatioThreshold", true,
             "The ratio of workload compared to average for auto workload rebalance")
@@ -547,8 +565,7 @@ public class ControllerConf extends PropertiesConfiguration {
       controllerConf.setDestKafkaZkPath(cmd.getOptionValue("destKafkaZkPath"));
     }
     if (cmd.hasOption("autoRebalanceDelayInSeconds")) {
-      controllerConf
-          .setAutoRebalanceDelayInSeconds(cmd.getOptionValue("autoRebalanceDelayInSeconds"));
+      controllerConf.setAutoRebalanceDelayInSeconds(cmd.getOptionValue("autoRebalanceDelayInSeconds"));
     } else {
       controllerConf.setAutoRebalanceDelayInSeconds("120");
     }
@@ -567,6 +584,12 @@ public class ControllerConf extends PropertiesConfiguration {
     } else {
       controllerConf.setAutoRebalancePeriodInSeconds("0");
     }
+    if (cmd.hasOption("autoRebalanceMinIntervalInSeconds")) {
+      controllerConf.setAutoRebalanceMinIntervalInSeconds(cmd.getOptionValue("autoRebalanceMinIntervalInSeconds"));
+    } else {
+      controllerConf.setAutoRebalanceMinIntervalInSeconds(
+          Integer.toString(DEFAULT_AUTO_REBALANCE_MIN_INTERVAL_IN_SECONDS));
+    }
     if (cmd.hasOption("workloadRefreshPeriodInSeconds")) {
       controllerConf.setWorkloadRefreshPeriodInSeconds(cmd.getOptionValue("workloadRefreshPeriodInSeconds"));
     } else {
@@ -581,8 +604,8 @@ public class ControllerConf extends PropertiesConfiguration {
     if (cmd.hasOption("maxDedicatedLaggingInstancesRatio")) {
       controllerConf.setMaxDedicatedLaggingInstancesRatio(cmd.getOptionValue("maxDedicatedLaggingInstancesRatio"));
     } else {
-      controllerConf
-          .setMaxDedicatedLaggingInstancesRatio(Double.toString(DEFAULT_MAX_DEDICATED_LAGGING_INSTANCES_RATIO));
+      controllerConf.setMaxDedicatedLaggingInstancesRatio(
+          Double.toString(DEFAULT_MAX_DEDICATED_LAGGING_INSTANCES_RATIO));
     }
     if (cmd.hasOption("numOffsetThread")) {
       controllerConf.setNumOffsetThread(cmd.getOptionValue("numOffsetThread"));
