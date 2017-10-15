@@ -16,6 +16,8 @@
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.PriorityQueue;
 import kafka.utils.ZKStringSerializer$;
 import org.I0Itec.zkclient.ZkClient;
@@ -56,7 +58,7 @@ public class IdealStateBuilder {
 
   public static IdealState expandCustomRebalanceModeIdealStateFor(IdealState oldIdealState,
       String topicName, int newNumTopicPartitions, ControllerConf controllerConf,
-      PriorityQueue<InstanceTopicPartitionHolder> instanceToNumServingTopicPartitionMap) {
+      PriorityQueue<InstanceTopicPartitionHolder> currentServingInstances) {
     final CustomModeISBuilder customModeIdealStateBuilder = new CustomModeISBuilder(topicName);
 
     customModeIdealStateBuilder
@@ -81,19 +83,29 @@ public class IdealStateBuilder {
     ZkClient zkClient = new ZkClient(zkString, 30000, 30000, ZKStringSerializer$.MODULE$);
     String consumerOffsetPath = "/consumers/" + controllerConf.getGroupId() + "/offsets/" + topicName + "/";
 
-    // TODO: avoid to assign to the same worker
-    for (int i = numOldPartitions; i < newNumTopicPartitions; ++i) {
-      Object obj = zkClient.readData(consumerOffsetPath + i, true);
-      if (obj == null) {
-        zkClient.createPersistent(consumerOffsetPath + i, "0");
-        LOGGER.info("Create new zk node " + zkString + consumerOffsetPath + i);
-      }
+    // Assign new partitions to as many workers as possible
+    List<InstanceTopicPartitionHolder> instancesForNewPartitions = new ArrayList<>();
+    while (instancesForNewPartitions.size() < newNumTopicPartitions - numOldPartitions
+        && !currentServingInstances.isEmpty()) {
+      instancesForNewPartitions.add(currentServingInstances.poll());
+    }
+    if (!instancesForNewPartitions.isEmpty()) {
+      for (int i = numOldPartitions; i < newNumTopicPartitions; ++i) {
+        Object obj = zkClient.readData(consumerOffsetPath + i, true);
+        if (obj == null) {
+          zkClient.createPersistent(consumerOffsetPath + i, "0");
+          LOGGER.info("Create new zk node " + zkString + consumerOffsetPath + i);
+        }
 
-      InstanceTopicPartitionHolder liveInstance = instanceToNumServingTopicPartitionMap.poll();
-      customModeIdealStateBuilder.assignInstanceAndState(Integer.toString(i),
-          liveInstance.getInstanceName(), "ONLINE");
-      liveInstance.addTopicPartition(new TopicPartition(topicName, i));
-      instanceToNumServingTopicPartitionMap.add(liveInstance);
+        InstanceTopicPartitionHolder liveInstance =
+            instancesForNewPartitions.get(i % instancesForNewPartitions.size());
+        customModeIdealStateBuilder.assignInstanceAndState(Integer.toString(i),
+            liveInstance.getInstanceName(),
+            "ONLINE");
+        liveInstance.addTopicPartition(new TopicPartition(topicName, i));
+        LOGGER.info("Assign new partition " + topicName + ":" + i + " to instance " + liveInstance.getInstanceName());
+      }
+      currentServingInstances.addAll(instancesForNewPartitions);
     }
     zkClient.close();
     return customModeIdealStateBuilder.build();
