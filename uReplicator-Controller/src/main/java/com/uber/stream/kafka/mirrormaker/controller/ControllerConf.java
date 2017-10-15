@@ -120,6 +120,14 @@ public class ControllerConf extends PropertiesConfiguration {
 
   private static final double DEFAULT_MAX_DEDICATED_LAGGING_INSTANCES_RATIO = 0.5;
 
+  private static final String MAX_STUCK_PARTITION_MOVEMENTS = "controller.auto.rebalance.max.stuck.partition.movements";
+
+  private static final int DEFAULT_MAX_STUCK_PARTITION_MOVEMENTS = 3;
+
+  private static final String MOVE_STUCK_PARTITION_AFTER_MINUTES = "controller.auto.rebalance.move.stuck.partition.after.minutes";
+
+  private static final int DEFAULT_MOVE_STUCK_PARTITION_AFTER_MINUTES = 20;
+
   private static final String defaultLocal = "/var/log/kafka-mirror-maker-controller";
 
   public ControllerConf() {
@@ -270,6 +278,14 @@ public class ControllerConf extends PropertiesConfiguration {
 
   public void setMaxDedicatedLaggingInstancesRatio(String maxDedicatedLaggingInstancesRatio) {
     setProperty(MAX_DEDICATED_LAGGING_INSTANCES_RATIO, Double.parseDouble(maxDedicatedLaggingInstancesRatio));
+  }
+
+  public void setMaxStuckPartitionMovements(String maxStuckPartitionMovements) {
+    setProperty(MAX_STUCK_PARTITION_MOVEMENTS, Integer.parseInt(maxStuckPartitionMovements));
+  }
+
+  public void setMoveStuckPartitionAfterMinutes(String moveStuckPartitionAfterMinutes) {
+    setProperty(MOVE_STUCK_PARTITION_AFTER_MINUTES, Integer.parseInt(moveStuckPartitionAfterMinutes));
   }
 
   public String getPatternToExcludeTopics() {
@@ -450,6 +466,22 @@ public class ControllerConf extends PropertiesConfiguration {
     }
   }
 
+  public Integer getMaxStuckPartitionMovements() {
+    if (containsKey(MAX_STUCK_PARTITION_MOVEMENTS)) {
+      return (Integer) getProperty(MAX_STUCK_PARTITION_MOVEMENTS);
+    } else {
+      return DEFAULT_MAX_STUCK_PARTITION_MOVEMENTS;
+    }
+  }
+
+  public Integer getMoveStuckPartitionAfterMinutes() {
+    if (containsKey(MOVE_STUCK_PARTITION_AFTER_MINUTES)) {
+      return (Integer) getProperty(MOVE_STUCK_PARTITION_AFTER_MINUTES);
+    } else {
+      return DEFAULT_MOVE_STUCK_PARTITION_AFTER_MINUTES;
+    }
+  }
+
   public boolean getEnableAutoWhitelist() {
     if (containsKey(ENABLE_AUTO_WHITELIST)) {
       try {
@@ -563,6 +595,11 @@ public class ControllerConf extends PropertiesConfiguration {
             "The ratio of workload compared to average for auto workload rebalance")
         .addOption("maxDedicatedLaggingInstancesRatio", true,
             "The ratio of instances dedicated for serving lagging partitions")
+        .addOption("maxStuckPartitionMovements", true,
+            "The maximum trials to automatically move a stuck partition from an instance to another. 0 would disable movements")
+        .addOption("moveStuckPartitionAfterMinutes", true,
+            "The time to automatically move a stuck partition after it has been stuck in an instance")
+        .addOption("backUpToGit", true, "Backup controller metadata to git (true) or local file (false)")
         .addOption("numOffsetThread", true, "Number of threads to fetch topic offsets")
         .addOption("blockingQueueSize", true, "Size of OffsetMonitor blocking queue size")
         .addOption("offsetRefreshIntervalInSec", true, "Topic offset monitor refresh interval")
@@ -709,6 +746,16 @@ public class ControllerConf extends PropertiesConfiguration {
     } else {
       controllerConf.setMaxDedicatedLaggingInstancesRatio(
           Double.toString(DEFAULT_MAX_DEDICATED_LAGGING_INSTANCES_RATIO));
+    }
+    if (cmd.hasOption("maxStuckPartitionMovements")) {
+      controllerConf.setMaxStuckPartitionMovements(cmd.getOptionValue("maxStuckPartitionMovements"));
+    } else {
+      controllerConf.setMaxStuckPartitionMovements(Integer.toString(DEFAULT_MAX_STUCK_PARTITION_MOVEMENTS));
+    }
+    if (cmd.hasOption("moveStuckPartitionAfterMinutes")) {
+      controllerConf.setMoveStuckPartitionAfterMinutes(cmd.getOptionValue("moveStuckPartitionAfterMinutes"));
+    } else {
+      controllerConf.setMoveStuckPartitionAfterMinutes(Integer.toString(DEFAULT_MOVE_STUCK_PARTITION_AFTER_MINUTES));
     }
     if (cmd.hasOption("numOffsetThread")) {
       controllerConf.setNumOffsetThread(cmd.getOptionValue("numOffsetThread"));
