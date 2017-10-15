@@ -30,6 +30,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import kafka.api.PartitionOffsetRequestInfo;
 import kafka.cluster.BrokerEndPoint;
 import kafka.common.TopicAndPartition;
@@ -64,6 +65,11 @@ public class OffsetMonitor {
   private final Map<String, SimpleConsumer> brokerConsumer;
   private final Map<TopicAndPartition, BrokerEndPoint> partitionLeader;
   private final Map<TopicAndPartition, TopicPartitionLag> topicPartitionToOffsetMap;
+
+  private static final String NO_PROGRESS_METRIC_NAME = "NumNoProgressPartitions";
+  private static final long MIN_NO_PROGRESS_TIME_MS = TimeUnit.MINUTES.toMillis(10);
+  private final Map<TopicAndPartition, TopicPartitionLag> noProgressMap;
+  private final AtomicInteger numNoProgressTopicPartitions = new AtomicInteger();
 
   public OffsetMonitor(final HelixMirrorMakerManager helixMirrorMakerManager,
       ControllerConf controllerConf) {
@@ -107,13 +113,15 @@ public class OffsetMonitor {
     this.brokerConsumer = new ConcurrentHashMap<>();
     this.partitionLeader = new ConcurrentHashMap<>();
     this.topicPartitionToOffsetMap = new ConcurrentHashMap<>();
+    this.noProgressMap = new ConcurrentHashMap<>();
   }
 
   public void start() {
     if (refreshIntervalInSec > 0) {
       // delay for 1-5 minutes
       int delaySec = 60 + new Random().nextInt(240);
-      logger.info("OffsetMonitor starts updating offsets every {} seconds with delay {} seconds", refreshIntervalInSec, delaySec);
+      logger.info("OffsetMonitor starts updating offsets every {} seconds with delay {} seconds", refreshIntervalInSec,
+          delaySec);
       logger.info("OffsetMonitor starts with brokerList=" + srcBrokerList);
 
       refreshExecutor.scheduleAtFixedRate(new Runnable() {
@@ -125,6 +133,7 @@ public class OffsetMonitor {
           updateOffsetMetrics();
         }
       }, delaySec, refreshIntervalInSec, TimeUnit.SECONDS);
+      registerNoProgressMetric();
     } else {
       logger.info("OffsetMonitor is disabled");
     }
@@ -202,8 +211,24 @@ public class OffsetMonitor {
             latestOffset = -1;
           }
 
-          topicPartitionToOffsetMap.put(tp, new TopicPartitionLag(latestOffset, commitOffset));
+          TopicPartitionLag previousOffset = topicPartitionToOffsetMap
+              .put(tp, new TopicPartitionLag(latestOffset, commitOffset));
           logger.debug("Get latest offset={} committed offset={} for {}", latestOffset, commitOffset, tp);
+          if (latestOffset > 0 && commitOffset > 0) {
+            if (latestOffset - commitOffset > 0 && previousOffset != null
+                && previousOffset.getCommitOffset() == commitOffset) {
+              TopicPartitionLag oldLag = noProgressMap.get(tp);
+              // keep the oldest record (the time began to have no progress) in
+              // order to measure whether the time larger than the threshold,
+              // therefore we do not overwrite the old record if the commit
+              // offset is the same as current
+              if (oldLag == null || oldLag.getCommitOffset() != commitOffset) {
+                noProgressMap.put(tp, previousOffset);
+              }
+            } else {
+              noProgressMap.remove(tp);
+            }
+          }
         } catch (Exception e) {
           logger.warn("Got exception to get offset for TopicPartition=" + tp, e);
         } finally {
@@ -262,6 +287,7 @@ public class OffsetMonitor {
 
   /**
    * Expose the internal offset map. Use for REST GET only.
+   *
    * @return the internal offset map
    */
   public Map<TopicAndPartition, TopicPartitionLag> getTopicToOffsetMap() {
@@ -297,6 +323,44 @@ public class OffsetMonitor {
         }
       }
     }
+
+    List<TopicAndPartition> noProgressPartitions = getNoProgessTopicPartitions();
+    numNoProgressTopicPartitions.set(noProgressPartitions.size());
+    if (!noProgressPartitions.isEmpty()) {
+      logger.info("Topic partitions with no progress: " + noProgressPartitions);
+    }
+  }
+
+  private void registerNoProgressMetric() {
+    MetricRegistry metricRegistry = HelixKafkaMirrorMakerMetricsReporter.get().getRegistry();
+    Gauge<Integer> gauge = new Gauge<Integer>() {
+      @Override
+      public Integer getValue() {
+        return numNoProgressTopicPartitions.get();
+      }
+    };
+    try {
+      metricRegistry.register(NO_PROGRESS_METRIC_NAME, gauge);
+    } catch (Exception e) {
+      logger.error("Error while registering no progress metric " + NO_PROGRESS_METRIC_NAME, e);
+    }
+  }
+
+  private List<TopicAndPartition> getNoProgessTopicPartitions() {
+    List<TopicAndPartition> tps = new ArrayList<>();
+    for (Map.Entry<TopicAndPartition, TopicPartitionLag> entry : noProgressMap.entrySet()) {
+      TopicPartitionLag currentLag = topicPartitionToOffsetMap.get(entry.getKey());
+      if (currentLag == null || currentLag.getCommitOffset() < 0 || currentLag.getLatestOffset() < 0
+          || currentLag.getLatestOffset() <= currentLag.getCommitOffset()) {
+        continue;
+      }
+      TopicPartitionLag lastLag = entry.getValue();
+      if (currentLag.getTimeStamp() - lastLag.getTimeStamp() > MIN_NO_PROGRESS_TIME_MS
+          && currentLag.getCommitOffset() == lastLag.getCommitOffset()) {
+        tps.add(entry.getKey());
+      }
+    }
+    return tps;
   }
 
 }
