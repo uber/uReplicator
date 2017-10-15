@@ -56,7 +56,7 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
   private final String _kakfaClusterName;
   private final Map<String, TopicPartition> _topicPartitionInfoMap = new ConcurrentHashMap<>();
   private final AtomicLong _lastRefreshTime = new AtomicLong(0);
-  private final long _refreshTimeIntervalInMillis = 60 * 60 * 1000;
+  private final long _refreshTimeIntervalInMillis = TimeUnit.MINUTES.toMillis(5);
   private final Timer _refreshLatency = new Timer();
   private final Counter _kafkaTopicsCounter = new Counter();
   private final static String METRIC_TEMPLATE = "KafkaBrokerTopicObserver.%s.%s";
