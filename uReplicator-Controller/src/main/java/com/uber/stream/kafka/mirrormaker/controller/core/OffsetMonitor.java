@@ -299,7 +299,7 @@ public class OffsetMonitor {
     return "OffsetMonitorLag." + tp.topic().replace('.', '_') + "." + tp.partition();
   }
 
-  private void updateOffsetMetrics() {
+  private synchronized void updateOffsetMetrics() {
     MetricRegistry metricRegistry = HelixKafkaMirrorMakerMetricsReporter.get().getRegistry();
     @SuppressWarnings("rawtypes")
     Map<String, Gauge> gauges = metricRegistry.getGauges();
