@@ -288,9 +288,9 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
         String idleInstanceToAssign = idleInstances.iterator().next();
         idleInstances.remove(idleInstanceToAssign);
         numIdleInstancesToAssign--;
-        InstanceTopicPartitionHolder idleInstance = new InstanceTopicPartitionHolder(idleInstanceToAssign);
-        idleInstance.addTopicPartitions(entry.getValue());
-        instances.add(idleInstance);
+        InstanceTopicPartitionHolder instance = new InstanceTopicPartitionHolder(idleInstanceToAssign);
+        instance.addTopicPartitions(entry.getValue());
+        instances.add(instance);
         assignmentChanged = true;
         LOGGER.info("Move workload from instance " + instanceName + " to " + idleInstanceToAssign + ": "
             + entry.getValue());
