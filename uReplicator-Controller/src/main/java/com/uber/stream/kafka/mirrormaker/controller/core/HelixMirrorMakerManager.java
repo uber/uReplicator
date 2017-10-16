@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
-import org.I0Itec.zkclient.ZkClient;
 import org.apache.helix.HelixAdmin;
 import org.apache.helix.HelixDataAccessor;
 import org.apache.helix.HelixManager;
@@ -53,6 +52,7 @@ public class HelixMirrorMakerManager {
   private static final String ENABLE = "enable";
   private static final String DISABLE = "disable";
   private static final String AUTO_BALANCING = "AutoBalancing";
+  private static final String BLACKLIST_TAG = "blacklisted";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(HelixMirrorMakerManager.class);
 
@@ -62,7 +62,6 @@ public class HelixMirrorMakerManager {
   private HelixManager _helixZkManager;
   private HelixAdmin _helixAdmin;
   private String _instanceId;
-  private ZkClient _zkClient;
 
   private final PriorityQueue<InstanceTopicPartitionHolder> _currentServingInstance;
 
@@ -78,7 +77,7 @@ public class HelixMirrorMakerManager {
     _helixClusterName = _controllerConf.getHelixClusterName();
     _instanceId = controllerConf.getInstanceId();
     _workloadInfoRetriever = new WorkloadInfoRetriever(this);
-    _currentServingInstance = new PriorityQueue<InstanceTopicPartitionHolder>(1,
+    _currentServingInstance = new PriorityQueue<>(1,
         InstanceTopicPartitionHolder.getTotalWorkloadComparator(_workloadInfoRetriever, null));
     _offsetMonitor = new OffsetMonitor(this, controllerConf);
   }
@@ -114,8 +113,7 @@ public class HelixMirrorMakerManager {
 
   public synchronized void updateCurrentServingInstance() {
     synchronized (_currentServingInstance) {
-      Map<String, InstanceTopicPartitionHolder> instanceMap =
-          new HashMap<String, InstanceTopicPartitionHolder>();
+      Map<String, InstanceTopicPartitionHolder> instanceMap = new HashMap<>();
       Map<String, Set<TopicPartition>> instanceToTopicPartitionsMap =
           HelixUtils.getInstanceToTopicPartitionsMap(_helixZkManager);
       List<String> liveInstances = HelixUtils.liveInstances(_helixZkManager);
@@ -125,8 +123,7 @@ public class HelixMirrorMakerManager {
       }
       for (String instanceName : instanceToTopicPartitionsMap.keySet()) {
         if (instanceMap.containsKey(instanceName)) {
-          instanceMap.get(instanceName)
-              .addTopicPartitions(instanceToTopicPartitionsMap.get(instanceName));
+          instanceMap.get(instanceName).addTopicPartitions(instanceToTopicPartitionsMap.get(instanceName));
         }
       }
       _currentServingInstance.clear();
@@ -152,7 +149,7 @@ public class HelixMirrorMakerManager {
     _helixAdmin.setConfig(
         new HelixConfigScopeBuilder(ConfigScopeProperty.RESOURCE).forCluster(_helixClusterName)
             .forResource(topicName).build(),
-        new HashMap<String, String>());
+        new HashMap<>());
   }
 
   public synchronized void expandTopicInMirrorMaker(TopicPartition topicPartitionInfo) {
@@ -190,10 +187,9 @@ public class HelixMirrorMakerManager {
   }
 
   public void disableAutoBalancing() {
-    HelixConfigScope scope =
-        new HelixConfigScopeBuilder(ConfigScopeProperty.CLUSTER).forCluster(_helixClusterName)
-            .build();
-    Map<String, String> properties = new HashMap<String, String>();
+    HelixConfigScope scope = new HelixConfigScopeBuilder(ConfigScopeProperty.CLUSTER)
+        .forCluster(_helixClusterName).build();
+    Map<String, String> properties = new HashMap<>();
     properties.put(AUTO_BALANCING, DISABLE);
     _helixAdmin.setConfig(scope, properties);
   }
@@ -202,7 +198,7 @@ public class HelixMirrorMakerManager {
     HelixConfigScope scope =
         new HelixConfigScopeBuilder(ConfigScopeProperty.CLUSTER).forCluster(_helixClusterName)
             .build();
-    Map<String, String> properties = new HashMap<String, String>();
+    Map<String, String> properties = new HashMap<>();
     properties.put(AUTO_BALANCING, ENABLE);
     _helixAdmin.setConfig(scope, properties);
   }
@@ -229,6 +225,18 @@ public class HelixMirrorMakerManager {
     return liveInstances;
   }
 
+  public void blacklistInstance(String instanceName) {
+    _helixAdmin.addInstanceTag(_helixClusterName, instanceName, BLACKLIST_TAG);
+  }
+
+  public void whitelistInstance(String instanceName) {
+    _helixAdmin.removeInstanceTag(_helixClusterName, instanceName, BLACKLIST_TAG);
+  }
+
+  public List<String> getBlacklistedInstances() {
+    return _helixAdmin.getInstancesInClusterWithTag(_helixClusterName, BLACKLIST_TAG);
+  }
+
   public String getHelixZkURL() {
     return _helixZkURL;
   }
@@ -250,6 +258,9 @@ public class HelixMirrorMakerManager {
   }
 
   public PriorityQueue<InstanceTopicPartitionHolder> getCurrentServingInstance() {
+    if (!isLeader()) {
+      updateCurrentServingInstance();
+    }
     return _currentServingInstance;
   }
 

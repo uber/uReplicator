@@ -12,6 +12,7 @@ import java.util.PriorityQueue;
 import org.restlet.data.Status;
 import org.restlet.representation.Representation;
 import org.restlet.representation.StringRepresentation;
+import org.restlet.resource.Delete;
 import org.restlet.resource.Get;
 import org.restlet.resource.Post;
 import org.restlet.resource.ServerResource;
@@ -46,7 +47,6 @@ public class MirrorMakerManagerRestletResource extends ServerResource {
         InstanceTopicPartitionHolder instance = iter.next();
         String name = instance.getInstanceName();
         if (instanceName == null || instanceName.equals(name)) {
-
           if (!instanceMapJson.containsKey(name)) {
             instanceMapJson.put(name, new JSONArray());
           }
@@ -61,6 +61,11 @@ public class MirrorMakerManagerRestletResource extends ServerResource {
         }
       }
       responseJson.put("instances", instanceMapJson);
+
+      JSONArray blacklistedArray = new JSONArray();
+      blacklistedArray.addAll(_helixMirrorMakerManager.getBlacklistedInstances());
+      responseJson.put("blacklisted", blacklistedArray);
+
       return new StringRepresentation(responseJson.toJSONString());
     } catch (Exception e) {
       LOGGER.error("Got error during processing Get request", e);
@@ -74,16 +79,50 @@ public class MirrorMakerManagerRestletResource extends ServerResource {
   @Override
   @Post
   public Representation post(Representation entity) {
-    try {
-      AutoRebalanceLiveInstanceChangeListener rebalancer = _helixMirrorMakerManager.getRebalancer();
-      if (rebalancer.triggerRebalanceCluster()) {
-        return new StringRepresentation("Cluster is rebalanced\n");
+    final String instanceName = (String) getRequest().getAttributes().get("instanceName");
+    if (instanceName != null) {
+      // whitelist a worker
+      try {
+        _helixMirrorMakerManager.whitelistInstance(instanceName);
+        return new StringRepresentation(String.format("Instance %s is whitelisted", instanceName));
+      } catch (Exception e) {
+        LOGGER.error("Got error during processing Post request", e);
+        getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
+        return new StringRepresentation(String
+            .format("Failed to whitelist instance %s, with exception: %s", instanceName, e));
       }
-      return new StringRepresentation("Skipped rebalancing cluster\n");
+    } else {
+      // rebalance the whole cluster
+      try {
+        AutoRebalanceLiveInstanceChangeListener rebalancer = _helixMirrorMakerManager.getRebalancer();
+        if (rebalancer.triggerRebalanceCluster()) {
+          return new StringRepresentation("Cluster is rebalanced\n");
+        }
+        return new StringRepresentation("Skipped rebalancing cluster\n");
+      } catch (Exception e) {
+        LOGGER.error("Got error during processing POST request", e);
+        getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
+        return new StringRepresentation(String.format("Failed to rebalance cluster with exception: %s", e));
+      }
+    }
+  }
+
+  @Override
+  @Delete
+  public Representation delete() {
+    final String instanceName = (String) getRequest().getAttributes().get("instanceName");
+    if (instanceName == null) {
+      return new StringRepresentation("Instance name is required to blacklist");
+    }
+    // blacklist a worker
+    try {
+      _helixMirrorMakerManager.blacklistInstance(instanceName);
+      return new StringRepresentation(String.format("Instance %s is blacklisted", instanceName));
     } catch (Exception e) {
-      LOGGER.error("Got error during processing POST request", e);
+      LOGGER.error("Got error during processing Delete request", e);
       getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
-      return new StringRepresentation(String.format("Failed to rebalance cluster with exception: %s", e));
+      return new StringRepresentation(String
+          .format("Failed to blacklist instance %s, with exception: %s", instanceName, e));
     }
   }
 
