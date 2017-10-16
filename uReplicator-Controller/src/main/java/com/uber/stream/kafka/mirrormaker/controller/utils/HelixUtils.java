@@ -69,10 +69,8 @@ public class HelixUtils {
    *
    * @return InstanceToNumTopicPartitionMap
    */
-  public static Map<String, Set<TopicPartition>> getInstanceToTopicPartitionsMap(
-      HelixManager helixManager) {
-    Map<String, Set<TopicPartition>> instanceToNumTopicPartitionMap =
-        new HashMap<String, Set<TopicPartition>>();
+  public static Map<String, Set<TopicPartition>> getInstanceToTopicPartitionsMap(HelixManager helixManager) {
+    Map<String, Set<TopicPartition>> instanceToNumTopicPartitionMap = new HashMap<>();
     HelixAdmin helixAdmin = helixManager.getClusterManagmentTool();
     String helixClusterName = helixManager.getClusterName();
     for (String topic : helixAdmin.getResourcesInCluster(helixClusterName)) {
@@ -81,7 +79,7 @@ public class HelixUtils {
         TopicPartition tpi = new TopicPartition(topic, Integer.parseInt(partition));
         for (String instance : is.getInstanceSet(partition)) {
           if (!instanceToNumTopicPartitionMap.containsKey(instance)) {
-            instanceToNumTopicPartitionMap.put(instance, new HashSet<TopicPartition>());
+            instanceToNumTopicPartitionMap.put(instance, new HashSet<>());
           }
           instanceToNumTopicPartitionMap.get(instance).add(tpi);
         }
@@ -115,8 +113,7 @@ public class HelixUtils {
 
   public static Map<String, IdealState> getIdealStatesFromAssignment(
       Set<InstanceTopicPartitionHolder> newAssignment) {
-    Map<String, CustomModeISBuilder> idealStatesBuilderMap =
-        new HashMap<String, CustomModeISBuilder>();
+    Map<String, CustomModeISBuilder> idealStatesBuilderMap = new HashMap<>();
     for (InstanceTopicPartitionHolder instance : newAssignment) {
       for (TopicPartition tpi : instance.getServingTopicPartitionSet()) {
         String topicName = tpi.getTopic();
@@ -135,7 +132,7 @@ public class HelixUtils {
             "ONLINE");
       }
     }
-    Map<String, IdealState> idealStatesMap = new HashMap<String, IdealState>();
+    Map<String, IdealState> idealStatesMap = new HashMap<>();
     for (String topic : idealStatesBuilderMap.keySet()) {
       IdealState idealState = idealStatesBuilderMap.get(topic).build();
       idealState.setMaxPartitionsPerInstance(idealState.getPartitionSet().size());

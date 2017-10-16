@@ -27,7 +27,7 @@ import java.util.Set;
 public class InstanceTopicPartitionHolder {
 
   private final String _instanceName;
-  private final Set<TopicPartition> _topicPartitionSet = new HashSet<TopicPartition>();
+  private final Set<TopicPartition> _topicPartitionSet = new HashSet<>();
 
   public InstanceTopicPartitionHolder(String instance) {
     _instanceName = instance;

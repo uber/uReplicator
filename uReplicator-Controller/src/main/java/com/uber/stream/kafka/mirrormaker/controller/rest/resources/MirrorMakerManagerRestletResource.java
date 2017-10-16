@@ -47,7 +47,6 @@ public class MirrorMakerManagerRestletResource extends ServerResource {
         InstanceTopicPartitionHolder instance = iter.next();
         String name = instance.getInstanceName();
         if (instanceName == null || instanceName.equals(name)) {
-
           if (!instanceMapJson.containsKey(name)) {
             instanceMapJson.put(name, new JSONArray());
           }

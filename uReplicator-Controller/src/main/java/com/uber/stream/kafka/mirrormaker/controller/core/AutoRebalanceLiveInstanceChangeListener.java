@@ -207,8 +207,7 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
       }
       final Map<String, Set<TopicPartition>> instanceToTopicPartitionMap =
           HelixUtils.getInstanceToTopicPartitionsMap(_helixManager);
-      Set<TopicPartition> unassignedTopicPartitions =
-          HelixUtils.getUnassignedPartitions(_helixManager);
+      Set<TopicPartition> unassignedTopicPartitions = HelixUtils.getUnassignedPartitions(_helixManager);
       if (instanceToTopicPartitionMap.isEmpty() && unassignedTopicPartitions.isEmpty()) {
         LOGGER.info("No topic got assigned yet, do nothing!");
         return;
@@ -239,8 +238,8 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     Set<String> liveInstanceNames = getLiveInstanceName(liveInstances, excludedInstances);
     // removedInstances contains the excludedInstances that currently have workload too
     Set<String> removedInstances = getRemovedInstanceSet(liveInstanceNames, instanceToTopicPartitionMap.keySet());
-
     Set<String> idleInstances = getIdleInstanceSet(liveInstanceNames, instanceToTopicPartitionMap);
+
     int numIdleInstancesToAssign;
     if (_maxWorkingInstances == 0) {
       numIdleInstancesToAssign = idleInstances.size();
@@ -271,7 +270,7 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
         + " instances - " + Arrays.toString(removedInstances.toArray(new String[0])) + " for unassigned partitions: "
         + unassignedTopicPartitions);
     Set<InstanceTopicPartitionHolder> instances = new HashSet<>();
-    List<TopicPartition> tpiNeedsToBeAssigned = new ArrayList<TopicPartition>();
+    List<TopicPartition> tpiNeedsToBeAssigned = new ArrayList<>();
     tpiNeedsToBeAssigned.addAll(unassignedTopicPartitions);
 
     boolean assignmentChanged = false;
@@ -289,12 +288,12 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
         String idleInstanceToAssign = idleInstances.iterator().next();
         idleInstances.remove(idleInstanceToAssign);
         numIdleInstancesToAssign--;
-        InstanceTopicPartitionHolder instance = new InstanceTopicPartitionHolder(idleInstanceToAssign);
-        instance.addTopicPartitions(entry.getValue());
-        instances.add(instance);
+        InstanceTopicPartitionHolder idleInstance = new InstanceTopicPartitionHolder(idleInstanceToAssign);
+        idleInstance.addTopicPartitions(entry.getValue());
+        instances.add(idleInstance);
         assignmentChanged = true;
-        LOGGER.info(
-            "Move workload from instance " + instanceName + " to " + idleInstanceToAssign + ": " + entry.getValue());
+        LOGGER.info("Move workload from instance " + instanceName + " to " + idleInstanceToAssign + ": "
+            + entry.getValue());
       } else {
         // assign the workload to all instances
         tpiNeedsToBeAssigned.addAll(entry.getValue());
@@ -321,8 +320,6 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
         forced = true; // force to rebalance so as to assign partitions to the idle instances
         numIdleInstancesToAssign--;
       }
-
-
     }
 
     if (balancePartitions(instances, tpiNeedsToBeAssigned, forced)) {
