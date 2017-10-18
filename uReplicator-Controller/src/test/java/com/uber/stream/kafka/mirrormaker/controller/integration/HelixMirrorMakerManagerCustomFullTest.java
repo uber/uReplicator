@@ -59,6 +59,7 @@ public class HelixMirrorMakerManagerCustomFullTest {
     controllerConf.setControllerMode("customized");
     controllerConf.setBackUpToGit("false");
     controllerConf.setAutoRebalanceDelayInSeconds("1");
+    controllerConf.setAutoRebalanceWorkloadRatioThreshold("0");
     controllerConf.setZkStr(ZkStarter.DEFAULT_ZK_STR);
     HelixMirrorMakerManager helixMirrorMakerManager = new HelixMirrorMakerManager(controllerConf);
     helixMirrorMakerManager.start();
