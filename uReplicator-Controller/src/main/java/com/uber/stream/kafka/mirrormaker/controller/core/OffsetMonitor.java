@@ -78,35 +78,38 @@ public class OffsetMonitor {
       ControllerConf controllerConf) {
     int numOffsetThread = controllerConf.getNumOffsetThread();
     this.helixMirrorMakerManager = helixMirrorMakerManager;
+    this.zkClientQueue = new LinkedBlockingQueue<>(numOffsetThread);
+    this.srcBrokerList = new ArrayList<>();
+
     String zkString = controllerConf.getConsumerCommitZkPath().isEmpty() ?
         controllerConf.getSrcKafkaZkPath() : controllerConf.getConsumerCommitZkPath();
-    this.zkClientQueue = new LinkedBlockingQueue<>(numOffsetThread);
-    for (int i = 0; i < numOffsetThread; i++) {
-      ZkClient zkClient = new ZkClient(zkString, 30000, 30000, ZKStringSerializer$.MODULE$);
-      zkClientQueue.add(zkClient);
-    }
-
-    ZkClient zkClient = new ZkClient(controllerConf.getSrcKafkaZkPath(), 30000, 30000, ZKStringSerializer$.MODULE$);
-    List<String> brokerIdList = zkClient.getChildren("/brokers/ids");
-    JSONParser parser = new JSONParser();
-    this.srcBrokerList = new ArrayList<>();
-    for (String id : brokerIdList) {
-      try {
-        JSONObject json = (JSONObject) parser.parse(zkClient.readData("/brokers/ids/" + id).toString());
-        srcBrokerList.add(String.valueOf(json.get("host")) + ":" + String.valueOf(json.get("port")));
-      } catch (ParseException e) {
-        logger.warn("Failed to get broker", e);
-      }
-    }
-
-    this.consumerOffsetPath = "/consumers/" + controllerConf.getGroupId() + "/offsets/";
-    // disable monitor if GROUP_ID is not set
-    if (controllerConf.getGroupId().isEmpty()) {
+    // disable monitor if SRC_KAFKA_ZK or GROUP_ID is not set
+    if (StringUtils.isEmpty(controllerConf.getSrcKafkaZkPath()) || controllerConf.getGroupId().isEmpty()) {
       logger.warn("Consumer GROUP_ID is not set. Offset manager is disabled");
       this.refreshIntervalInSec = 0;
     } else {
       this.refreshIntervalInSec = controllerConf.getOffsetRefreshIntervalInSec();
+
+      for (int i = 0; i < numOffsetThread; i++) {
+        ZkClient zkClient = new ZkClient(zkString, 30000, 30000, ZKStringSerializer$.MODULE$);
+        zkClientQueue.add(zkClient);
+      }
+
+      ZkClient zkClient = new ZkClient(controllerConf.getSrcKafkaZkPath(), 30000, 30000, ZKStringSerializer$.MODULE$);
+      List<String> brokerIdList = zkClient.getChildren("/brokers/ids");
+      JSONParser parser = new JSONParser();
+
+      for (String id : brokerIdList) {
+        try {
+          JSONObject json = (JSONObject) parser.parse(zkClient.readData("/brokers/ids/" + id).toString());
+          srcBrokerList.add(String.valueOf(json.get("host")) + ":" + String.valueOf(json.get("port")));
+        } catch (ParseException e) {
+          logger.warn("Failed to get broker", e);
+        }
+      }
     }
+
+    this.consumerOffsetPath = "/consumers/" + controllerConf.getGroupId() + "/offsets/";
 
     this.refreshExecutor = Executors.newSingleThreadScheduledExecutor(
         new ThreadFactoryBuilder().setNameFormat("topic-list-cron-%d").setDaemon(true).build());
