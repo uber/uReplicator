@@ -15,6 +15,9 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
+import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
+import com.uber.stream.kafka.mirrormaker.controller.utils.HelixSetupUtils;
+import com.uber.stream.kafka.mirrormaker.controller.utils.HelixUtils;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -22,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
-
 import org.apache.helix.HelixAdmin;
 import org.apache.helix.HelixDataAccessor;
 import org.apache.helix.HelixManager;
@@ -36,10 +38,6 @@ import org.apache.helix.model.LiveInstance;
 import org.apache.helix.model.builder.HelixConfigScopeBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
-import com.uber.stream.kafka.mirrormaker.controller.utils.HelixSetupUtils;
-import com.uber.stream.kafka.mirrormaker.controller.utils.HelixUtils;
 
 /**
  * Main logic for Helix Controller. Provided all necessary APIs for topics management.
