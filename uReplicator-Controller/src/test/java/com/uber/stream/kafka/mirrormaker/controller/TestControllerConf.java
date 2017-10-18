@@ -35,6 +35,7 @@ public class TestControllerConf {
         "/var/log/kafka-mirror-maker-controller");
     Assert.assertEquals(defaultConf.getControllerPort(), "9000");
     Assert.assertEquals(defaultConf.getHelixClusterName(), "testMirrorMaker");
+    Assert.assertEquals(defaultConf.getDeploymentName(), "testDeploymentName");
     Assert.assertEquals(defaultConf.getZkStr(), "localhost:2181");
     Assert.assertEquals(defaultConf.getInstanceId(), InetAddress.getLocalHost().getHostName());
     Assert.assertEquals(defaultConf.getEnableAutoWhitelist(), false);
@@ -45,6 +46,7 @@ public class TestControllerConf {
   public void testCmdControllerConf() throws ParseException {
     String[] args = new String[]{
         "-helixClusterName", "testHelixClusterName",
+        "-deploymentName", "testDeploymentName",
         "-zookeeper", "localhost:2181",
         "-port", "9090",
         "-mode", "auto",
@@ -68,6 +70,7 @@ public class TestControllerConf {
     cmd = parser.parse(ControllerConf.constructControllerOptions(), args);
     ControllerConf conf = ControllerConf.getControllerConf(cmd);
     Assert.assertEquals(conf.getHelixClusterName(), "testHelixClusterName");
+    Assert.assertEquals(conf.getDeploymentName(), "testDeploymentName");
     Assert.assertEquals(conf.getZkStr(), "localhost:2181");
     Assert.assertEquals(conf.getControllerPort(), "9090");
     Assert.assertEquals(conf.getControllerMode(), "auto");
@@ -90,6 +93,7 @@ public class TestControllerConf {
   public void testAnotherCmdControllerConf() throws ParseException {
     String[] args = new String[]{
         "-helixClusterName", "testHelixClusterName",
+        "-deploymentName", "testDeploymentName",
         "-zookeeper", "localhost:2181",
         "-port", "9090",
         "-mode", "auto",
@@ -109,6 +113,7 @@ public class TestControllerConf {
     cmd = parser.parse(ControllerConf.constructControllerOptions(), args);
     ControllerConf conf = ControllerConf.getControllerConf(cmd);
     Assert.assertEquals(conf.getHelixClusterName(), "testHelixClusterName");
+    Assert.assertEquals(conf.getDeploymentName(), "testDeploymentName");
     Assert.assertEquals(conf.getZkStr(), "localhost:2181");
     Assert.assertEquals(conf.getControllerPort(), "9090");
     Assert.assertEquals(conf.getControllerMode(), "auto");
@@ -132,6 +137,7 @@ public class TestControllerConf {
   public void testNoGitBackupCmdControllerConf() throws ParseException, UnknownHostException {
     String[] args = new String[]{
         "-helixClusterName", "testHelixClusterName",
+        "-deploymentName", "testDeploymentName",
         "-zookeeper", "localhost:2181",
         "-port", "9090",
         "-mode", "auto",
@@ -147,6 +153,7 @@ public class TestControllerConf {
     cmd = parser.parse(ControllerConf.constructControllerOptions(), args);
     ControllerConf conf = ControllerConf.getControllerConf(cmd);
     Assert.assertEquals(conf.getHelixClusterName(), "testHelixClusterName");
+    Assert.assertEquals(conf.getDeploymentName(), "testDeploymentName");
     Assert.assertEquals(conf.getZkStr(), "localhost:2181");
     Assert.assertEquals(conf.getControllerPort(), "9090");
     Assert.assertEquals(conf.getControllerMode(), "auto");

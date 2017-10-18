@@ -52,9 +52,11 @@ public class HelixMirrorMakerManagerCustomEmptyWorkerTest {
   public void testControllerStarter() throws Exception {
     LOGGER.info("testControllerStarter");
     String helixClusterName = "HelixMirrorMakerManagerCustomEmptyWorkerTest";
+    String deploymentName = "DeploymentHelixMirrorMakerManagerCustomFullTest";
     ControllerConf controllerConf = new ControllerConf();
     controllerConf.setControllerPort("9090");
     controllerConf.setHelixClusterName(helixClusterName);
+    controllerConf.setDeploymentName(deploymentName);
     controllerConf.setInstanceId("controller-0");
     controllerConf.setZkStr(ZkStarter.DEFAULT_ZK_STR);
     controllerConf.setControllerMode("customized");

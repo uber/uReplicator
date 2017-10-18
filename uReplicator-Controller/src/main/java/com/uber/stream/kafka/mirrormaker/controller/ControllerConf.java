@@ -30,6 +30,8 @@ import org.apache.commons.configuration.PropertiesConfiguration;
  */
 public class ControllerConf extends PropertiesConfiguration {
 
+  private static final String FEDERATED_ENABLED = "federated.enabled";
+  private static final String DEPLOYMENT_NAME = "federated.deployment.name";
   private static final String CONTROLLER_PORT = "controller.port";
   private static final String ZK_STR = "controller.zk.str";
   private static final String HELIX_CLUSTER_NAME = "controller.helix.cluster.name";
@@ -143,6 +145,14 @@ public class ControllerConf extends PropertiesConfiguration {
 
   public void setHelixClusterName(String clusterName) {
     setProperty(HELIX_CLUSTER_NAME, clusterName);
+  }
+
+  public void setFederatedEnabled(String isEnabled) {
+    setProperty(FEDERATED_ENABLED, isEnabled);
+  }
+
+  public void setDeploymentName(String deploymentName) {
+    setProperty(DEPLOYMENT_NAME, deploymentName);
   }
 
   public void setControllerPort(String port) {
@@ -312,6 +322,17 @@ public class ControllerConf extends PropertiesConfiguration {
 
   public String getHelixClusterName() {
     return (String) getProperty(HELIX_CLUSTER_NAME);
+  }
+
+  public boolean isFederatedEnabled() {
+    if (!containsKey(FEDERATED_ENABLED)) {
+      return false;
+    }
+    return ((String)getProperty(FEDERATED_ENABLED)).equalsIgnoreCase("true");
+  }
+
+  public String getDeploymentName() {
+    return (String) getProperty(DEPLOYMENT_NAME);
   }
 
   public String getControllerPort() {
@@ -577,6 +598,8 @@ public class ControllerConf extends PropertiesConfiguration {
     controllerOptions.addOption("help", false, "Help")
         .addOption("example1", false, "Start with default example")
         .addOption("example2", false, "Start with autowhitelisting example")
+        .addOption("enableFederated", true, "Whether to enable federated uReplicator")
+        .addOption("deploymentName", true, "Federated uReplicator deployment name")
         .addOption("helixClusterName", true, "Helix Cluster Name")
         .addOption("mode", true, "Controller Mode")
         .addOption("zookeeper", true, "Zookeeper path")
@@ -629,6 +652,20 @@ public class ControllerConf extends PropertiesConfiguration {
 
   public static ControllerConf getControllerConf(CommandLine cmd) {
     ControllerConf controllerConf = new ControllerConf();
+    if (cmd.hasOption("enableFederated")) {
+      controllerConf.setFederatedEnabled(cmd.getOptionValue("enableFederated"));
+    } else {
+      controllerConf.setFederatedEnabled("false");
+    }
+    if (cmd.hasOption("deploymentName")) {
+      controllerConf.setDeploymentName(cmd.getOptionValue("deploymentName"));
+    } else {
+      if (controllerConf.isFederatedEnabled()) {
+        throw new RuntimeException("Missing option: --deploymentName for federated uReplicator");
+      } else {
+        controllerConf.setDeploymentName("");
+      }
+    }
     if (cmd.hasOption("helixClusterName")) {
       controllerConf.setHelixClusterName(cmd.getOptionValue("helixClusterName"));
     } else {
