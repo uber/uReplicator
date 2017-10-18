@@ -20,6 +20,7 @@ import com.uber.stream.kafka.mirrormaker.controller.utils.HelixSetupUtils;
 import com.uber.stream.kafka.mirrormaker.controller.utils.HelixUtils;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -117,9 +118,12 @@ public class HelixMirrorMakerManager {
       Map<String, Set<TopicPartition>> instanceToTopicPartitionsMap =
           HelixUtils.getInstanceToTopicPartitionsMap(_helixZkManager);
       List<String> liveInstances = HelixUtils.liveInstances(_helixZkManager);
+      Set<String> blacklistedInstances = new HashSet<>(getBlacklistedInstances());
       for (String instanceName : liveInstances) {
-        InstanceTopicPartitionHolder instance = new InstanceTopicPartitionHolder(instanceName);
-        instanceMap.put(instanceName, instance);
+        if (!blacklistedInstances.contains(instanceName)) {
+          InstanceTopicPartitionHolder instance = new InstanceTopicPartitionHolder(instanceName);
+          instanceMap.put(instanceName, instance);
+        }
       }
       for (String instanceName : instanceToTopicPartitionsMap.keySet()) {
         if (instanceMap.containsKey(instanceName)) {
@@ -127,7 +131,16 @@ public class HelixMirrorMakerManager {
         }
       }
       _currentServingInstance.clear();
-      _currentServingInstance.addAll(instanceMap.values());
+      int maxStandbyHosts = instanceMap.size() - _controllerConf.getMaxWorkingInstances();
+      int standbyHosts = 0;
+      for (InstanceTopicPartitionHolder itph : instanceMap.values()) {
+        if (standbyHosts >= maxStandbyHosts || itph.getNumServingTopicPartitions() > 0) {
+          _currentServingInstance.add(itph);
+        } else {
+          // exclude it as a standby host
+          standbyHosts++;
+        }
+      }
     }
   }
 
