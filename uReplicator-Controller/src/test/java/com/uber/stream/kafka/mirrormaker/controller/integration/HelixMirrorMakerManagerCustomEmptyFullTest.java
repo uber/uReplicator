@@ -60,6 +60,7 @@ public class HelixMirrorMakerManagerCustomEmptyFullTest {
     controllerConf.setZkStr(ZkStarter.DEFAULT_ZK_STR);
     controllerConf.setBackUpToGit("false");
     controllerConf.setAutoRebalanceDelayInSeconds("1");
+    controllerConf.setAutoRebalanceWorkloadRatioThreshold("0");
     HelixMirrorMakerManager helixMirrorMakerManager = new HelixMirrorMakerManager(controllerConf);
     helixMirrorMakerManager.start();
     // Adding fake workers

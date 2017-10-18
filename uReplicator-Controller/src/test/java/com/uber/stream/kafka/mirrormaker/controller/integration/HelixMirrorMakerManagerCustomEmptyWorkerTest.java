@@ -60,6 +60,7 @@ public class HelixMirrorMakerManagerCustomEmptyWorkerTest {
     controllerConf.setControllerMode("customized");
     controllerConf.setBackUpToGit("false");
     controllerConf.setAutoRebalanceDelayInSeconds("0");
+    controllerConf.setAutoRebalanceWorkloadRatioThreshold("0");
     HelixMirrorMakerManager helixMirrorMakerManager = new HelixMirrorMakerManager(controllerConf);
     helixMirrorMakerManager.start();
     LOGGER.info("Trying to add topic testTopic0");

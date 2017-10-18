@@ -669,8 +669,8 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
       if (workerWorkload.compareTotal(maxWorkload) <= 0) {
         break;
       }
-      TopicWorkload diff = new TopicWorkload(workerWorkload.getBytesPerSecond() - averageWorkload.getBytesPerSecond(),
-          workerWorkload.getMsgsPerSecond() - averageWorkload.getMsgsPerSecond());
+      TopicWorkload diff = new TopicWorkload(workerWorkload.getBytesPerSecond() - maxWorkload.getBytesPerSecond(),
+          workerWorkload.getMsgsPerSecond() - maxWorkload.getMsgsPerSecond());
       TopicWorkload workloadToRemove = new TopicWorkload(0, 0, 0);
       List<TopicPartition> partitions = new ArrayList<>(highest.getServingTopicPartitionSet());
       Collections.shuffle(partitions); // choose random partitions

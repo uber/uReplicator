@@ -84,10 +84,16 @@ public class IdealStateBuilder {
     String consumerOffsetPath = topicPath + "/";
     String zkString = controllerConf.getConsumerCommitZkPath().isEmpty() ?
         controllerConf.getSrcKafkaZkPath() : controllerConf.getConsumerCommitZkPath();
+    boolean pathExisted = false;
     if (!StringUtils.isEmpty(zkString)) {
       zkClient = new ZkClient(zkString, 30000, 30000, ZKStringSerializer$.MODULE$);
-      if (!zkClient.exists(topicPath)) {
-        zkClient.createPersistent(topicPath);
+      try {
+        if (!zkClient.exists(topicPath)) {
+          zkClient.createPersistent(topicPath);
+        }
+        pathExisted = true;
+      } catch (Exception e) {
+        LOGGER.warn("Fails to create path {}", topicPath, e);
       }
     }
     // Assign new partitions to as many workers as possible
@@ -98,7 +104,7 @@ public class IdealStateBuilder {
     }
     if (!instancesForNewPartitions.isEmpty()) {
       for (int i = numOldPartitions; i < newNumTopicPartitions; ++i) {
-        if (!StringUtils.isEmpty(zkString)) {
+        if (pathExisted) {
           Object obj = zkClient.readData(consumerOffsetPath + i, true);
           if (obj == null) {
             zkClient.createPersistent(consumerOffsetPath + i, "0");
