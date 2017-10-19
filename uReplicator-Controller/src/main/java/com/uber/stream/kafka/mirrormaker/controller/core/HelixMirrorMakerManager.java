@@ -131,7 +131,7 @@ public class HelixMirrorMakerManager {
         }
       }
       _currentServingInstance.clear();
-      int maxStandbyHosts = instanceMap.size() - _controllerConf.getMaxWorkingInstances();
+      int maxStandbyHosts = (_controllerConf.getMaxWorkingInstances() <= 0) ? 0 : instanceMap.size() - _controllerConf.getMaxWorkingInstances();
       int standbyHosts = 0;
       for (InstanceTopicPartitionHolder itph : instanceMap.values()) {
         if (standbyHosts >= maxStandbyHosts || itph.getNumServingTopicPartitions() > 0) {
