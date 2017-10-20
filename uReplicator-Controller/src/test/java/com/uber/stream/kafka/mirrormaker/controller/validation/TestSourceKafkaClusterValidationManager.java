@@ -57,6 +57,7 @@ public class TestSourceKafkaClusterValidationManager {
     ControllerConf controllerConf = new ControllerConf();
     controllerConf.setControllerPort("9090");
     controllerConf.setHelixClusterName("TestAutoTopicWhitelistingManager");
+    controllerConf.setDeploymentName("TestAutoTopicWhitelistingManagerDeployment");
     controllerConf.setInstanceId("controller-0");
     controllerConf.setControllerMode("customized");
     controllerConf.setZkStr(ZkStarter.DEFAULT_ZK_STR);

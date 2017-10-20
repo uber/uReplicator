@@ -48,9 +48,11 @@ public class HelixMirrorMakerManagerCustomSimpleTest {
   public void testControllerStarter() throws Exception {
     LOGGER.info("testControllerStarter");
     String helixClusterName = "HelixMirrorMakerManagerCustomSimpleTest";
+    String deploymentName = "DeploymentHelixMirrorMakerManagerCustomFullTest";
     ControllerConf controllerConf = new ControllerConf();
     controllerConf.setControllerPort("9090");
     controllerConf.setHelixClusterName(helixClusterName);
+    controllerConf.setDeploymentName(deploymentName);
     controllerConf.setInstanceId("controller-0");
     controllerConf.setBackUpToGit("false");
     controllerConf.setAutoRebalanceDelayInSeconds("0");
