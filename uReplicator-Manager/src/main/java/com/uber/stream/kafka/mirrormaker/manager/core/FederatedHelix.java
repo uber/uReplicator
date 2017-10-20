@@ -15,8 +15,8 @@
  */
 package com.uber.stream.kafka.mirrormaker.manager.core;
 
+import com.uber.stream.kafka.mirrormaker.common.utils.HelixSetupUtils;
 import com.uber.stream.kafka.mirrormaker.manager.ManagerConf;
-import com.uber.stream.kafka.mirrormaker.manager.utils.HelixSetupUtils;
 import com.uber.stream.kafka.mirrormaker.manager.utils.HelixUtils;
 import org.apache.helix.HelixAdmin;
 import org.apache.helix.HelixManager;

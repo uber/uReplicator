@@ -12,6 +12,14 @@
     <version>1.0.3-SNAPSHOT</version>
   </parent>
 
+  <dependencies>
+    <dependency>
+      <groupId>com.uber.uReplicator</groupId>
+      <artifactId>uReplicator-Common</artifactId>
+      <version>${project.parent.version}</version>
+    </dependency>
+  </dependencies>
+
   <build>
     <plugins>
       <plugin>

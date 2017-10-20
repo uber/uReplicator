@@ -3,36 +3,14 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <artifactId>uReplicator-Controller</artifactId>
+  <artifactId>uReplicator-Common</artifactId>
   <packaging>jar</packaging>
-  <name>uReplicator-Controller</name>
+  <name>uReplicator-Common</name>
   <parent>
-    <groupId>com.uber.uReplicator</groupId>
     <artifactId>uReplicator</artifactId>
+    <groupId>com.uber.uReplicator</groupId>
     <version>1.0.3-SNAPSHOT</version>
   </parent>
-  <description>
-    Kafka MirrorMaker with Helix is built for resolving high level consumers rebalancing pain point.
-    Helix provides a good interface to interact with zookeeper and manages/rebalances a stateful
-    mapping for instance to simple consumer mapping.
-  </description>
-
-  <properties>
-    <googlecode.json.simple.version>1.1</googlecode.json.simple.version>
-  </properties>
-
-  <dependencies>
-    <dependency>
-      <groupId>com.uber.uReplicator</groupId>
-      <artifactId>uReplicator-Common</artifactId>
-      <version>${project.parent.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.googlecode.json-simple</groupId>
-      <artifactId>json-simple</artifactId>
-      <version>${googlecode.json.simple.version}</version>
-    </dependency>
-  </dependencies>
 
   <build>
     <plugins>
