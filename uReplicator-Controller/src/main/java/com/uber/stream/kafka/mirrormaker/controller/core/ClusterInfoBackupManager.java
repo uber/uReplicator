@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 public class ClusterInfoBackupManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterInfoBackupManager.class);
+  private static final int STOP_TIMEOUT_SEC = 5;
 
   private final HelixMirrorMakerManager _helixMirrorMakerManager;
   private final ScheduledExecutorService _executorService = Executors.newSingleThreadScheduledExecutor();
@@ -74,6 +75,16 @@ public class ClusterInfoBackupManager {
         LOGGER.info("Backup taken successfully!");
       }
     }, 20, _timeValue, _timeUnit);
+  }
+
+  public void stop() {
+    _executorService.shutdown();
+    try {
+      _executorService.awaitTermination(STOP_TIMEOUT_SEC, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      LOGGER.info("Stop ClusterInfoBackupManager got interrupted");
+    }
+    _executorService.shutdownNow();
   }
 
   public synchronized void dumpState() throws Exception {

@@ -15,19 +15,10 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller;
 
-import com.uber.stream.kafka.mirrormaker.controller.core.AutoTopicWhitelistingManager;
-import com.uber.stream.kafka.mirrormaker.controller.core.ClusterInfoBackupManager;
-import com.uber.stream.kafka.mirrormaker.controller.core.FileBackUpHandler;
-import com.uber.stream.kafka.mirrormaker.controller.core.GitBackUpHandler;
 import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
-import com.uber.stream.kafka.mirrormaker.controller.core.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.controller.core.ManagerControllerHelix;
 import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import com.uber.stream.kafka.mirrormaker.controller.rest.ControllerRestApplication;
-import com.uber.stream.kafka.mirrormaker.controller.validation.SourceKafkaClusterValidationManager;
-import com.uber.stream.kafka.mirrormaker.controller.validation.ValidationManager;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -46,167 +37,80 @@ import org.slf4j.LoggerFactory;
  */
 public class ControllerStarter {
 
-  private static final String DEST_KAFKA_CLUSTER = "destKafkaCluster";
-  private static final String SRC_KAFKA_CLUSTER = "srcKafkaCluster";
   private static final Logger LOGGER = LoggerFactory.getLogger(ControllerStarter.class);
   private final ControllerConf _config;
 
-  private final Component _component;
-  private final Application _controllerRestApp;
+  private ControllerInstance _controllerInstance = null;
   private final ManagerControllerHelix _managerControllerHelix;
-  private final HelixMirrorMakerManager _helixMirrorMakerManager;
-  private final ValidationManager _validationManager;
-  private final SourceKafkaClusterValidationManager _srcKafkaValidationManager;
-  private final AutoTopicWhitelistingManager _autoTopicWhitelistingManager;
-  private final ClusterInfoBackupManager _clusterInfoBackupManager;
-  private final Map<String, KafkaBrokerTopicObserver> _kafkaBrokerTopicObserverMap = new HashMap<>();
+
+  private Component _component = null;
 
   public ControllerStarter(ControllerConf conf) {
     LOGGER.info("Trying to init ControllerStarter with config: {}", conf);
     _config = conf;
     HelixKafkaMirrorMakerMetricsReporter.init(conf);
-    _component = new Component();
-    _controllerRestApp = new ControllerRestApplication(null);
     _managerControllerHelix = new ManagerControllerHelix(_config);
-    _helixMirrorMakerManager = new HelixMirrorMakerManager(_config);
-    _validationManager = new ValidationManager(_helixMirrorMakerManager);
-    _srcKafkaValidationManager = getSourceKafkaClusterValidationManager();
-    _autoTopicWhitelistingManager = getAutoTopicWhitelistingManager();
-    if (_config.getBackUpToGit()) {
-      _clusterInfoBackupManager = new ClusterInfoBackupManager(_helixMirrorMakerManager,
-          new GitBackUpHandler(conf.getRemoteBackupRepo(), conf.getLocalGitRepoPath()), _config);
-    } else {
-      _clusterInfoBackupManager = new ClusterInfoBackupManager(_helixMirrorMakerManager,
-          new FileBackUpHandler(conf.getLocalBackupFilePath()), _config);
-    }
-  }
-
-  private SourceKafkaClusterValidationManager getSourceKafkaClusterValidationManager() {
-    if (_config.getEnableSrcKafkaValidation()) {
-      if (!_kafkaBrokerTopicObserverMap.containsKey(SRC_KAFKA_CLUSTER)) {
-        _kafkaBrokerTopicObserverMap.put(SRC_KAFKA_CLUSTER,
-            new KafkaBrokerTopicObserver(SRC_KAFKA_CLUSTER, _config.getSrcKafkaZkPath()));
-      }
-      return new SourceKafkaClusterValidationManager(
-          _kafkaBrokerTopicObserverMap.get(SRC_KAFKA_CLUSTER),
-          _helixMirrorMakerManager, _config.getEnableAutoTopicExpansion());
-    } else {
-      LOGGER.info("Not init SourceKafkaClusterValidationManager!");
-      return null;
-    }
-  }
-
-  private AutoTopicWhitelistingManager getAutoTopicWhitelistingManager() {
-    if (_config.getEnableAutoWhitelist()) {
-      if (!_kafkaBrokerTopicObserverMap.containsKey(SRC_KAFKA_CLUSTER)) {
-        _kafkaBrokerTopicObserverMap.put(SRC_KAFKA_CLUSTER,
-            new KafkaBrokerTopicObserver(SRC_KAFKA_CLUSTER, _config.getSrcKafkaZkPath()));
-      }
-      if (!_kafkaBrokerTopicObserverMap.containsKey(DEST_KAFKA_CLUSTER)) {
-        _kafkaBrokerTopicObserverMap.put(DEST_KAFKA_CLUSTER,
-            new KafkaBrokerTopicObserver(DEST_KAFKA_CLUSTER, _config.getDestKafkaZkPath()));
-      }
-
-      String patternToExcludeTopics = _config.getPatternToExcludeTopics();
-      if (patternToExcludeTopics != null && patternToExcludeTopics.trim().length() > 0) {
-        patternToExcludeTopics = patternToExcludeTopics.trim();
-      } else {
-        patternToExcludeTopics = "";
-      }
-      LOGGER.info("Pattern to exclude topics is " + patternToExcludeTopics);
-
-      return new AutoTopicWhitelistingManager(_kafkaBrokerTopicObserverMap.get(SRC_KAFKA_CLUSTER),
-          _kafkaBrokerTopicObserverMap.get(DEST_KAFKA_CLUSTER), _helixMirrorMakerManager,
-          patternToExcludeTopics, _config.getWhitelistRefreshTimeInSeconds(), _config.getInitWaitTimeInSeconds());
-    } else {
-      LOGGER.info("Not init AutoTopicWhitelistingManager!");
-      return null;
-    }
-  }
-
-  public HelixMirrorMakerManager getHelixResourceManager() {
-    return _helixMirrorMakerManager;
   }
 
   public void start() throws Exception {
-    _component.getServers().add(Protocol.HTTP, Integer.parseInt(_config.getControllerPort()));
-    _component.getClients().add(Protocol.FILE);
-    _component.getClients().add(Protocol.JAR);
-    _component.getClients().add(Protocol.WAR);
-
-    final Context applicationContext = _component.getContext().createChildContext();
-
-    LOGGER.info("injecting conf and resource manager to the api context");
-    applicationContext.getAttributes().put(ControllerConf.class.toString(), _config);
-    applicationContext.getAttributes().put(HelixMirrorMakerManager.class.toString(),
-        _helixMirrorMakerManager);
-    applicationContext.getAttributes().put(ValidationManager.class.toString(), _validationManager);
-
-    if (_srcKafkaValidationManager != null) {
-      applicationContext.getAttributes().put(SourceKafkaClusterValidationManager.class.toString(),
-          _srcKafkaValidationManager);
-
-      applicationContext.getAttributes().put(KafkaBrokerTopicObserver.class.toString(),
-          _kafkaBrokerTopicObserverMap.get(SRC_KAFKA_CLUSTER));
-    }
-    if (_autoTopicWhitelistingManager != null) {
-      applicationContext.getAttributes().put(AutoTopicWhitelistingManager.class.toString(),
-          _autoTopicWhitelistingManager);
-    }
-
-    _controllerRestApp.setContext(applicationContext);
-
-    _component.getDefaultHost().attach(_controllerRestApp);
-
     if (_config.isFederatedEnabled()) {
       LOGGER.info("starting Manager-Controller Helix for Federated uRedplicator");
       _managerControllerHelix.start();
+
+      _component = new Component();
+      _component.getServers().add(Protocol.HTTP, Integer.parseInt(_config.getControllerPort()));
+      _component.getClients().add(Protocol.FILE);
+      _component.getClients().add(Protocol.JAR);
+      _component.getClients().add(Protocol.WAR);
+
+      Context applicationContext = _component.getContext().createChildContext();
+      LOGGER.info("injecting conf and helix to the api context");
+      applicationContext.getAttributes().put(ControllerConf.class.toString(), _config);
+      applicationContext.getAttributes().put(ManagerControllerHelix.class.toString(),
+          _managerControllerHelix);
+      Application controllerRestApp = new ControllerRestApplication(null);
+      controllerRestApp.setContext(applicationContext);
+
+      _component.getDefaultHost().attach(controllerRestApp);
+
+      LOGGER.info("starting api component");
+      _component.start();
     } else {
+      _controllerInstance = new ControllerInstance(_config);
       try {
-        LOGGER.info("starting helix mirror maker manager");
-        _helixMirrorMakerManager.start();
-        _validationManager.start();
-        if (_autoTopicWhitelistingManager != null) {
-          _autoTopicWhitelistingManager.start();
-        }
-        if (_srcKafkaValidationManager != null) {
-          _srcKafkaValidationManager.start();
-        }
-        if (_clusterInfoBackupManager != null) {
-          _clusterInfoBackupManager.start();
-        }
-        LOGGER.info("starting api component");
-        _component.start();
+        LOGGER.info("starting controller instance");
+        _controllerInstance.start();
       } catch (final Exception e) {
-        LOGGER.error("Caught exception while starting controller", e);
+        LOGGER.error("Caught exception while starting controller instance", e);
         throw e;
       }
     }
   }
 
   public void stop() {
+    if (_controllerInstance != null) {
+      try {
+        LOGGER.info("stopping controller instance");
+        _controllerInstance.stop();
+        _controllerInstance = null;
+      } catch (final Exception e) {
+        LOGGER.error("Caught exception while stopping controller instance", e);
+      }
+    }
+
+    if (_component != null) {
+      LOGGER.info("stopping api component");
+      try {
+        _component.stop();
+        _component = null;
+      } catch (Exception e) {
+        LOGGER.error("Failed to stop api componpent", e);
+      }
+    }
+
     if (_config.isFederatedEnabled()) {
       LOGGER.info("stopping Manager-Controller Helix");
       _managerControllerHelix.stop();
-    } else {
-      try {
-        LOGGER.info("stopping broker topic observers");
-        for (String key : _kafkaBrokerTopicObserverMap.keySet()) {
-          try {
-            KafkaBrokerTopicObserver observer = _kafkaBrokerTopicObserverMap.get(key);
-            observer.stop();
-          } catch (Exception e) {
-            LOGGER.error("Failed to stop KafkaBrokerTopicObserver: {}!", key);
-          }
-        }
-        LOGGER.info("stopping api component");
-        _component.stop();
-
-        LOGGER.info("stopping resource manager");
-        _helixMirrorMakerManager.stop();
-      } catch (final Exception e) {
-        LOGGER.error("Caught exception", e);
-      }
     }
   }
 

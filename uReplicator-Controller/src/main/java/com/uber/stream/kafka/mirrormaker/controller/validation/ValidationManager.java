@@ -41,6 +41,8 @@ public class ValidationManager {
   private static final String EXTERNALVIEW_PER_WORKER_METRICS_FORMAT =
       "externalView.topicPartitions.%s.totalNumber";
 
+  private static final int STOP_TIMEOUT_SEC = 5;
+
   private final HelixMirrorMakerManager _helixMirrorMakerManager;
   private final ScheduledExecutorService _executorService =
       Executors.newSingleThreadScheduledExecutor();
@@ -102,6 +104,16 @@ public class ValidationManager {
 
       }
     }, 120, _timeValue, _timeUnit);
+  }
+
+  public void stop() {
+    _executorService.shutdown();
+    try {
+      _executorService.awaitTermination(STOP_TIMEOUT_SEC, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      LOGGER.info("Stop ValidationManager got interrupted");
+    }
+    _executorService.shutdownNow();
   }
 
   private void registerMetrics() {
