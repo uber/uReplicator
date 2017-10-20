@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.uber.stream.kafka.mirrormaker.manager.utils;
+package com.uber.stream.kafka.mirrormaker.common.utils;
 
-import com.uber.stream.kafka.mirrormaker.manager.core.OnlineOfflineStateModel;
+import com.uber.stream.kafka.mirrormaker.common.core.OnlineOfflineStateModel;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.helix.HelixAdmin;

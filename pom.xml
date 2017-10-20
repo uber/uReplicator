@@ -14,6 +14,7 @@
     <module>uReplicator-Worker</module>
     <module>uReplicator-Distribution</module>
     <module>uReplicator-Manager</module>
+    <module>uReplicator-Common</module>
   </modules>
 
   <licenses>
@@ -47,12 +48,26 @@
       <id>hongxu</id>
       <name>Hongliang Xu</name>
     </developer>
+    <developer>
+      <id>zhenmin</id>
+      <name>Zhenmin Li</name>
+    </developer>
   </developers>
 
   <inceptionYear>2015-2017</inceptionYear>
 
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>com.uber.uReplicator</groupId>
+        <artifactId>uReplicator-Manager</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.uber.uReplicator</groupId>
+        <artifactId>uReplicator-Common</artifactId>
+        <version>${project.version}</version>
+      </dependency>
       <dependency>
         <groupId>com.uber.uReplicator</groupId>
         <artifactId>uReplicator-Controller</artifactId>
