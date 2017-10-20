@@ -15,8 +15,8 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
+import com.uber.stream.kafka.mirrormaker.common.utils.HelixSetupUtils;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
-import com.uber.stream.kafka.mirrormaker.controller.utils.HelixSetupUtils;
 import com.uber.stream.kafka.mirrormaker.controller.utils.HelixUtils;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -131,7 +131,8 @@ public class HelixMirrorMakerManager {
         }
       }
       _currentServingInstance.clear();
-      int maxStandbyHosts = (_controllerConf.getMaxWorkingInstances() <= 0) ? 0 : instanceMap.size() - _controllerConf.getMaxWorkingInstances();
+      int maxStandbyHosts = (_controllerConf.getMaxWorkingInstances() <= 0) ? 0
+          : instanceMap.size() - _controllerConf.getMaxWorkingInstances();
       int standbyHosts = 0;
       for (InstanceTopicPartitionHolder itph : instanceMap.values()) {
         if (standbyHosts >= maxStandbyHosts || itph.getNumServingTopicPartitions() > 0) {

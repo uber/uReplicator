@@ -95,6 +95,8 @@
   </repositories>
 
   <properties>
+    <slf4j.version>1.7.6</slf4j.version>
+    <log4j.version>1.2.17</log4j.version>
     <jdk.version>1.8</jdk.version>
     <scala.version>2.11.8</scala.version>
     <kafka.version>0.10.2.1</kafka.version>
@@ -114,6 +116,7 @@
     <jetty.version>8.1.8.v20121106</jetty.version>
     <fastjson.version>1.1.41</fastjson.version>
     <apache.http.version>4.1.2</apache.http.version>
+    <commons.lang3.version>3.3.2</commons.lang3.version>
     <testng.version>6.5.1</testng.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
@@ -280,6 +283,26 @@
       <groupId>org.eclipse.jgit</groupId>
       <artifactId>org.eclipse.jgit</artifactId>
       <version>4.0.0.201506020755-rc3</version>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>${slf4j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-log4j12</artifactId>
+      <version>${slf4j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>log4j</groupId>
+      <artifactId>log4j</artifactId>
+      <version>${log4j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>${commons.lang3.version}</version>
     </dependency>
   </dependencies>
 
