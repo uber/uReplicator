@@ -15,6 +15,7 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
+import com.uber.stream.kafka.mirrormaker.common.core.OnlineOfflineStateModel;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import java.util.ArrayList;
 import java.util.List;
