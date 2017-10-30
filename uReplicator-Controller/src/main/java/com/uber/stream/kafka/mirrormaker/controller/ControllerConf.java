@@ -17,9 +17,12 @@ package com.uber.stream.kafka.mirrormaker.controller;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
+import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 
 /**
@@ -30,8 +33,12 @@ import org.apache.commons.configuration.PropertiesConfiguration;
  */
 public class ControllerConf extends PropertiesConfiguration {
 
+  private static final String CONFIG_FILE = "config.file";
   private static final String FEDERATED_ENABLED = "federated.enabled";
   private static final String DEPLOYMENT_NAME = "federated.deployment.name";
+  private static final String CONFIG_KAFKA_SRC_CLUSTERS_KEY = "kafka.source.clusters";
+  private static final String CONFIG_KAFKA_DEST_CLUSTERS_KEY = "kafka.destination.clusters";
+
   private static final String CONTROLLER_PORT = "controller.port";
   private static final String ZK_STR = "controller.zk.str";
   private static final String HELIX_CLUSTER_NAME = "controller.helix.cluster.name";
@@ -137,6 +144,18 @@ public class ControllerConf extends PropertiesConfiguration {
   public ControllerConf() {
     super();
     this.setDelimiterParsingDisabled(true);
+  }
+
+  public void setConfigFile(String filePath) {
+    setProperty(CONFIG_FILE, filePath);
+  }
+
+  public void setSourceClusters(String clusters) {
+    setProperty(CONFIG_KAFKA_SRC_CLUSTERS_KEY, clusters);
+  }
+
+  public void setDestinationClusters(String clusters) {
+    setProperty(CONFIG_KAFKA_DEST_CLUSTERS_KEY, clusters);
   }
 
   public void setPatternToExcludeTopics(String pattern) {
@@ -302,6 +321,13 @@ public class ControllerConf extends PropertiesConfiguration {
 
   public void setMoveStuckPartitionAfterMinutes(String moveStuckPartitionAfterMinutes) {
     setProperty(MOVE_STUCK_PARTITION_AFTER_MINUTES, Integer.parseInt(moveStuckPartitionAfterMinutes));
+  }
+
+  public String getConfigFile() {
+    if (!containsKey(CONFIG_FILE)) {
+      return "";
+    }
+    return (String) getProperty(CONFIG_FILE);
   }
 
   public String getPatternToExcludeTopics() {
@@ -578,6 +604,28 @@ public class ControllerConf extends PropertiesConfiguration {
     return "";
   }
 
+  public Set<String> getSourceClusters() {
+    return parseList(CONFIG_KAFKA_SRC_CLUSTERS_KEY, ",");
+  }
+
+  public Set<String> getDestinationClusters() {
+    return parseList(CONFIG_KAFKA_DEST_CLUSTERS_KEY, ",");
+  }
+
+  private Set<String> parseList(String key, String delim) {
+    Set<String> clusters = new HashSet<>();
+    if (containsKey(key)) {
+      String[] values = ((String)getProperty(key)).split(delim);
+      for (String value : values) {
+        String cluster = value.trim();
+        if (!cluster.isEmpty()) {
+          clusters.add(cluster);
+        }
+      }
+    }
+    return clusters;
+  }
+
   @SuppressWarnings("rawtypes")
   @Override
   public String toString() {
@@ -598,8 +646,11 @@ public class ControllerConf extends PropertiesConfiguration {
     controllerOptions.addOption("help", false, "Help")
         .addOption("example1", false, "Start with default example")
         .addOption("example2", false, "Start with autowhitelisting example")
+        .addOption("config", true, "Config file")
         .addOption("enableFederated", true, "Whether to enable federated uReplicator")
         .addOption("deploymentName", true, "Federated uReplicator deployment name")
+        .addOption("srcClusters", true, "Source cluster names for federated uReplicator")
+        .addOption("destClusters", true, "Destination cluster names for federated uReplicator")
         .addOption("helixClusterName", true, "Helix Cluster Name")
         .addOption("mode", true, "Controller Mode")
         .addOption("zookeeper", true, "Zookeeper path")
@@ -652,6 +703,21 @@ public class ControllerConf extends PropertiesConfiguration {
 
   public static ControllerConf getControllerConf(CommandLine cmd) {
     ControllerConf controllerConf = new ControllerConf();
+    if (cmd.hasOption("config")) {
+      controllerConf.setConfigFile(cmd.getOptionValue("config"));
+    } else {
+      controllerConf.setConfigFile("");
+    }
+    if (cmd.hasOption("srcClusters")) {
+      controllerConf.setSourceClusters(cmd.getOptionValue("srcClusters"));
+    } else {
+      controllerConf.setSourceClusters("");
+    }
+    if (cmd.hasOption("destClusters")) {
+      controllerConf.setDestinationClusters(cmd.getOptionValue("destClusters"));
+    } else {
+      controllerConf.setDestinationClusters("");
+    }
     if (cmd.hasOption("enableFederated")) {
       controllerConf.setFederatedEnabled(cmd.getOptionValue("enableFederated"));
     } else {
@@ -857,6 +923,30 @@ public class ControllerConf extends PropertiesConfiguration {
     } else {
       controllerConf.setBackUpToGit("false");
       controllerConf.setLocalBackupFilePath(defaultLocal);
+    }
+
+    if (cmd.hasOption("config")) {
+      String fileName = cmd.getOptionValue("config");
+      controllerConf.setConfigFile(fileName);
+      // load config from file
+      PropertiesConfiguration configFromFile = new PropertiesConfiguration();
+      configFromFile.setDelimiterParsingDisabled(true);
+      try {
+        configFromFile.load(fileName);
+      } catch (ConfigurationException e) {
+        throw new RuntimeException("Failed to load config from file " + fileName + ": " + e.getMessage());
+      }
+      // merge the config with command line. Option from command line has higher priority to override config from file
+      @SuppressWarnings("unchecked")
+      Iterator<String> keyIter = configFromFile.getKeys();
+      while (keyIter.hasNext()) {
+        String key = keyIter.next();
+        if (!controllerConf.containsKey(key)) {
+          controllerConf.addPropertyDirect(key, configFromFile.getProperty(key));
+        }
+      }
+    } else {
+      controllerConf.setConfigFile("");
     }
 
     return controllerConf;

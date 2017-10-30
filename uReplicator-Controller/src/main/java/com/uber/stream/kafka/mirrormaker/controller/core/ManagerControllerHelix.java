@@ -35,6 +35,8 @@ public class ManagerControllerHelix {
   private static final String MANAGER_CONTROLLER_HELIX_PREFIX = "manager-controller-";
   private static final String CONTROLLER_WORKER_HELIX_PREFIX = "controller-worker-";
 
+  private static final String CONFIG_KAFKA_CLUSTER_KEY_PREFIX = "kafka.cluster.zkStr.";
+
   private final ControllerConf _controllerConf;
   private final String _helixClusterName;
   private final String _helixZkURL;
@@ -103,6 +105,34 @@ public class ManagerControllerHelix {
       return;
     }
 
+    // validate src and dst clusters in configuration
+    if (srcCluster.equals(dstCluster)) {
+      LOGGER.error("The source cluster {} cannot be the same as destination cluster", srcCluster);
+      System.exit(1);
+    }
+    if (!_controllerConf.getSourceClusters().contains(srcCluster)) {
+      LOGGER.error("The cluster {} is not a valid source cluster", srcCluster);
+      System.exit(1);
+    }
+    if (!_controllerConf.getSourceClusters().contains(dstCluster)) {
+      LOGGER.error("The cluster {} is not a valid destination cluster", dstCluster);
+      System.exit(1);
+    }
+
+    // set corresponding zkpath for src and dst clusters
+    String srcKafkaZkPath = (String)_controllerConf.getProperty(CONFIG_KAFKA_CLUSTER_KEY_PREFIX + srcCluster);
+    if (srcKafkaZkPath == null) {
+      LOGGER.error("Failed to find configuration of ZooKeeper path for source cluster " + srcCluster);
+      System.exit(1);
+    }
+    _controllerConf.setSrcKafkaZkPath(srcKafkaZkPath);
+    String destKafkaZkPath = (String)_controllerConf.getProperty(CONFIG_KAFKA_CLUSTER_KEY_PREFIX + dstCluster);
+    if (destKafkaZkPath == null) {
+      LOGGER.error("Failed to find configuration of ZooKeeper path for destination cluster " + dstCluster);
+      System.exit(1);
+    }
+    _controllerConf.setDestKafkaZkPath(destKafkaZkPath);
+
     String clusterName = CONTROLLER_WORKER_HELIX_PREFIX + srcCluster + "-" + dstCluster + "-" + routePartition;
     _controllerConf.setHelixClusterName(clusterName);
     _controllerConf.setEnableSrcKafkaValidation("true");
@@ -128,12 +158,15 @@ public class ManagerControllerHelix {
       LOGGER.error("Controller is not started yet");
       return false;
     }
-    String clusterName = CONTROLLER_WORKER_HELIX_PREFIX + srcCluster + "-" + dstCluster + "-" + routePartition;
-    if (!clusterName.equals(_currentRoutePartition)) {
-      LOGGER.error("Invalid route partition assignment. Current route={}, the route to offline={}",
-          _currentRoutePartition, clusterName);
+    if (!(srcCluster.equals(_currentSrcCluster) && dstCluster.equals(_currentDstCluster)
+        && routePartition.equals(_currentRoutePartition))) {
+      LOGGER.error(
+          "Invalid route partition to offline. Current route src={}, dst={}, partition={}; new route src={}, dst={}, partition={}",
+          _currentSrcCluster, _currentDstCluster, _currentRoutePartition, srcCluster, dstCluster,
+          routePartition);
       return false;
     }
+    String clusterName = CONTROLLER_WORKER_HELIX_PREFIX + srcCluster + "-" + dstCluster + "-" + routePartition;
     LOGGER.info("Stopping controller instance for cluster: " + clusterName);
     try {
       _currentControllerInstance.stop();

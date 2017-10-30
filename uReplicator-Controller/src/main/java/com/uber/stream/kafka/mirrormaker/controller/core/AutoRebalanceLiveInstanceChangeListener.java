@@ -138,6 +138,11 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     }
   }
 
+  public void stop() {
+    LOGGER.info("Stopping AutoRebalanceLiveInstanceChangeListener");
+    _delayedScheuler.shutdown();
+  }
+
   private void registerMetrics() {
     try {
       HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("worker.liveInstances",
