@@ -29,16 +29,10 @@ public class TopicPartition {
 
   private final String _topic;
   private final int _partition;
-  private final String _pipeline;
 
   public TopicPartition(String topic, int numPartitions) {
-    this(topic, numPartitions, "");
-  }
-
-  public TopicPartition(String topic, int numPartitions, String pipeline) {
     _topic = topic;
     _partition = numPartitions;
-    _pipeline = pipeline;
   }
 
   /**
@@ -63,10 +57,6 @@ public class TopicPartition {
 
   public String getTopic() {
     return _topic;
-  }
-
-  public String getPipeline() {
-    return _pipeline;
   }
 
   public String toString() {
