@@ -13,15 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.uber.stream.kafka.mirrormaker.manager.utils;
+package com.uber.stream.kafka.mirrormaker.common.core;
 
-import org.apache.commons.lang.StringUtils;
+public interface ITopicWorkloadWeighter {
 
-public class HelixUtils {
-
-  public static String getAbsoluteZkPathForHelix(String zkBaseUrl) {
-    zkBaseUrl = StringUtils.chomp(zkBaseUrl, "/");
-    return zkBaseUrl;
-  }
+  public double partitionWeight(TopicPartition tp);
 
 }

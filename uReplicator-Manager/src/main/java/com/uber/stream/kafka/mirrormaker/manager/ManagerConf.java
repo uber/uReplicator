@@ -15,6 +15,7 @@
  */
 package com.uber.stream.kafka.mirrormaker.manager;
 
+import com.uber.stream.kafka.mirrormaker.common.configuration.IuReplicatorConf;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Iterator;
@@ -28,12 +29,26 @@ import org.apache.commons.configuration.PropertiesConfiguration;
  *
  * @author hongxu
  */
-public class ManagerConf extends PropertiesConfiguration {
+public class ManagerConf extends PropertiesConfiguration implements IuReplicatorConf {
 
   private static final String MANAGER_ZK_STR = "manager.zk.str";
   private static final String MANAGER_PORT = "manager.port";
   private static final String MANAGER_DEPLOYMENT = "manager.deployment";
+  private static final String ENV = "manager.environment";
   private static final String MANAGER_INSTANCE_ID = "manager.instance.id";
+
+  private static final String CONTROLLER_PORT = "controller.port";
+
+  private static final String C3_HOST = "manager.c3.host";
+  private static final String DEFAULT_C3_HOST = "localhost";
+
+  private static final String C3_PORT = "manager.c3.port";
+  private static final int DEFAULT_C3_PORT = 0;
+
+  private static final String SRC_KAFKA_ZK_PATH = "manager.srckafka.zkStr";
+
+  private static final String WORKLOAD_REFRESH_PERIOD_IN_SECONDS = "manager.workload.refresh.period.in.seconds";
+  private static final int DEFAULT_WORKLOAD_REFRESH_PERIOD_IN_SECONDS = 600;
 
   public ManagerConf() {
     super();
@@ -45,7 +60,7 @@ public class ManagerConf extends PropertiesConfiguration {
   }
 
   public void setManagerPort(String port) {
-    setProperty(MANAGER_PORT, port);
+    setProperty(MANAGER_PORT, Integer.valueOf(port));
   }
 
   public void setManagerDeployment(String deployment) {
@@ -56,12 +71,32 @@ public class ManagerConf extends PropertiesConfiguration {
     setProperty(MANAGER_INSTANCE_ID, instanceId);
   }
 
+  public void setControllerPort(String port) {
+    setProperty(CONTROLLER_PORT, Integer.valueOf(port));
+  }
+
+  public void setC3Host(String C3Host) {
+    setProperty(C3_HOST, C3Host);
+  }
+
+  public void setC3Port(String C3Port) {
+    setProperty(C3_PORT, Integer.valueOf(C3Port));
+  }
+
+  public void setSrcKafkaZkPath(String srcKafkaZkPath) {
+    setProperty(SRC_KAFKA_ZK_PATH, srcKafkaZkPath);
+  }
+
+  public void setWorkloadRefreshPeriodInSeconds(String workloadRefreshPeriodInSeconds) {
+    setProperty(WORKLOAD_REFRESH_PERIOD_IN_SECONDS, Integer.parseInt(workloadRefreshPeriodInSeconds));
+  }
+
   public String getManagerZkStr() {
     return (String) getProperty(MANAGER_ZK_STR);
   }
 
-  public String getManagerPort() {
-    return (String) getProperty(MANAGER_PORT);
+  public Integer getManagerPort() {
+    return (Integer) getProperty(MANAGER_PORT);
   }
 
   public String getManagerDeployment() {
@@ -70,6 +105,38 @@ public class ManagerConf extends PropertiesConfiguration {
 
   public String getManagerInstanceId() {
     return (String) getProperty(MANAGER_INSTANCE_ID);
+  }
+
+  public Integer getControllerPort() {
+    return (Integer) getProperty(CONTROLLER_PORT);
+  }
+
+  public String getC3Host() {
+    if (containsKey(C3_HOST)) {
+      return (String) getProperty(C3_HOST);
+    } else {
+      return DEFAULT_C3_HOST;
+    }
+  }
+
+  public Integer getC3Port() {
+    if (containsKey(C3_PORT)) {
+      return (Integer) getProperty(C3_PORT);
+    } else {
+      return DEFAULT_C3_PORT;
+    }
+  }
+
+  public String getSrcKafkaZkPath() {
+    return (String) getProperty(SRC_KAFKA_ZK_PATH);
+  }
+
+  public Integer getWorkloadRefreshPeriodInSeconds() {
+    if (containsKey(WORKLOAD_REFRESH_PERIOD_IN_SECONDS)) {
+      return (Integer) getProperty(WORKLOAD_REFRESH_PERIOD_IN_SECONDS);
+    } else {
+      return DEFAULT_WORKLOAD_REFRESH_PERIOD_IN_SECONDS;
+    }
   }
 
   @SuppressWarnings("rawtypes")
@@ -91,9 +158,14 @@ public class ManagerConf extends PropertiesConfiguration {
     final Options managerOptions = new Options();
     managerOptions.addOption("help", false, "Help")
         .addOption("zookeeper", true, "Zookeeper path")
-        .addOption("port", true, "Manager port number")
+        .addOption("managerPort", true, "Manager port number")
         .addOption("deployment", true, "Manager deployment")
-        .addOption("instanceId", true, "InstanceId");
+        .addOption("instanceId", true, "InstanceId")
+        .addOption("controllerPort", true, "Controller port number")
+        .addOption("c3Host", true, "Chaperone3 Host")
+        .addOption("c3Port", true, "Chaperone3 Port")
+        .addOption("srcKafkaZkPath", true, "Source Kafka Zookeeper Path")
+        .addOption("workloadRefreshPeriodInSeconds", true, "The period to refresh workload information in seconds");
     return managerOptions;
   }
 
@@ -104,10 +176,10 @@ public class ManagerConf extends PropertiesConfiguration {
     } else {
       throw new RuntimeException("Missing option: --zookeeper");
     }
-    if (cmd.hasOption("port")) {
-      managerConf.setManagerPort(cmd.getOptionValue("port"));
+    if (cmd.hasOption("managerPort")) {
+      managerConf.setManagerPort(cmd.getOptionValue("managerPort"));
     } else {
-      throw new RuntimeException("Missing option: --port");
+      throw new RuntimeException("Missing option: --managerPort");
     }
     if (cmd.hasOption("deployment")) {
       managerConf.setManagerDeployment(cmd.getOptionValue("deployment"));
@@ -122,6 +194,29 @@ public class ManagerConf extends PropertiesConfiguration {
       } catch (UnknownHostException e) {
         throw new RuntimeException("Missing option: --instanceId");
       }
+    }
+    if (cmd.hasOption("controllerPort")) {
+      managerConf.setControllerPort(cmd.getOptionValue("controllerPort"));
+    } else {
+      throw new RuntimeException("Missing option: --controllerPort");
+    }
+    if (cmd.hasOption("c3Host")) {
+      managerConf.setC3Host(cmd.getOptionValue("c3Host"));
+    } else {
+      managerConf.setC3Host(DEFAULT_C3_HOST);
+    }
+    if (cmd.hasOption("c3Port")) {
+      managerConf.setC3Port(cmd.getOptionValue("c3Port"));
+    } else {
+      managerConf.setC3Port(Integer.toString(DEFAULT_C3_PORT));
+    }
+    if (cmd.hasOption("srcKafkaZkPath")) {
+      managerConf.setSrcKafkaZkPath(cmd.getOptionValue("srcKafkaZkPath"));
+    }
+    if (cmd.hasOption("workloadRefreshPeriodInSeconds")) {
+      managerConf.setWorkloadRefreshPeriodInSeconds(cmd.getOptionValue("workloadRefreshPeriodInSeconds"));
+    } else {
+      managerConf.setWorkloadRefreshPeriodInSeconds(Integer.toString(DEFAULT_WORKLOAD_REFRESH_PERIOD_IN_SECONDS));
     }
 
     return managerConf;

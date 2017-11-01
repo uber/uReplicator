@@ -33,12 +33,12 @@ public class WorkerLiveInstanceChangeListener implements LiveInstanceChangeListe
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WorkerLiveInstanceChangeListener.class);
 
-  private final FederatedHelix _federatedHelix;
+  private final WorkerHelixManager _workerHelixManager;
   private final HelixManager _helixManager;
 
-  public WorkerLiveInstanceChangeListener(FederatedHelix federatedHelix,
-      HelixManager helixManager, ManagerConf managerConf) {
-    _federatedHelix = federatedHelix;
+  public WorkerLiveInstanceChangeListener(WorkerHelixManager workerHelixManager,
+      HelixManager helixManager) {
+    _workerHelixManager = workerHelixManager;
     _helixManager = helixManager;
   }
 
