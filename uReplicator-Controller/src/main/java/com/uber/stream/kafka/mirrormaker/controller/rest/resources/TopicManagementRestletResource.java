@@ -5,6 +5,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.uber.stream.kafka.mirrormaker.controller.core.AutoTopicWhitelistingManager;
 import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
 import com.uber.stream.kafka.mirrormaker.controller.core.KafkaBrokerTopicObserver;
+import com.uber.stream.kafka.mirrormaker.controller.core.ManagerControllerHelix;
 import com.uber.stream.kafka.mirrormaker.controller.core.TopicPartition;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.IdealState;
+import org.restlet.data.Form;
 import org.restlet.data.MediaType;
 import org.restlet.data.Status;
 import org.restlet.representation.Representation;
@@ -35,6 +37,7 @@ public class TopicManagementRestletResource extends ServerResource {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(TopicManagementRestletResource.class);
 
+  private final ManagerControllerHelix _managerControllerHelix;
   private final HelixMirrorMakerManager _helixMirrorMakerManager;
   private final AutoTopicWhitelistingManager _autoTopicWhitelistingManager;
   private final KafkaBrokerTopicObserver _srcKafkaBrokerTopicObserver;
@@ -43,6 +46,8 @@ public class TopicManagementRestletResource extends ServerResource {
     getVariants().add(new Variant(MediaType.TEXT_PLAIN));
     getVariants().add(new Variant(MediaType.APPLICATION_JSON));
     setNegotiated(false);
+    _managerControllerHelix = (ManagerControllerHelix) getApplication().getContext()
+        .getAttributes().get(ManagerControllerHelix.class.toString());
     _helixMirrorMakerManager = (HelixMirrorMakerManager) getApplication().getContext()
         .getAttributes().get(HelixMirrorMakerManager.class.toString());
     _autoTopicWhitelistingManager = (AutoTopicWhitelistingManager) getApplication().getContext()
@@ -154,6 +159,30 @@ public class TopicManagementRestletResource extends ServerResource {
     try {
       final String topicName = (String) getRequest().getAttributes().get("topicName");
       LOGGER.info("received request to whitelist topic {} on mm ", topicName);
+      if (_managerControllerHelix != null) {
+        // federated mode
+        Form params = getRequest().getResourceRef().getQueryAsForm();
+        String srcCluster = params.getFirstValue("src");
+        String dstCluster = params.getFirstValue("dst");
+        String routeId = params.getFirstValue("routeid");
+        if (srcCluster == null || dstCluster == null || routeId == null) {
+          getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+          return new StringRepresentation("Missing parameters for whitelisting topic " + topicName
+              + " in federated uReplicator");
+        }
+        if (!_managerControllerHelix.handleTopicAssignmentEvent(topicName, srcCluster, dstCluster, routeId, "ONLINE")) {
+          getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+          String resp = String.format("Failed to add new topic: %s, src=%s, dst=%s, routeid=%s",
+              topicName, srcCluster, dstCluster, routeId);
+          LOGGER.info(resp);
+          return new StringRepresentation(resp);
+        }
+        String resp = String.format("Successfully add new topic: %s, src=%s, dst=%s, routeid=%s",
+            topicName, srcCluster, dstCluster, routeId);
+        LOGGER.info(resp);
+        return new StringRepresentation(resp);
+      }
+
       String jsonRequest = entity.getText();
       TopicPartition topicPartitionInfo = null;
       if ((jsonRequest == null || jsonRequest.isEmpty()) && topicName != null
@@ -221,6 +250,30 @@ public class TopicManagementRestletResource extends ServerResource {
   @Delete
   public Representation delete() {
     final String topicName = (String) getRequest().getAttributes().get("topicName");
+    if (_managerControllerHelix != null) {
+      // federated mode
+      Form params = getRequest().getResourceRef().getQueryAsForm();
+      String srcCluster = params.getFirstValue("src");
+      String dstCluster = params.getFirstValue("dst");
+      String routeId = params.getFirstValue("routeid");
+      if (srcCluster == null || dstCluster == null || routeId == null) {
+        getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+        return new StringRepresentation("Missing parameters for blacklisting topic " + topicName
+            + " in federated uReplicator");
+      }
+      if (!_managerControllerHelix.handleTopicAssignmentEvent(topicName, srcCluster, dstCluster, routeId, "OFFLINE")) {
+        getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+        String resp = String.format("Failed to blacklist topic: %s, src=%s, dst=%s, routeid=%s",
+            topicName, srcCluster, dstCluster, routeId);
+        LOGGER.info(resp);
+        return new StringRepresentation(resp);
+      }
+      String resp = String.format("Successfully blacklisted topic: %s, src=%s, dst=%s, routeid=%s",
+          topicName, srcCluster, dstCluster, routeId);
+      LOGGER.info(resp);
+      return new StringRepresentation(resp);
+    }
+
     if (_autoTopicWhitelistingManager != null) {
       _autoTopicWhitelistingManager.addIntoBlacklist(topicName);
     }

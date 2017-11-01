@@ -15,18 +15,13 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller;
 
-import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
 import com.uber.stream.kafka.mirrormaker.controller.core.ManagerControllerHelix;
 import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
-import com.uber.stream.kafka.mirrormaker.controller.rest.ControllerRestApplication;
+import java.util.concurrent.CountDownLatch;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
-import org.restlet.Application;
-import org.restlet.Component;
-import org.restlet.Context;
-import org.restlet.data.Protocol;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +38,8 @@ public class ControllerStarter {
   private ControllerInstance _controllerInstance = null;
   private final ManagerControllerHelix _managerControllerHelix;
 
-  private Component _component = null;
+  // shutdown latch for federated mode
+  private final CountDownLatch shutdownLatch = new CountDownLatch(1);
 
   public ControllerStarter(ControllerConf conf) {
     LOGGER.info("Trying to init ControllerStarter with config: {}", conf);
@@ -56,25 +52,13 @@ public class ControllerStarter {
     if (_config.isFederatedEnabled()) {
       LOGGER.info("starting Manager-Controller Helix for Federated uRedplicator");
       _managerControllerHelix.start();
-
-      _component = new Component();
-      _component.getServers().add(Protocol.HTTP, Integer.parseInt(_config.getControllerPort()));
-      _component.getClients().add(Protocol.FILE);
-      _component.getClients().add(Protocol.JAR);
-      _component.getClients().add(Protocol.WAR);
-
-      Context applicationContext = _component.getContext().createChildContext();
-      LOGGER.info("injecting conf and helix to the api context");
-      applicationContext.getAttributes().put(ControllerConf.class.toString(), _config);
-      applicationContext.getAttributes().put(ManagerControllerHelix.class.toString(),
-          _managerControllerHelix);
-      Application controllerRestApp = new ControllerRestApplication(null);
-      controllerRestApp.setContext(applicationContext);
-
-      _component.getDefaultHost().attach(controllerRestApp);
-
-      LOGGER.info("starting api component");
-      _component.start();
+      // wait until shutdown
+      try {
+        shutdownLatch.await();
+        LOGGER.info("Shutting down controller");
+      } catch (InterruptedException e) {
+        LOGGER.info("Shutting down controller due to intterrupted exception");
+      }
     } else {
       _controllerInstance = new ControllerInstance(_config);
       try {
@@ -98,19 +82,10 @@ public class ControllerStarter {
       }
     }
 
-    if (_component != null) {
-      LOGGER.info("stopping api component");
-      try {
-        _component.stop();
-        _component = null;
-      } catch (Exception e) {
-        LOGGER.error("Failed to stop api componpent", e);
-      }
-    }
-
     if (_config.isFederatedEnabled()) {
       LOGGER.info("stopping Manager-Controller Helix");
       _managerControllerHelix.stop();
+      shutdownLatch.countDown();
     }
   }
 
