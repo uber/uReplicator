@@ -15,6 +15,7 @@
  */
 package com.uber.stream.kafka.mirrormaker.manager.core;
 
+import com.uber.stream.kafka.mirrormaker.common.core.IHelixManager;
 import com.uber.stream.kafka.mirrormaker.manager.ManagerConf;
 import java.util.List;
 import org.apache.helix.HelixManager;
@@ -33,12 +34,12 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ControllerLiveInstanceChangeListener.class);
 
-  private final FederatedHelix _federatedHelix;
+  private final ControllerHelixManager _controllerHelixManager;
   private final HelixManager _helixManager;
 
-  public ControllerLiveInstanceChangeListener(FederatedHelix federatedHelix,
-      HelixManager helixManager, ManagerConf managerConf) {
-    _federatedHelix = federatedHelix;
+  public ControllerLiveInstanceChangeListener(ControllerHelixManager controllerHelixManager,
+      HelixManager helixManager) {
+    _controllerHelixManager = controllerHelixManager;
     _helixManager = helixManager;
   }
 

@@ -15,7 +15,8 @@
  */
 package com.uber.stream.kafka.mirrormaker.manager;
 
-import com.uber.stream.kafka.mirrormaker.manager.core.FederatedHelix;
+import com.uber.stream.kafka.mirrormaker.manager.core.ControllerHelixManager;
+import com.uber.stream.kafka.mirrormaker.manager.core.WorkerHelixManager;
 import com.uber.stream.kafka.mirrormaker.manager.rest.ManagerRestApplication;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -37,32 +38,34 @@ public class ManagerStarter {
 
   private final ManagerConf _config;
   private final Component _component;
-  private final Application _controllerRestApp;
-  private final FederatedHelix _federatedHelix;
+  private final ControllerHelixManager _controllerHelixManager;
+  private final WorkerHelixManager _workerHelixManager;
 
   public ManagerStarter(ManagerConf conf) {
     LOGGER.info("Trying to init ManagerStarter with config: {}", conf);
     _config = conf;
     _component = new Component();
-    _controllerRestApp = new ManagerRestApplication(null);
-    _federatedHelix = new FederatedHelix(_config);
+    _controllerHelixManager = new ControllerHelixManager(_config);
+    _workerHelixManager = new WorkerHelixManager(_config);
   }
 
   public void start() throws Exception {
-    _component.getServers().add(Protocol.HTTP, Integer.parseInt(_config.getManagerPort()));
+    _component.getServers().add(Protocol.HTTP, _config.getManagerPort());
     _component.getClients().add(Protocol.FILE);
     _component.getClients().add(Protocol.JAR);
-    _component.getClients().add(Protocol.WAR);
 
-    final Context applicationContext = _component.getContext().createChildContext();
+    Context applicationContext = _component.getContext().createChildContext();
+    LOGGER.info("Injecting conf and helix to the api context");
+    applicationContext.getAttributes().put(ControllerHelixManager.class.toString(), _controllerHelixManager);
+    Application managerRestApp = new ManagerRestApplication(null);
+    managerRestApp.setContext(applicationContext);
 
-    LOGGER.info("injecting conf and resource manager to the api context");
-    _controllerRestApp.setContext(applicationContext);
-    _component.getDefaultHost().attach(_controllerRestApp);
+    _component.getDefaultHost().attach(managerRestApp);
 
     try {
       LOGGER.info("Starting helix manager");
-      _federatedHelix.start();
+      _controllerHelixManager.start();
+      _workerHelixManager.start();
       LOGGER.info("Starting API component");
       _component.start();
     } catch (final Exception e) {
@@ -76,7 +79,8 @@ public class ManagerStarter {
       LOGGER.info("Stopping API component");
       _component.stop();
       LOGGER.info("Stopping helix manager");
-      _federatedHelix.stop();
+      _controllerHelixManager.stop();
+      _workerHelixManager.stop();
     } catch (final Exception e) {
       LOGGER.error("Caught exception", e);
     }
