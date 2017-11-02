@@ -44,10 +44,32 @@ public class IdealStateBuilder {
         .setMaxPartitionsPerNode(1);
 
     if (instance != null) {
-      customModeIdealStateBuilder.assignInstanceAndState(partition,
-          instance.getInstanceName(), "ONLINE");
+      customModeIdealStateBuilder.assignInstanceAndState(partition, instance.getInstanceName(), "ONLINE");
     }
 
+    return customModeIdealStateBuilder.build();
+  }
+
+  public static IdealState buildCustomIdealStateFor(String topicName,
+      String partition,
+      PriorityQueue<InstanceTopicPartitionHolder> instanceToNumServingTopicPartitionMap) {
+
+    final CustomModeISBuilder customModeIdealStateBuilder = new CustomModeISBuilder(topicName);
+
+    customModeIdealStateBuilder
+        .setStateModel(OnlineOfflineStateModel.name)
+        .setNumPartitions(1).setNumReplica(5)
+        .setMaxPartitionsPerNode(1);
+
+    int i = 0;
+    for (InstanceTopicPartitionHolder instance : instanceToNumServingTopicPartitionMap) {
+      if (instance != null) {
+        customModeIdealStateBuilder.assignInstanceAndState(partition, instance.getInstanceName(), "ONLINE");
+      }
+      if (++i == 5) {
+        break;
+      }
+    }
     return customModeIdealStateBuilder.build();
   }
 
