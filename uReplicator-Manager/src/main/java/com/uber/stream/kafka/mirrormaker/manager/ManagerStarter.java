@@ -39,14 +39,12 @@ public class ManagerStarter {
   private final ManagerConf _config;
   private final Component _component;
   private final ControllerHelixManager _controllerHelixManager;
-  private final WorkerHelixManager _workerHelixManager;
 
   public ManagerStarter(ManagerConf conf) {
     LOGGER.info("Trying to init ManagerStarter with config: {}", conf);
     _config = conf;
     _component = new Component();
     _controllerHelixManager = new ControllerHelixManager(_config);
-    _workerHelixManager = new WorkerHelixManager(_config);
   }
 
   public void start() throws Exception {
@@ -65,7 +63,6 @@ public class ManagerStarter {
     try {
       LOGGER.info("Starting helix manager");
       _controllerHelixManager.start();
-      _workerHelixManager.start();
       LOGGER.info("Starting API component");
       _component.start();
     } catch (final Exception e) {
@@ -80,7 +77,6 @@ public class ManagerStarter {
       _component.stop();
       LOGGER.info("Stopping helix manager");
       _controllerHelixManager.stop();
-      _workerHelixManager.stop();
     } catch (final Exception e) {
       LOGGER.error("Caught exception", e);
     }

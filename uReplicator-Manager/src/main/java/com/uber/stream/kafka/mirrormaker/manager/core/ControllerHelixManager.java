@@ -65,6 +65,7 @@ public class ControllerHelixManager implements IHelixManager {
   private HelixAdmin _helixAdmin;
   private String _instanceId;
 
+  private final WorkerHelixManager _workerHelixManager;
   private final WorkloadInfoRetriever _workloadInfoRetriever;
   private final PriorityQueue<InstanceTopicPartitionHolder> _currentServingInstance;
   private LiveInstanceChangeListener _liveInstanceChangeListener;
@@ -77,6 +78,7 @@ public class ControllerHelixManager implements IHelixManager {
 
   public ControllerHelixManager(ManagerConf managerConf) {
     _conf = managerConf;
+    _workerHelixManager = new WorkerHelixManager(managerConf);
     _helixZkURL = HelixUtils.getAbsoluteZkPathForHelix(managerConf.getManagerZkStr());
     _helixClusterName = MANAGER_CONTROLLER_HELIX_PREFIX + "-" + managerConf.getManagerDeployment();
     _instanceId = managerConf.getManagerInstanceId();
@@ -104,6 +106,9 @@ public class ControllerHelixManager implements IHelixManager {
 
   public synchronized void start() {
     LOGGER.info("Trying to start ManagerControllerHelix!");
+
+    _workerHelixManager.start();
+
     _helixManager = HelixSetupUtils.setup(_helixClusterName, _helixZkURL, _instanceId);
     _helixAdmin = _helixManager.getClusterManagmentTool();
 
@@ -118,6 +123,7 @@ public class ControllerHelixManager implements IHelixManager {
 
   public synchronized void stop() throws IOException {
     LOGGER.info("Trying to stop ManagerControllerHelix!");
+    _workerHelixManager.stop();
     _helixManager.disconnect();
     _httpClient.close();
   }
@@ -202,8 +208,7 @@ public class ControllerHelixManager implements IHelixManager {
   }
 
   public synchronized void addTopicToMirrorMaker(String topicName, int numTopicPartitions, String src, String dst,
-      String pipeline)
-      throws Exception {
+      String pipeline) throws Exception {
     updateCurrentServingInstance();
     LOGGER.info("try to create route topic: {} pipeline: {}", topicName, pipeline);
     InstanceTopicPartitionHolder instance = _currentServingInstance.peek();
@@ -215,6 +220,7 @@ public class ControllerHelixManager implements IHelixManager {
             IdealStateBuilder.buildCustomIdealStateFor(pipeline, "0", instance));
         p.put(pipeline, instance.getInstanceName());
       }
+      _workerHelixManager.addTopicToMirrorMaker(pipeline);
     } else {
       LOGGER.info("existed!");
     }
@@ -242,6 +248,7 @@ public class ControllerHelixManager implements IHelixManager {
   }
 
   public synchronized void deleteTopicInMirrorMaker(String topicName) {
+    _workerHelixManager.deleteTopicInMirrorMaker(topicName);
     _helixAdmin.dropResource(_helixClusterName, topicName);
   }
 
