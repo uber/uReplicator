@@ -103,6 +103,9 @@ public class HelixMirrorMakerManager {
 
   public synchronized void stop() {
     LOGGER.info("Trying to stop HelixMirrorMakerManager!");
+    if (_autoRebalanceLiveInstanceChangeListener != null) {
+      _autoRebalanceLiveInstanceChangeListener.stop();
+    }
     _workloadInfoRetriever.stop();
     try {
       _offsetMonitor.stop();

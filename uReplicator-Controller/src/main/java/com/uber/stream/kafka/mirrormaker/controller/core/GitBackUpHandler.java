@@ -102,15 +102,19 @@ public class GitBackUpHandler extends BackUpHandler {
         LOGGER.error("Error pushing files to git");
         throw e;
       }
-    } catch (Exception e) {
-      throw e;
     } finally {
-      output.close();
-      git.close();
+      if (output != null) {
+        output.close();
+      }
+      if (git != null) {
+        git.close();
+      }
       if (result != null) {
         result.getRepository().close();
       }
-      backupRepo.close();
+      if (backupRepo != null) {
+        backupRepo.close();
+      }
     }
   }
 
