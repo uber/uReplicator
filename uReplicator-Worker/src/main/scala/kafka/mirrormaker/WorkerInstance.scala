@@ -55,7 +55,7 @@ import joptsimple.OptionSet
  *            abort.on.send.failure=true
  */
 class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private val options: OptionSet,
-    private val srcCluster: String, private val dstCluster: String, private val helixClusterName: String)
+    private val srcCluster: Option[String], private val dstCluster: Option[String], private val helixClusterName: String)
     extends Logging with KafkaMetricsGroup {
   private var federatedEnabled: Boolean = false
   private var deploymentName: String = null
@@ -87,8 +87,34 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
     abortOnSendFailure = options.valueOf(workerConfig.getAbortOnSendFailureOpt).toBoolean
     offsetCommitIntervalMs = options.valueOf(workerConfig.getOffsetCommitIntervalMsOpt).toInt
 
+    // get source and destination cluster info
+    val clusterProps = {
+      try {
+        Utils.loadProps(options.valueOf(workerConfig.getClusterConfigOpt))
+      } catch {
+        case e: Exception
+        => null
+      }
+    }
+
     // create producer
     val producerProps = Utils.loadProps(options.valueOf(workerConfig.getProducerConfigOpt))
+    dstCluster match {
+      case Some(dstCluster)
+      =>
+        if (clusterProps == null) {
+          throw new Exception("No cluster configuration provided")
+        }
+        val dstServers = clusterProps.getProperty("kafka.cluster.servers." + dstCluster, "")
+        if (dstServers.isEmpty()) {
+          error("Cannot find bootstratp servers for destination cluster: " + dstCluster)
+          throw new Exception("Cannot find bootstrap servers for destination cluster: " + dstCluster)
+        } else {
+          producerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, dstServers)
+        }
+      case None // non-federated mode
+      =>
+    }
     // Defaults to no data loss settings.
     maybeSetDefaultProperty(producerProps, ProducerConfig.RETRIES_CONFIG, Int.MaxValue.toString)
     maybeSetDefaultProperty(producerProps, ProducerConfig.BLOCK_ON_BUFFER_FULL_CONFIG, "true")
@@ -108,6 +134,26 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
     // Set the consumer timeout so we will not block for low volume pipeline. The timeout is necessary to make sure
     // Offsets are still committed for those low volume pipelines.
     maybeSetDefaultProperty(consumerConfigProps, "consumer.timeout.ms", "10000")
+    srcCluster match {
+      case Some(srcCluster)
+      =>
+        if (clusterProps == null) {
+          throw new Exception("No cluster configuration provided")
+        }
+        val srcClusterZk = clusterProps.getProperty("kafka.cluster.zkStr." + srcCluster, "")
+        if (srcClusterZk.isEmpty()) {
+          error("Cannot find zkStr for source cluster: " + srcCluster)
+          throw new Exception("Cannot find zkStr for source cluster: " + srcCluster)
+        } else {
+          consumerConfigProps.setProperty("zookeeper.connect", srcClusterZk)
+          consumerConfigProps.setProperty("commit.zookeeper.connect", srcClusterZk)
+          consumerConfigProps.setProperty("group.id", srcCluster + "-" + dstCluster.getOrElse("none"))
+          consumerConfigProps.setProperty("client.id", srcCluster + "-" + dstCluster.getOrElse("none"))
+        }
+      case None // non-federated mode
+      =>
+    }
+
     val consumerConfig = new ConsumerConfig(consumerConfigProps)
     val consumerIdString = {
       var consumerUuid: String = null

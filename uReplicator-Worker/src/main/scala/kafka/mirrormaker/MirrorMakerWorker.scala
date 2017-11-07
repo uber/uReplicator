@@ -112,7 +112,7 @@ class MirrorMakerWorker extends Logging with KafkaMetricsGroup {
       mainThread.start()
     } else {
       val helixClusterName = helixProps.getProperty("helixClusterName", "testMirrorMaker")
-      val worker = new WorkerInstance(mirrorMakerWorkerConf, options, null, null, helixClusterName)
+      val worker = new WorkerInstance(mirrorMakerWorkerConf, options, None, None, helixClusterName)
       Runtime.getRuntime.addShutdownHook(new Thread("MirrorMakerShutdownHook") {
         override def run() {
           worker.cleanShutdown()
@@ -123,7 +123,7 @@ class MirrorMakerWorker extends Logging with KafkaMetricsGroup {
   }
 
   def getWorkerInstance(workerConfig: MirrorMakerWorkerConf, options: OptionSet,
-    srcCluster: String, dstCluster: String, helixClusterName: String): WorkerInstance = {
+    srcCluster: Option[String], dstCluster: Option[String], helixClusterName: String): WorkerInstance = {
     new WorkerInstance(workerConfig, options, srcCluster, dstCluster, helixClusterName);
   }
 

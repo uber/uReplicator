@@ -34,6 +34,9 @@ class ManagerWorkerHelixHandler(private val workerConfig: MirrorMakerWorkerConf,
 
   def handleRouteAssignmentOnline(srcCluster: String, dstCluster: String, routeId: String) {
     info("ManagerWorkerHelixHandler.handleRouteAssignmentOnline: srcCluster=%s, dstCluster=%s, routeId=%s".format(srcCluster, dstCluster, routeId))
+    if (srcCluster.equals(dstCluster)) {
+      throw new Exception("Source cluster " + srcCluster + " is the same as destination cluster")
+    }
     this.synchronized {
       if (currentWorkerInstance != null) {
         if (!(srcCluster.equals(currentSrcCluster) && dstCluster.equals(currentDstCluster) && routeId.equals(currentRouteId))) {
@@ -44,7 +47,7 @@ class ManagerWorkerHelixHandler(private val workerConfig: MirrorMakerWorkerConf,
         }
       } else {
         val helixClusterName = HexliClusterPrefix + srcCluster + "-" + dstCluster + "-" + routeId
-        currentWorkerInstance = new WorkerInstance(workerConfig, options, srcCluster, dstCluster, helixClusterName)
+        currentWorkerInstance = new WorkerInstance(workerConfig, options, Some(srcCluster), Some(dstCluster), helixClusterName)
         currentSrcCluster = srcCluster
         currentDstCluster = dstCluster
         currentRouteId = routeId
@@ -55,6 +58,9 @@ class ManagerWorkerHelixHandler(private val workerConfig: MirrorMakerWorkerConf,
 
   def handleRouteAssignmentOffline(srcCluster: String, dstCluster: String, routeId: String) {
     info("ManagerWorkerHelixHandler.handleRouteAssignmentOffline: srcCluster=%s, dstCluster=%s, routeId=%s".format(srcCluster, dstCluster, routeId))
+    if (srcCluster.equals(dstCluster)) {
+      throw new Exception("Source cluster " + srcCluster + " is the same as destination cluster")
+    }
     this.synchronized {
       if (currentWorkerInstance != null) {
         if (!(srcCluster.equals(currentSrcCluster) && dstCluster.equals(currentDstCluster) && routeId.equals(currentRouteId))) {
