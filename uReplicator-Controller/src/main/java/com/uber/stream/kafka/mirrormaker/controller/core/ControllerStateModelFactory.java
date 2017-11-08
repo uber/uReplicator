@@ -74,6 +74,20 @@ public class ControllerStateModelFactory extends StateModelFactory<StateModel> {
       handleStateChange(message);
     }
 
+    @Transition(from = "ERROR", to = "OFFLINE")
+    public void onBecomeOfflineFromError(Message message, NotificationContext context) {
+      LOGGER.info("ControllerStateModel.onBecomeOfflineFromError() for resource: "
+          + message.getResourceName() + ", partition: " + message.getPartitionName());
+      handleStateChange(message);
+    }
+
+    @Transition(from = "ERROR", to = "DROPPED")
+    public void onBecomeDroppedFromError(Message message, NotificationContext context) {
+      LOGGER.info("ControllerStateModel.onBecomeDroppedFromError() for resource: "
+          + message.getResourceName() + ", partition: " + message.getPartitionName());
+      handleStateChange(message);
+    }
+
     private void handleStateChange(Message message) {
       if (message.getResourceName().startsWith(SEPARATOR)) {
         String[] srcDest = message.getResourceName().split(SEPARATOR);

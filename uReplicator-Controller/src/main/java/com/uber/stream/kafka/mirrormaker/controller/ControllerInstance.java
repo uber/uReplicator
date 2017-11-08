@@ -50,7 +50,7 @@ public class ControllerInstance {
   private final AutoTopicWhitelistingManager _autoTopicWhitelistingManager;
   private final ClusterInfoBackupManager _clusterInfoBackupManager;
   private final Map<String, KafkaBrokerTopicObserver> _kafkaBrokerTopicObserverMap = new HashMap<>();
-
+  private boolean started = false;
 
   public ControllerInstance(ControllerConf conf) {
     this(null, conf);
@@ -176,24 +176,42 @@ public class ControllerInstance {
       }
       LOGGER.info("starting api component");
       _component.start();
+      started = true;
     } catch (final Exception e) {
       LOGGER.error("Caught exception while starting controller", e);
       throw e;
     }
   }
 
-  public void stop() throws Exception {
+  public boolean isStarted() {
+    return started;
+  }
+
+  /**
+   * Stop controller instance.
+   * @return whether all components stopped successfully.
+   */
+  public boolean stop() {
+    boolean success = true;
+    started = false;
     LOGGER.info("stopping broker topic observers");
     for (String key : _kafkaBrokerTopicObserverMap.keySet()) {
       try {
         KafkaBrokerTopicObserver observer = _kafkaBrokerTopicObserverMap.get(key);
         observer.stop();
       } catch (Exception e) {
-        LOGGER.error("Failed to stop KafkaBrokerTopicObserver: {}!", key);
+        LOGGER.error("Failed to stop KafkaBrokerTopicObserver " + key, e);
+        success = false;
       }
     }
+
     LOGGER.info("stopping api component");
-    _component.stop();
+    try {
+      _component.stop();
+    } catch (Exception e) {
+      LOGGER.error("Failed to stop api component", e);
+      success = false;
+    }
 
     if (_clusterInfoBackupManager != null) {
       LOGGER.info("stopping cluster info backup manager");
@@ -217,5 +235,7 @@ public class ControllerInstance {
 
     LOGGER.info("stopping resource manager");
     _helixMirrorMakerManager.stop();
+
+    return success;
   }
 }

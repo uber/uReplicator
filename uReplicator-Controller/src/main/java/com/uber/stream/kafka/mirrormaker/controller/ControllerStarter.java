@@ -73,12 +73,11 @@ public class ControllerStarter {
 
   public void stop() {
     if (_controllerInstance != null) {
-      try {
-        LOGGER.info("stopping controller instance");
-        _controllerInstance.stop();
+      LOGGER.info("stopping controller instance");
+      if (_controllerInstance.stop()) {
         _controllerInstance = null;
-      } catch (final Exception e) {
-        LOGGER.error("Caught exception while stopping controller instance", e);
+      } else {
+        LOGGER.error("Failed to stop controller instance");
       }
     }
 
