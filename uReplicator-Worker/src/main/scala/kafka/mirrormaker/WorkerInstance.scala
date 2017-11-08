@@ -62,6 +62,7 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
   private var managerWorkerHelixName: String = null
 
   private var instanceId: String = null
+  private var clientId: String = null
   private var zkServer: String = null
   private var helixZkManager: HelixManager = null
 
@@ -174,11 +175,12 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
     // If a message send failed after retries are exhausted. The offset of the messages will also be removed from
     // the unacked offset list to avoid offset commit being stuck on that offset. In this case, the offset of that
     // message was not really acked, but was skipped. This metric records the number of skipped offsets.
+    clientId = consumerConfig.clientId
     newGauge("MirrorMaker-numDroppedMessages",
       new Gauge[Int] {
         def value = numDroppedMessages.get()
       },
-      Map("clientId" -> consumerConfig.clientId)
+      Map("clientId" -> clientId)
     )
 
     // initialize topic mappings for rewriting topic names between consuming side and producing side
@@ -200,6 +202,11 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
     // Create mirror maker threads
     mirrorMakerThread = new MirrorMakerThread(connector, instanceId)
     mirrorMakerThread.start()
+  }
+
+  private def removeCustomizedMetrics() {
+    removeMetric("MirrorMaker-numDroppedMessages", Map("clientId" -> clientId))
+    trace("Removed metrics: MirrorMaker-numDroppedMessages for clientId=" + clientId)
   }
 
   class WorkerZKHelixManager(clusterName: String,
@@ -275,6 +282,8 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
       // disconnect with helixZkManager
       helixZkManager.disconnect()
       info("helix connection shutdown successfully")
+
+      removeCustomizedMetrics()
 
       info("Kafka mirror maker shutdown successfully")
     }

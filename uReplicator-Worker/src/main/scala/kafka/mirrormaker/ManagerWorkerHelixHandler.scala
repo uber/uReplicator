@@ -74,7 +74,7 @@ class ManagerWorkerHelixHandler(private val workerConfig: MirrorMakerWorkerConf,
           currentRouteId = null
         }
       } else {
-        error("The worker instance has not started yet")
+        info("The worker instance has not started yet")
       }
     }
   }

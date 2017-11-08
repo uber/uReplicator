@@ -104,6 +104,13 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
     Map("clientId" -> clientId)
   )
 
+  private def removeCustomizedMetrics() {
+    removeMetric("OwnedPartitionsCount", Map("clientId" -> clientId))
+    removeMetric("MaxLag", Map("clientId" -> clientId))
+    removeMetric("MinFetchRate", Map("clientId" -> clientId))
+    trace("Removed metrics: OwnedPartitionsCount, MaxLag, MinFetchRate for clientId=" + clientId)
+  }
+
   private def getFetcherId(topic: String, partitionId: Int): Int = {
     Utils.abs(31 * topic.hashCode() + partitionId) % numFetchers
   }
@@ -199,6 +206,8 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
     partitionAddMap.clear()
     partitionDeleteMap.clear()
     partitionNewLeaderMap.clear()
+
+    removeCustomizedMetrics()
 
     info("All connections stopped")
   }
