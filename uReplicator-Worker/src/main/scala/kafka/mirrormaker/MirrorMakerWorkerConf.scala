@@ -42,6 +42,13 @@ class MirrorMakerWorkerConf {
       .describedAs("config file")
       .ofType(classOf[String])
 
+  private val clusterConfigOpt: ArgumentAcceptingOptionSpec[String] =
+    parser.accepts("cluster.config",
+      "Embedded cluster config.")
+      .withRequiredArg()
+      .describedAs("config file")
+      .ofType(classOf[String])
+
   private val offsetCommitIntervalMsOpt: ArgumentAcceptingOptionSpec[Integer] =
     parser.accepts("offset.commit.interval.ms",
       "Offset commit interval in ms")
@@ -81,6 +88,10 @@ class MirrorMakerWorkerConf {
 
   def getHelixConfigOpt: ArgumentAcceptingOptionSpec[String] = {
     helixConfigOpt
+  }
+
+  def getClusterConfigOpt: ArgumentAcceptingOptionSpec[String] = {
+    clusterConfigOpt
   }
 
   def getOffsetCommitIntervalMsOpt: ArgumentAcceptingOptionSpec[Integer] = {
