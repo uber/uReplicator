@@ -275,9 +275,7 @@ public class HelixMirrorMakerManager {
   }
 
   public PriorityQueue<InstanceTopicPartitionHolder> getCurrentServingInstance() {
-    if (!isLeader()) {
-      updateCurrentServingInstance();
-    }
+    updateCurrentServingInstance();
     return _currentServingInstance;
   }
 
