@@ -259,29 +259,37 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
   def cleanShutdown() {
     if (isShuttingDown.compareAndSet(false, true)) {
       info("Start clean shutdown.")
-      // Shutdown consumer threads.
-      info("Shutting down consumer thread.")
       if (mirrorMakerThread != null) {
+        // Shutdown consumer threads.
+        info("Shutting down consumer thread.")
         mirrorMakerThread.shutdown()
         mirrorMakerThread.awaitShutdown()
       }
 
-      info("Flushing last batches and commit offsets.")
-      // flush the last batches of msg and commit the offsets
-      // since MM threads are stopped, it's consistent to flush/commit here
-      // commit offsets
-      maybeFlushAndCommitOffsets(true)
+      if (producer != null) {
+        info("Flushing last batches and commit offsets.")
+        // flush the last batches of msg and commit the offsets
+        // since MM threads are stopped, it's consistent to flush/commit here
+        // commit offsets
+        maybeFlushAndCommitOffsets(true)
+      }
 
-      info("Shutting down consumer connectors.")
-      connector.shutdown()
+      if (connector != null) {
+        info("Shutting down consumer connectors.")
+        connector.shutdown()
+      }
 
-      // shutdown producer
-      info("Closing producer.")
-      producer.close()
+      if (producer != null) {
+        // shutdown producer
+        info("Closing producer.")
+        producer.close()
+      }
 
-      // disconnect with helixZkManager
-      helixZkManager.disconnect()
-      info("helix connection shutdown successfully")
+      if (helixZkManager != null) {
+        // disconnect with helixZkManager
+        helixZkManager.disconnect()
+        info("helix connection shutdown successfully")
+      }
 
       removeCustomizedMetrics()
 

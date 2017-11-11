@@ -68,6 +68,28 @@ class ManagerWorkerOnlineOfflineStateModelFactory(
         + message.getResourceName() + ", partition: " + message.getPartitionName())
     }
 
+    def onBecomeOfflineFromError(message: Message, context: NotificationContext) = {
+      info("OnlineOfflineStateModel.onBecomeOfflineFromError for route: "
+        + message.getResourceName() + ", partition: " + message.getPartitionName())
+      val srcDst = parseSrcDstCluster(message.getResourceName)
+      if (srcDst != null) {
+        managerWorkerHelixHandler.handleRouteAssignmentOffline(srcDst(1), srcDst(2), message.getPartitionName())
+      }
+      debug("Finish OnlineOfflineStateModel.onBecomeOfflineFromError for route: "
+        + message.getResourceName() + ", partition: " + message.getPartitionName())
+    }
+
+    override def onBecomeDroppedFromError(message: Message, context: NotificationContext) = {
+      info("OnlineOfflineStateModel.onBecomeDroppedFromError for route: "
+        + message.getResourceName() + ", partition: " + message.getPartitionName())
+      val srcDst = parseSrcDstCluster(message.getResourceName)
+      if (srcDst != null) {
+        managerWorkerHelixHandler.handleRouteAssignmentOffline(srcDst(1), srcDst(2), message.getPartitionName())
+      }
+      debug("Finish OnlineOfflineStateModel.onBecomeDroppedFromError for route: "
+        + message.getResourceName() + ", partition: " + message.getPartitionName())
+    }
+
     def parseSrcDstCluster(resourceName: String) : Array[String] = {
       if (!resourceName.startsWith(Separator)) {
         return null

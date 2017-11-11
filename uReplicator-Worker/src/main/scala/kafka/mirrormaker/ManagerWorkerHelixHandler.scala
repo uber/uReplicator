@@ -35,15 +35,19 @@ class ManagerWorkerHelixHandler(private val workerConfig: MirrorMakerWorkerConf,
   def handleRouteAssignmentOnline(srcCluster: String, dstCluster: String, routeId: String) {
     info("ManagerWorkerHelixHandler.handleRouteAssignmentOnline: srcCluster=%s, dstCluster=%s, routeId=%s".format(srcCluster, dstCluster, routeId))
     if (srcCluster.equals(dstCluster)) {
-      throw new Exception("Source cluster " + srcCluster + " is the same as destination cluster")
+      val msg = "Source cluster " + srcCluster + " is the same as destination cluster"
+      error(msg)
+      throw new IllegalArgumentException(msg)
     }
     this.synchronized {
       if (currentWorkerInstance != null) {
         if (!(srcCluster.equals(currentSrcCluster) && dstCluster.equals(currentDstCluster) && routeId.equals(currentRouteId))) {
-          error("The worker instance has already started but with different route assignment, current srcCluster=%s, dstCluster=%s, routeId=%s"
-              .format(currentSrcCluster, currentDstCluster, currentRouteId))
+          val msg = "The worker instance has already started but with different route assignment, current srcCluster=%s, dstCluster=%s, routeId=%s"
+              .format(currentSrcCluster, currentDstCluster, currentRouteId)
+          error(msg)
+          throw new IllegalArgumentException(msg)
         } else {
-          info("The worker instance has already started but with the same route assignment")
+          info("The worker instance has already started with the same route assignment")
         }
       } else {
         val helixClusterName = HexliClusterPrefix + srcCluster + "-" + dstCluster + "-" + routeId
@@ -51,7 +55,14 @@ class ManagerWorkerHelixHandler(private val workerConfig: MirrorMakerWorkerConf,
         currentSrcCluster = srcCluster
         currentDstCluster = dstCluster
         currentRouteId = routeId
-        currentWorkerInstance.start()
+        try {
+          currentWorkerInstance.start()
+        } catch {
+          case e: Exception =>
+            error("Failed to start worker instance, try to roll back", e)
+            stop()
+            throw e
+        }
       }
     }
   }
@@ -59,19 +70,19 @@ class ManagerWorkerHelixHandler(private val workerConfig: MirrorMakerWorkerConf,
   def handleRouteAssignmentOffline(srcCluster: String, dstCluster: String, routeId: String) {
     info("ManagerWorkerHelixHandler.handleRouteAssignmentOffline: srcCluster=%s, dstCluster=%s, routeId=%s".format(srcCluster, dstCluster, routeId))
     if (srcCluster.equals(dstCluster)) {
-      throw new Exception("Source cluster " + srcCluster + " is the same as destination cluster")
+      val msg = "Source cluster " + srcCluster + " is the same as destination cluster"
+      error(msg)
+      throw new IllegalArgumentException(msg)
     }
     this.synchronized {
       if (currentWorkerInstance != null) {
         if (!(srcCluster.equals(currentSrcCluster) && dstCluster.equals(currentDstCluster) && routeId.equals(currentRouteId))) {
-          error("The worker instance has already started but with different route assignment, current srcCluster=%s, dstCluster=%s, routeId=%s"
-              .format(currentSrcCluster, currentDstCluster, currentRouteId))
+          val msg = "The worker instance has started with different route assignment, current srcCluster=%s, dstCluster=%s, routeId=%s"
+              .format(currentSrcCluster, currentDstCluster, currentRouteId)
+          error(msg)
+          throw new IllegalArgumentException(msg)
         } else {
-          currentWorkerInstance.cleanShutdown()
-          currentWorkerInstance = null
-          currentSrcCluster = null
-          currentDstCluster = null
-          currentRouteId = null
+          stop()
         }
       } else {
         info("The worker instance has not started yet")
@@ -84,6 +95,10 @@ class ManagerWorkerHelixHandler(private val workerConfig: MirrorMakerWorkerConf,
       if (currentWorkerInstance != null) {
         currentWorkerInstance.cleanShutdown()
         currentWorkerInstance = null
+        currentWorkerInstance = null
+        currentSrcCluster = null
+        currentDstCluster = null
+        currentRouteId = null
       }
     }
   }

@@ -95,41 +95,53 @@ public class ManagerControllerHelix {
     if (_currentControllerInstance != null) {
       if (!(srcCluster.equals(_currentSrcCluster) && dstCluster.equals(_currentDstCluster)
           && routePartition.equals(_currentRoutePartition))) {
-        LOGGER.error(
-            "Invalid route partition assignment. Current route src={}, dst={}, partition={}; new route src={}, dst={}, partition={}",
-            _currentSrcCluster, _currentDstCluster, _currentRoutePartition, srcCluster, dstCluster,
-            routePartition);
+        String msg = String.format(
+            "Invalid route partition assignment. Current route src=%s, dst=%s, partition=%s; new route src=%s, dst=%s, partition=%s",
+            _currentSrcCluster, _currentDstCluster, _currentRoutePartition, srcCluster, dstCluster, routePartition);
+        LOGGER.error(msg);
+        throw new IllegalArgumentException(msg);
       } else {
-        LOGGER.info("Controller has already been started");
+        if (_currentControllerInstance.isStarted()) {
+          LOGGER.info("Controller has already been started");
+        } else {
+          String msg = "Controller has already been initiated but not started yet";
+          LOGGER.error(msg);
+          throw new IllegalStateException(msg);
+        }
       }
       return;
     }
 
     // validate src and dst clusters in configuration
     if (srcCluster.equals(dstCluster)) {
-      LOGGER.error("The source cluster {} cannot be the same as destination cluster", srcCluster);
-      System.exit(1);
+      String msg = String.format("The source cluster %s cannot be the same as destination cluster", srcCluster);
+      LOGGER.error(msg);
+      throw new IllegalArgumentException(msg);
     }
     if (!_controllerConf.getSourceClusters().contains(srcCluster)) {
-      LOGGER.error("The cluster {} is not a valid source cluster", srcCluster);
-      System.exit(1);
+      String msg = String.format("The cluster %s is not a valid source cluster", srcCluster);
+      LOGGER.error(msg);
+      throw new IllegalArgumentException(msg);
     }
-    if (!_controllerConf.getSourceClusters().contains(dstCluster)) {
-      LOGGER.error("The cluster {} is not a valid destination cluster", dstCluster);
-      System.exit(1);
+    if (!_controllerConf.getDestinationClusters().contains(dstCluster)) {
+      String msg = String.format("The cluster %s is not a valid destination cluster", dstCluster);
+      LOGGER.error(msg);
+      throw new IllegalArgumentException(msg);
     }
 
     // set corresponding zkpath for src and dst clusters
     String srcKafkaZkPath = (String)_controllerConf.getProperty(CONFIG_KAFKA_CLUSTER_KEY_PREFIX + srcCluster);
     if (srcKafkaZkPath == null) {
-      LOGGER.error("Failed to find configuration of ZooKeeper path for source cluster " + srcCluster);
-      System.exit(1);
+      String msg = "Failed to find configuration of ZooKeeper path for source cluster " + srcCluster;
+      LOGGER.error(msg);
+      throw new IllegalArgumentException(msg);
     }
     _controllerConf.setSrcKafkaZkPath(srcKafkaZkPath);
     String destKafkaZkPath = (String)_controllerConf.getProperty(CONFIG_KAFKA_CLUSTER_KEY_PREFIX + dstCluster);
     if (destKafkaZkPath == null) {
-      LOGGER.error("Failed to find configuration of ZooKeeper path for destination cluster " + dstCluster);
-      System.exit(1);
+      String msg = "Failed to find configuration of ZooKeeper path for destination cluster " + dstCluster;
+      LOGGER.error(msg);
+      throw new IllegalArgumentException(msg);
     }
     _controllerConf.setDestKafkaZkPath(destKafkaZkPath);
 
@@ -144,8 +156,14 @@ public class ManagerControllerHelix {
     try {
       _currentControllerInstance.start();
     } catch (Exception e) {
-      LOGGER.error("Failed to start controller instance. Shutdown now.", e);
-      System.exit(1);
+      String msg = "Failed to start controller instance. Roll back.";
+      LOGGER.error(msg);
+      if (_currentControllerInstance.stop()) {
+        _currentControllerInstance = null;
+      } else {
+        LOGGER.error("Failed to stop the controller instance.");
+      }
+      throw new RuntimeException(msg);
     }
     _currentSrcCluster = srcCluster;
     _currentDstCluster = dstCluster;
@@ -155,23 +173,22 @@ public class ManagerControllerHelix {
 
   private boolean handleRouteAssignmentOffline(String srcCluster, String dstCluster, String routePartition) {
     if (_currentControllerInstance == null) {
-      LOGGER.error("Controller is not started yet");
+      String msg = "Controller instance is not started yet";
+      LOGGER.info(msg);
       return false;
     }
     if (!(srcCluster.equals(_currentSrcCluster) && dstCluster.equals(_currentDstCluster)
         && routePartition.equals(_currentRoutePartition))) {
-      LOGGER.error(
-          "Invalid route partition to offline. Current route src={}, dst={}, partition={}; new route src={}, dst={}, partition={}",
-          _currentSrcCluster, _currentDstCluster, _currentRoutePartition, srcCluster, dstCluster,
-          routePartition);
-      return false;
+      String msg = String.format(
+          "Invalid route to offline. Current route src=%s, dst=%s, routeId=%s; new route src=%s, dst=%s, routeId=%s",
+          _currentSrcCluster, _currentDstCluster, _currentRoutePartition, srcCluster, dstCluster, routePartition);
+      LOGGER.error(msg);
+      throw new IllegalArgumentException(msg);
     }
     String clusterName = CONTROLLER_WORKER_HELIX_PREFIX + srcCluster + "-" + dstCluster + "-" + routePartition;
     LOGGER.info("Stopping controller instance for cluster: " + clusterName);
-    try {
-      _currentControllerInstance.stop();
-    } catch (Exception e) {
-      LOGGER.error("Failed to stop controller instance. Shutdown now.", e);
+    if (!_currentControllerInstance.stop()) {
+      LOGGER.error("Failed to stop controller instance. Shutdown JVM instead.");
       System.exit(-1);
     }
     _currentSrcCluster = null;
