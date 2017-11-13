@@ -140,12 +140,13 @@ public class WorkerHelixManager implements IHelixManager {
 
   public synchronized void addTopicToMirrorMaker(String pipeline) throws Exception {
     updateCurrentServingInstance();
-    LOGGER.info("try to create route pipeline: {}", pipeline);
+    LOGGER.info("Trying to create route pipeline: {}", pipeline);
     if (!isPipelineExisted(pipeline)) {
       setEmptyResourceConfig(pipeline);
       synchronized (_currentServingInstance) {
+        InstanceTopicPartitionHolder instance = _currentServingInstance.poll();
         _helixAdmin.addResource(_helixClusterName, pipeline,
-            IdealStateBuilder.buildCustomIdealStateFor(pipeline, "0", _currentServingInstance));
+            IdealStateBuilder.buildCustomIdealStateFor(pipeline, "0", instance));
       }
     } else {
       LOGGER.info("worker pipeline existed!");

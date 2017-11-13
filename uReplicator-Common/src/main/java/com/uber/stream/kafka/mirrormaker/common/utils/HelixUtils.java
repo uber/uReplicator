@@ -16,8 +16,8 @@
 package com.uber.stream.kafka.mirrormaker.common.utils;
 
 import com.google.common.collect.ImmutableList;
-import com.uber.stream.kafka.mirrormaker.common.core.OnlineOfflineStateModel;
 import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
+import com.uber.stream.kafka.mirrormaker.common.core.OnlineOfflineStateModel;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -40,6 +40,8 @@ import org.apache.helix.model.builder.CustomModeISBuilder;
 import org.apache.helix.store.zk.ZkHelixPropertyStore;
 
 public class HelixUtils {
+
+  private static final String BLACKLIST_TAG = "blacklisted";
 
   public static String getAbsoluteZkPathForHelix(String zkBaseUrl) {
     zkBaseUrl = StringUtils.chomp(zkBaseUrl, "/");
@@ -64,6 +66,16 @@ public class HelixUtils {
     return ImmutableList.copyOf(helixDataAccessor.getChildNames(liveInstancesKey));
   }
 
+  public static List<String> blacklistedInstances(HelixManager helixManager) {
+    return helixManager.getClusterManagmentTool()
+        .getInstancesInClusterWithTag(helixManager.getClusterName(), BLACKLIST_TAG);
+  }
+
+  private static String getPipelineFromRoute(String route) {
+    String[] s = route.split("@");
+    return route.substring(0, route.length() - s[s.length-1].length() -1);
+  }
+
   /**
    * From IdealStates.
    *
@@ -76,7 +88,8 @@ public class HelixUtils {
     for (String topic : helixAdmin.getResourcesInCluster(helixClusterName)) {
       IdealState is = helixAdmin.getResourceIdealState(helixClusterName, topic);
       for (String partition : is.getPartitionSet()) {
-        TopicPartition tpi = new TopicPartition(topic, Integer.parseInt(partition));
+        TopicPartition tpi = partition.startsWith("@") ? new TopicPartition(topic, -1, getPipelineFromRoute(partition))
+            : new TopicPartition(topic, Integer.parseInt(partition));
         for (String instance : is.getInstanceSet(partition)) {
           if (!instanceToNumTopicPartitionMap.containsKey(instance)) {
             instanceToNumTopicPartitionMap.put(instance, new HashSet<>());
