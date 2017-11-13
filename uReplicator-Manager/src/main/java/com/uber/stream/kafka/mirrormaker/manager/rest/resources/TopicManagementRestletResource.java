@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.PriorityQueue;
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.IdealState;
 import org.restlet.data.Form;
@@ -65,23 +64,18 @@ public class TopicManagementRestletResource extends ServerResource {
     if (topicName == null) {
       // TODO: updateCurrentStatus might take a long time
       _helixMirrorMakerManager.updateCurrentStatus();
-      Map<String, PriorityQueue<InstanceTopicPartitionHolder>> pipelineToInstanceMap = _helixMirrorMakerManager
-          .getPipelineToInstanceMap();
       Map<String, Map<String, InstanceTopicPartitionHolder>> topicToPipelineInstanceMap = _helixMirrorMakerManager
           .getTopicToPipelineInstanceMap();
-      LOGGER.info("Current pipelineToInstanceMap: {}", pipelineToInstanceMap);
-      LOGGER.info("Current topicToPipelineInstanceMap: {}", topicToPipelineInstanceMap);
 
-      // TODO: topic to pipeline list
       if (topicToPipelineInstanceMap == null || topicToPipelineInstanceMap.isEmpty()) {
         JSONObject responseJson = new JSONObject();
-        responseJson.put("status", Status.CLIENT_ERROR_NOT_FOUND.getCode());
-        responseJson.put("message", "No topic is added in uReplicator!");
+        responseJson.put("Status", Status.CLIENT_ERROR_NOT_FOUND.getCode());
+        responseJson.put("Message", "No topic is added in uReplicator!");
 
         return new StringRepresentation(responseJson.toJSONString());
       } else {
         JSONObject responseJson = new JSONObject();
-        responseJson.put("status", Status.SUCCESS_OK.getCode());
+        responseJson.put("Status", Status.SUCCESS_OK.getCode());
 
         JSONObject topicToInstanceMappingJson = new JSONObject();
         for (String topic : topicToPipelineInstanceMap.keySet()) {
@@ -89,16 +83,13 @@ public class TopicManagementRestletResource extends ServerResource {
 
           for (String pipeline : topicToPipelineInstanceMap.get(topic).keySet()) {
             JSONObject instanceInfoJson = new JSONObject();
-            instanceInfoJson.put("instace", topicToPipelineInstanceMap.get(topic).get(pipeline).getInstanceName());
-            instanceInfoJson.put("route", topicToPipelineInstanceMap.get(topic).get(pipeline).getRoute().getTopic()
-                + "@" + topicToPipelineInstanceMap.get(topic).get(pipeline).getRoute().getPartition());
+            instanceInfoJson.put("Instance", topicToPipelineInstanceMap.get(topic).get(pipeline).getInstanceName());
+            instanceInfoJson.put("Route", topicToPipelineInstanceMap.get(topic).get(pipeline).getRouteString());
             topicInfoJson.put(pipeline, instanceInfoJson);
           }
-
           topicToInstanceMappingJson.put(topic, topicInfoJson);
         }
-
-        responseJson.put("message", topicToInstanceMappingJson);
+        responseJson.put("Message", topicToInstanceMappingJson);
 
         return new StringRepresentation(responseJson.toJSONString());
       }
@@ -107,89 +98,129 @@ public class TopicManagementRestletResource extends ServerResource {
     if (topicName.startsWith("@")) {
       try {
         if (_helixMirrorMakerManager.isPipelineExisted(topicName)) {
-          IdealState idealStateForTopic =
-              _helixMirrorMakerManager.getIdealStateForTopic(topicName);
-          ExternalView externalViewForTopic =
-              _helixMirrorMakerManager.getExternalViewForTopic(topicName);
+          JSONObject helixInfoJson = composeHelixInfoJson(topicName);
+
           JSONObject responseJson = new JSONObject();
-          responseJson.put("topic", topicName);
-          JSONObject externalViewPartitionToServerMappingJson = new JSONObject();
-          if (externalViewForTopic == null) {
-            LOGGER.info("External view for topic " + topicName + " is NULL");
-          } else {
-            for (String partition : externalViewForTopic.getPartitionSet()) {
-              Map<String, String> stateMap = externalViewForTopic.getStateMap(partition);
-              for (String server : stateMap.keySet()) {
-                if (!externalViewPartitionToServerMappingJson.containsKey(partition)) {
-                  externalViewPartitionToServerMappingJson.put(partition, new JSONArray());
-                }
-                externalViewPartitionToServerMappingJson.getJSONArray(partition).add(server);
-              }
-            }
-          }
-          responseJson.put("externalView", externalViewPartitionToServerMappingJson);
+          responseJson.put("Status", Status.SUCCESS_OK.getCode());
+          responseJson.put("Message", helixInfoJson);
 
-          JSONObject idealStatePartitionToServerMappingJson = new JSONObject();
-          if (idealStateForTopic == null) {
-            LOGGER.info("Ideal state for topic " + topicName + " is NULL");
-          } else {
-            for (String partition : idealStateForTopic.getPartitionSet()) {
-              Map<String, String> stateMap = idealStateForTopic.getInstanceStateMap(partition);
-              if (stateMap != null) {
-                for (String server : stateMap.keySet()) {
-                  if (!idealStatePartitionToServerMappingJson.containsKey(partition)) {
-                    idealStatePartitionToServerMappingJson.put(partition, new JSONArray());
-                  }
-                  idealStatePartitionToServerMappingJson.getJSONArray(partition).add(server);
-                }
-              }
-            }
-          }
-          responseJson.put("idealState", idealStatePartitionToServerMappingJson);
-          Map<String, List<String>> serverToPartitionMapping = new HashMap<String, List<String>>();
-          JSONObject serverToPartitionMappingJson = new JSONObject();
-          JSONObject serverToNumPartitionsMappingJson = new JSONObject();
-
-          if (externalViewForTopic != null) {
-            for (String partition : externalViewForTopic.getPartitionSet()) {
-              Map<String, String> stateMap = externalViewForTopic.getStateMap(partition);
-              for (String server : stateMap.keySet()) {
-                if (stateMap.get(server).equals("ONLINE")) {
-                  if (!serverToPartitionMapping.containsKey(server)) {
-                    serverToPartitionMapping.put(server, new ArrayList<String>());
-                    serverToPartitionMappingJson.put(server, new JSONArray());
-                    serverToNumPartitionsMappingJson.put(server, 0);
-                  }
-                  serverToPartitionMapping.get(server).add(partition);
-                  serverToPartitionMappingJson.getJSONArray(server).add(partition);
-                  serverToNumPartitionsMappingJson.put(server,
-                      serverToNumPartitionsMappingJson.getInteger(server) + 1);
-                }
-              }
-            }
-          }
-          responseJson.put("serverToPartitionMapping", serverToPartitionMappingJson);
-          responseJson.put("serverToNumPartitionsMapping", serverToNumPartitionsMappingJson);
           return new StringRepresentation(responseJson.toJSONString());
         } else {
-          getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
-          return new StringRepresentation(
+          JSONObject responseJson = new JSONObject();
+          responseJson.put("Status", Status.CLIENT_ERROR_NOT_FOUND.getCode());
+          responseJson.put("Message",
               String.format("Failed to get ExternalView for topic: %s, it is not existed!", topicName));
+
+          getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
+          return new StringRepresentation(responseJson.toJSONString());
         }
       } catch (Exception e) {
+        JSONObject responseJson = new JSONObject();
+        responseJson.put("Status", Status.SERVER_ERROR_INTERNAL.getCode());
+        responseJson.put("Message",
+            String.format("Failed to get ExternalView for topic: %s, with exception: %s", topicName, e));
+
         LOGGER.error("Got error during processing Get request", e);
         getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
-        return new StringRepresentation(
-            String.format("Failed to get ExternalView for topic: %s, with exception: %s", topicName, e));
+        return new StringRepresentation(responseJson.toJSONString());
       }
     } else if (_helixMirrorMakerManager.isTopicExisted(topicName)) {
       LOGGER.info("_topicToPipelineInstanceMap: {} to {}", topicName, _helixMirrorMakerManager.getTopic(topicName));
-      return new StringRepresentation(
-          String.format("Found topic: %s\n", _helixMirrorMakerManager.getTopic(topicName)));
+
+      JSONObject topicInfoJson = new JSONObject();
+      Map<String, Map<String, InstanceTopicPartitionHolder>> topicToPipelineInstanceMap = _helixMirrorMakerManager
+          .getTopicToPipelineInstanceMap();
+      for (String pipeline : topicToPipelineInstanceMap.get(topicName).keySet()) {
+        JSONObject instanceInfoJson = new JSONObject();
+        instanceInfoJson.put("Instance", topicToPipelineInstanceMap.get(topicName).get(pipeline).getInstanceName());
+        instanceInfoJson.put("Route", topicToPipelineInstanceMap.get(topicName).get(pipeline).getRouteString());
+        topicInfoJson.put(pipeline, instanceInfoJson);
+      }
+
+      JSONObject responseJson = new JSONObject();
+      JSONObject messageJson = new JSONObject();
+      messageJson.put(topicName, topicInfoJson);
+      messageJson.put("helix", composeHelixInfoJson(topicName));
+      responseJson.put("Status", Status.SUCCESS_OK.getCode());
+      responseJson.put("Message", messageJson);
+
+      return new StringRepresentation(responseJson.toJSONString());
     } else {
-      return new StringRepresentation(
-          String.format("Failed to find topic: %s\n", topicName));
+      JSONObject responseJson = new JSONObject();
+      responseJson.put("Status", Status.CLIENT_ERROR_NOT_FOUND.getCode());
+      responseJson.put("Message", String.format("Failed to find topic: %s\n", topicName));
+
+      getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
+      return new StringRepresentation(responseJson.toJSONString());
     }
+  }
+
+  private JSONObject composeHelixInfoJson(String topicName) {
+    IdealState idealStateForTopic =
+        _helixMirrorMakerManager.getIdealStateForTopic(topicName);
+    ExternalView externalViewForTopic =
+        _helixMirrorMakerManager.getExternalViewForTopic(topicName);
+    JSONObject helixInfoJson = new JSONObject();
+    helixInfoJson.put("topic", topicName);
+    JSONObject externalViewPartitionToServerMappingJson = new JSONObject();
+    if (externalViewForTopic == null) {
+      LOGGER.info("External view for topic " + topicName + " is NULL");
+    } else {
+      for (String partition : externalViewForTopic.getPartitionSet()) {
+        Map<String, String> stateMap = externalViewForTopic.getStateMap(partition);
+        for (String server : stateMap.keySet()) {
+          if (!externalViewPartitionToServerMappingJson.containsKey(partition)) {
+            externalViewPartitionToServerMappingJson.put(partition, new JSONArray());
+          }
+          externalViewPartitionToServerMappingJson.getJSONArray(partition).add(server);
+        }
+      }
+    }
+    helixInfoJson.put("externalView", externalViewPartitionToServerMappingJson);
+
+    JSONObject idealStatePartitionToServerMappingJson = new JSONObject();
+    if (idealStateForTopic == null) {
+      LOGGER.info("Ideal state for topic " + topicName + " is NULL");
+    } else {
+      for (String partition : idealStateForTopic.getPartitionSet()) {
+        Map<String, String> stateMap = idealStateForTopic.getInstanceStateMap(partition);
+        if (stateMap != null) {
+          for (String server : stateMap.keySet()) {
+            if (!idealStatePartitionToServerMappingJson.containsKey(partition)) {
+              idealStatePartitionToServerMappingJson.put(partition, new JSONArray());
+            }
+            idealStatePartitionToServerMappingJson.getJSONArray(partition).add(server);
+          }
+        }
+      }
+    }
+    helixInfoJson.put("idealState", idealStatePartitionToServerMappingJson);
+    Map<String, List<String>> serverToPartitionMapping = new HashMap<String, List<String>>();
+    JSONObject serverToPartitionMappingJson = new JSONObject();
+    JSONObject serverToNumPartitionsMappingJson = new JSONObject();
+
+    if (externalViewForTopic != null) {
+      for (String partition : externalViewForTopic.getPartitionSet()) {
+        Map<String, String> stateMap = externalViewForTopic.getStateMap(partition);
+        for (String server : stateMap.keySet()) {
+          if (stateMap.get(server).equals("ONLINE")) {
+            if (!serverToPartitionMapping.containsKey(server)) {
+              serverToPartitionMapping.put(server, new ArrayList<String>());
+              serverToPartitionMappingJson.put(server, new JSONArray());
+              serverToNumPartitionsMappingJson.put(server, 0);
+            }
+            serverToPartitionMapping.get(server).add(partition);
+            serverToPartitionMappingJson.getJSONArray(server).add(partition);
+            serverToNumPartitionsMappingJson.put(server,
+                serverToNumPartitionsMappingJson.getInteger(server) + 1);
+          }
+        }
+      }
+    }
+    helixInfoJson.put("serverToPartitionMapping", serverToPartitionMappingJson);
+    helixInfoJson.put("serverToNumPartitionsMapping", serverToNumPartitionsMappingJson);
+
+    return helixInfoJson;
   }
 
   // resource: @src@dst, partition: 0
@@ -273,8 +304,7 @@ public class TopicManagementRestletResource extends ServerResource {
       if (_helixMirrorMakerManager.isTopicPipelineExisted(topicName, pipeline)) {
         try {
           _helixMirrorMakerManager.deleteTopicInMirrorMaker(topicName, srcCluster, dstCluster, pipeline);
-          return new StringRepresentation(
-              String.format("Successfully finished delete topic: %s\n", topicName));
+          return new StringRepresentation(String.format("Successfully finished delete topic: %s\n", topicName));
         } catch (Exception e) {
           LOGGER.info("Failed to delete the topic {} from {} to {} due to error {}",
               topicName, srcCluster, dstCluster, e);
@@ -283,11 +313,9 @@ public class TopicManagementRestletResource extends ServerResource {
                   topicName, srcCluster, dstCluster, e.toString()));
         }
       } else {
-        LOGGER.info("Failed to delete the topic {} from {} to {}",
-            topicName, srcCluster, dstCluster);
+        LOGGER.info("Failed to delete the topic {} from {} to {}", topicName, srcCluster, dstCluster);
         return new StringRepresentation(
-            String.format("Failed to delete new topic: %s from: %s to: %s\n",
-                topicName, srcCluster, dstCluster));
+            String.format("Failed to delete new topic: %s from: %s to: %s\n", topicName, srcCluster, dstCluster));
       }
     }
   }
