@@ -192,9 +192,9 @@ public class ControllerHelixManager implements IHelixManager {
     } finally {
       lock.unlock();
     }
-    LOGGER.info("1 _pipelineToInstanceMap: {}", _pipelineToInstanceMap);
-    LOGGER.info("2 _topicToPipelineInstanceMap: {}", _topicToPipelineInstanceMap);
-    LOGGER.info("3 _availableControllerSet: {}", _availableControllerSet);
+    LOGGER.info("_pipelineToInstanceMap: {}", _pipelineToInstanceMap);
+    LOGGER.info("_topicToPipelineInstanceMap: {}", _topicToPipelineInstanceMap);
+    LOGGER.info("_availableControllerSet: {}", _availableControllerSet);
   }
 
   public List<String> extractTopicList(String response) {
@@ -343,11 +343,20 @@ public class ControllerHelixManager implements IHelixManager {
       try {
         if (!_availableControllerSet.isEmpty()) {
           String instanceName = _availableControllerSet.get(0);
-          _availableControllerSet.remove(instanceName);
           InstanceTopicPartitionHolder instance = new InstanceTopicPartitionHolder(instanceName,
               new TopicPartition(pipeline, 0));
           _helixAdmin.addResource(_helixClusterName, pipeline,
               IdealStateBuilder.buildCustomIdealStateFor(pipeline, "0", instance));
+
+          // Wait for controller to join
+          if (!waitForExternalView(pipeline, "0")) {
+            LOGGER.info("Failed to find controller {} in pipeline {} online, drop it", instanceName, pipeline);
+            _helixAdmin.dropResource(_helixClusterName, pipeline);
+            throw new Exception(String.format("Failed to find controller %s in externalview in pipeline %s!",
+                instanceName, pipeline));
+          }
+
+          _availableControllerSet.remove(instanceName);
           _pipelineToInstanceMap.put(pipeline, new PriorityQueue<>(1,
               InstanceTopicPartitionHolder.getTotalWorkloadComparator(_workloadInfoRetriever, null)));
           _pipelineToInstanceMap.get(pipeline).add(instance);
@@ -360,12 +369,6 @@ public class ControllerHelixManager implements IHelixManager {
       _workerHelixManager.addTopicToMirrorMaker(pipeline);
     } else {
       LOGGER.info("Pipeline already existed!");
-    }
-
-    // Wait for controller to join
-    if (!waitForExternalView(pipeline, "0")) {
-      throw new Exception(String.format("Failed to found controller %s in externalview in route %s!",
-          _pipelineToInstanceMap.get(pipeline).peek().getInstanceName(), pipeline + "@0"));
     }
 
     // TODO: get proper InstanceTopicPartitionHolder
