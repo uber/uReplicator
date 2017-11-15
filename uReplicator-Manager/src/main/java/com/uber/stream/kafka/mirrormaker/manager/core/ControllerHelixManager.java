@@ -256,7 +256,6 @@ public class ControllerHelixManager implements IHelixManager {
       }
       itph.addTopicPartitions(topicList);
       itph.addWorkers(workerList);
-      itph.setWoakload(workload);
     } catch (Exception e) {
       e.printStackTrace();
     }
