@@ -17,6 +17,7 @@ package com.uber.stream.kafka.mirrormaker.common.utils;
 
 import com.google.common.collect.ImmutableList;
 import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
+import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.common.core.OnlineOfflineStateModel;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import java.util.Arrays;
@@ -71,9 +72,16 @@ public class HelixUtils {
         .getInstancesInClusterWithTag(helixManager.getClusterName(), BLACKLIST_TAG);
   }
 
+  private static String getSrcFromRoute(String route) {
+    return route.substring(1, route.indexOf("@", 1));
+  }
+
   private static String getPipelineFromRoute(String route) {
-    String[] s = route.split("@");
-    return route.substring(0, route.length() - s[s.length-1].length() -1);
+    return route.substring(0, route.lastIndexOf("@"));
+  }
+
+  public static Map<String, Set<TopicPartition>> getInstanceToTopicPartitionsMap(HelixManager helixManager) {
+    return getInstanceToTopicPartitionsMap(helixManager, null);
   }
 
   /**
@@ -81,19 +89,30 @@ public class HelixUtils {
    *
    * @return InstanceToNumTopicPartitionMap
    */
-  public static Map<String, Set<TopicPartition>> getInstanceToTopicPartitionsMap(HelixManager helixManager) {
+  public static Map<String, Set<TopicPartition>> getInstanceToTopicPartitionsMap(HelixManager helixManager,
+      Map<String, KafkaBrokerTopicObserver> clusterToObserverMap) {
     Map<String, Set<TopicPartition>> instanceToNumTopicPartitionMap = new HashMap<>();
     HelixAdmin helixAdmin = helixManager.getClusterManagmentTool();
     String helixClusterName = helixManager.getClusterName();
     for (String topic : helixAdmin.getResourcesInCluster(helixClusterName)) {
       IdealState is = helixAdmin.getResourceIdealState(helixClusterName, topic);
       for (String partition : is.getPartitionSet()) {
-        TopicPartition tpi = partition.startsWith("@") ? new TopicPartition(topic, -1, getPipelineFromRoute(partition))
-            : new TopicPartition(topic, Integer.parseInt(partition));
-        for (String instance : is.getInstanceSet(partition)) {
-          if (!instanceToNumTopicPartitionMap.containsKey(instance)) {
-            instanceToNumTopicPartitionMap.put(instance, new HashSet<>());
+        TopicPartition tpi;
+        if (partition.startsWith("@")) {
+          // topic
+          if (clusterToObserverMap != null) {
+            int trueNumPartition = clusterToObserverMap.get(getSrcFromRoute(partition))
+                .getTopicPartitionWithRefresh(topic).getPartition();
+            tpi = new TopicPartition(topic, trueNumPartition, getPipelineFromRoute(partition));
+          } else {
+            tpi = new TopicPartition(topic, -1, getPipelineFromRoute(partition));
           }
+        } else {
+          // route
+          tpi = new TopicPartition(topic, Integer.parseInt(partition));
+        }
+        for (String instance : is.getInstanceSet(partition)) {
+          instanceToNumTopicPartitionMap.putIfAbsent(instance, new HashSet<>());
           instanceToNumTopicPartitionMap.get(instance).add(tpi);
         }
       }

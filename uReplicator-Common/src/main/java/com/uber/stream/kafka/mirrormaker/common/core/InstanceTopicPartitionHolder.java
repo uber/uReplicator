@@ -30,7 +30,7 @@ public class InstanceTopicPartitionHolder {
   private final Set<TopicPartition> _topicPartitionSet = new HashSet<>();
   private final TopicPartition _route;
   private final Set<String> _workerSet = new HashSet<>();
-  private long _workLoad = 0;
+  private int _totalNumPartitions = 0;
 
   public InstanceTopicPartitionHolder(String instance) {
     this(instance, null);
@@ -61,8 +61,13 @@ public class InstanceTopicPartitionHolder {
     return _topicPartitionSet.size();
   }
 
+  public int getTotalNumPartitions() {
+    return _totalNumPartitions;
+  }
+
   public void addTopicPartition(TopicPartition topicPartitionInfo) {
     _topicPartitionSet.add(topicPartitionInfo);
+    _totalNumPartitions += topicPartitionInfo.getPartition();
   }
 
   public void removeTopicPartition(TopicPartition topicPartitionInfo) {
@@ -79,10 +84,6 @@ public class InstanceTopicPartitionHolder {
 
   public void addWorkers(Collection<String> workers) {
     _workerSet.addAll(workers);
-  }
-
-  public void setWoakload(long workLoad) {
-    _workLoad = workLoad;
   }
 
   public TopicWorkload totalWorkload(WorkloadInfoRetriever infoRetriever, ITopicWorkloadWeighter weighter) {
@@ -125,7 +126,8 @@ public class InstanceTopicPartitionHolder {
 
   @Override
   public String toString() {
-    return String.format("{%s,%s=%s}", _instanceName, _route, _topicPartitionSet);
+    return String.format("{%s,%s,topics:%s,workers:%s}",
+        _instanceName, getRouteString(), _topicPartitionSet, _workerSet);
   }
 
   @Override

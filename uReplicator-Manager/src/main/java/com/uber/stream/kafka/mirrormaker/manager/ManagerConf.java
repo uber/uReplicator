@@ -18,9 +18,12 @@ package com.uber.stream.kafka.mirrormaker.manager;
 import com.uber.stream.kafka.mirrormaker.common.configuration.IuReplicatorConf;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
+import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 
 /**
@@ -31,6 +34,8 @@ import org.apache.commons.configuration.PropertiesConfiguration;
  */
 public class ManagerConf extends PropertiesConfiguration implements IuReplicatorConf {
 
+  private static final String CONFIG_FILE = "config.file";
+  private static final String CONFIG_KAFKA_SRC_CLUSTERS_KEY = "kafka.source.clusters";
   private static final String MANAGER_ZK_STR = "manager.zk.str";
   private static final String MANAGER_PORT = "manager.port";
   private static final String MANAGER_DEPLOYMENT = "manager.deployment";
@@ -53,6 +58,14 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
   public ManagerConf() {
     super();
     this.setDelimiterParsingDisabled(true);
+  }
+
+  public void setConfigFile(String filePath) {
+    setProperty(CONFIG_FILE, filePath);
+  }
+
+  public void setSourceClusters(String clusters) {
+    setProperty(CONFIG_KAFKA_SRC_CLUSTERS_KEY, clusters);
   }
 
   public void setManagerZkStr(String zkStr) {
@@ -89,6 +102,17 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
 
   public void setWorkloadRefreshPeriodInSeconds(String workloadRefreshPeriodInSeconds) {
     setProperty(WORKLOAD_REFRESH_PERIOD_IN_SECONDS, Integer.parseInt(workloadRefreshPeriodInSeconds));
+  }
+
+  public String getConfigFile() {
+    if (!containsKey(CONFIG_FILE)) {
+      return "";
+    }
+    return (String) getProperty(CONFIG_FILE);
+  }
+
+  public Set<String> getSourceClusters() {
+    return parseList(CONFIG_KAFKA_SRC_CLUSTERS_KEY, ",");
   }
 
   public String getManagerZkStr() {
@@ -139,6 +163,20 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
     }
   }
 
+  private Set<String> parseList(String key, String delim) {
+    Set<String> clusters = new HashSet<>();
+    if (containsKey(key)) {
+      String[] values = ((String) getProperty(key)).split(delim);
+      for (String value : values) {
+        String cluster = value.trim();
+        if (!cluster.isEmpty()) {
+          clusters.add(cluster);
+        }
+      }
+    }
+    return clusters;
+  }
+
   @SuppressWarnings("rawtypes")
   @Override
   public String toString() {
@@ -157,6 +195,8 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
   public static Options constructManagerOptions() {
     final Options managerOptions = new Options();
     managerOptions.addOption("help", false, "Help")
+        .addOption("config", true, "Config file")
+        .addOption("srcClusters", true, "Source cluster names for federated uReplicator")
         .addOption("zookeeper", true, "Zookeeper path")
         .addOption("managerPort", true, "Manager port number")
         .addOption("deployment", true, "Manager deployment")
@@ -171,6 +211,16 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
 
   public static ManagerConf getManagerConf(CommandLine cmd) {
     ManagerConf managerConf = new ManagerConf();
+    if (cmd.hasOption("config")) {
+      managerConf.setConfigFile(cmd.getOptionValue("config"));
+    } else {
+      managerConf.setConfigFile("");
+    }
+    if (cmd.hasOption("srcClusters")) {
+      managerConf.setSourceClusters(cmd.getOptionValue("srcClusters"));
+    } else {
+      managerConf.setSourceClusters("");
+    }
     if (cmd.hasOption("zookeeper")) {
       managerConf.setManagerZkStr(cmd.getOptionValue("zookeeper"));
     } else {
@@ -217,6 +267,30 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
       managerConf.setWorkloadRefreshPeriodInSeconds(cmd.getOptionValue("workloadRefreshPeriodInSeconds"));
     } else {
       managerConf.setWorkloadRefreshPeriodInSeconds(Integer.toString(DEFAULT_WORKLOAD_REFRESH_PERIOD_IN_SECONDS));
+    }
+
+    if (cmd.hasOption("config")) {
+      String fileName = cmd.getOptionValue("config");
+      managerConf.setConfigFile(fileName);
+      // load config from file
+      PropertiesConfiguration configFromFile = new PropertiesConfiguration();
+      configFromFile.setDelimiterParsingDisabled(true);
+      try {
+        configFromFile.load(fileName);
+      } catch (ConfigurationException e) {
+        throw new RuntimeException("Failed to load config from file " + fileName + ": " + e.getMessage());
+      }
+      // merge the config with command line. Option from command line has higher priority to override config from file
+      @SuppressWarnings("unchecked")
+      Iterator<String> keyIter = configFromFile.getKeys();
+      while (keyIter.hasNext()) {
+        String key = keyIter.next();
+        if (!managerConf.containsKey(key)) {
+          managerConf.addPropertyDirect(key, configFromFile.getProperty(key));
+        }
+      }
+    } else {
+      managerConf.setConfigFile("");
     }
 
     return managerConf;

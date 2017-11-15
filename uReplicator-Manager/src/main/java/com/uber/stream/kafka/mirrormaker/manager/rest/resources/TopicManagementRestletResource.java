@@ -5,7 +5,9 @@ import com.alibaba.fastjson.JSONObject;
 import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
 import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
+import com.uber.stream.kafka.mirrormaker.manager.ManagerConf;
 import com.uber.stream.kafka.mirrormaker.manager.core.ControllerHelixManager;
+import com.uber.stream.kafka.mirrormaker.manager.validation.SourceKafkaClusterValidationManager;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,25 +36,21 @@ public class TopicManagementRestletResource extends ServerResource {
 
   private static final String SEPARATOR = "@";
 
+  private final ManagerConf _conf;
   private final ControllerHelixManager _helixMirrorMakerManager;
-  private final KafkaBrokerTopicObserver _srcKafkaBrokerTopicObserver;
+  private final Map<String, KafkaBrokerTopicObserver> _clusterToObserverMap;
 
   public TopicManagementRestletResource() {
     getVariants().add(new Variant(MediaType.TEXT_PLAIN));
     getVariants().add(new Variant(MediaType.APPLICATION_JSON));
     setNegotiated(false);
 
+    _conf = (ManagerConf) getApplication().getContext().getAttributes().get(ManagerConf.class.toString());
     _helixMirrorMakerManager = (ControllerHelixManager) getApplication().getContext()
         .getAttributes().get(ControllerHelixManager.class.toString());
-
-    // TODO: _srcKafkaBrokerTopicObserver is null
-    if (getApplication().getContext().getAttributes()
-        .containsKey(KafkaBrokerTopicObserver.class.toString())) {
-      _srcKafkaBrokerTopicObserver = (KafkaBrokerTopicObserver) getApplication().getContext()
-          .getAttributes().get(KafkaBrokerTopicObserver.class.toString());
-    } else {
-      _srcKafkaBrokerTopicObserver = null;
-    }
+    SourceKafkaClusterValidationManager srcKafkaValidationManager = (SourceKafkaClusterValidationManager) getApplication()
+        .getContext().getAttributes().get(SourceKafkaClusterValidationManager.class.toString());
+    _clusterToObserverMap = srcKafkaValidationManager.getClusterToObserverMap();
   }
 
   @Override
@@ -170,8 +168,8 @@ public class TopicManagementRestletResource extends ServerResource {
     }
 
     // TODO: _srcKafkaBrokerTopicObserver is null
-    // TopicPartition topicPartitionInfo = _srcKafkaBrokerTopicObserver.getTopicPartitionWithRefresh(topicName);
-    TopicPartition topicPartitionInfo = new TopicPartition(topicName, 4);
+    TopicPartition topicPartitionInfo = _clusterToObserverMap.get(srcCluster).getTopicPartitionWithRefresh(topicName);
+    LOGGER.info("topicPartitionInfo: {}", topicPartitionInfo);
     if (topicPartitionInfo == null) {
       LOGGER.warn("Failed to whitelist topic {} on uReplicator because of not exists in src cluster", topicName);
 
@@ -383,7 +381,7 @@ public class TopicManagementRestletResource extends ServerResource {
   }
 
   private boolean isValidPipeline(String src, String dst) {
-    return src != null && dst != null;
+    return _conf.getSourceClusters().contains(src);
   }
 
 }
