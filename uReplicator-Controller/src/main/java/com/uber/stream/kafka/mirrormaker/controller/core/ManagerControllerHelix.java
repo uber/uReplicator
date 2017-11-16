@@ -212,9 +212,10 @@ public class ManagerControllerHelix {
         handleRouteAssignmentOnline(srcCluster, dstCluster, routePartition);
       }
       if (!(srcCluster.equals(_currentSrcCluster) && dstCluster.equals(_currentDstCluster))) {
-        LOGGER.error("Inconsistent route assignment: expected src={}, dst={}, but given src={}, dst={}",
+        String msg = String.format("Inconsistent route assignment: expected src=%s, dst=%s, but given src=%s, dst=%s",
             _currentSrcCluster, _currentDstCluster, srcCluster, dstCluster);
-        return false;
+        LOGGER.error(msg);
+        throw new IllegalArgumentException(msg);
       }
       if (toState.equals("ONLINE")) {
         return handleTopicAssignmentOnline(topic, srcCluster, dstCluster);
@@ -223,8 +224,9 @@ public class ManagerControllerHelix {
       } else if (toState.equals("DROPPED")) {
         return handleTopicAssignmentDropped(topic, srcCluster, dstCluster);
       } else {
-        LOGGER.error("Invalid topic assignement state: " + toState);
-        return false;
+        String msg = "Invalid topic assignement state: " + toState;
+        LOGGER.error(msg);
+        throw new IllegalArgumentException(msg);
       }
     }
   }
@@ -235,17 +237,20 @@ public class ManagerControllerHelix {
       LOGGER.warn("Topic {} already exists from cluster {} to {}", topic, srcCluster, dstCluster);
       return false;
     }
+    TopicPartition topicPartitionInfo = null;
     KafkaBrokerTopicObserver topicObserver = _currentControllerInstance.getSourceKafkaTopicObserver();
     if (topicObserver == null) {
-      LOGGER.error("Source broker observer is not initiated for cluster {}", srcCluster);
-      return false;
-    }
-    TopicPartition topicPartitionInfo = topicObserver.getTopicPartitionWithRefresh(topic);
-    if (topicPartitionInfo == null) {
-      LOGGER.error(
-          "Failed to whitelist topic {} on controller because topic does not exists in src cluster {}",
-          topic, srcCluster);
-      return false;
+      // no source partition information, use partitions=1 and depend on auto-expanding later
+      topicPartitionInfo = new TopicPartition(topic, 1);
+    } else {
+      topicPartitionInfo = topicObserver.getTopicPartitionWithRefresh(topic);
+      if (topicPartitionInfo == null) {
+        String msg = String.format(
+            "Failed to whitelist topic %s on controller because topic does not exists in src cluster %s",
+            topic, srcCluster);
+        LOGGER.error(msg);
+        throw new IllegalArgumentException(msg);
+      }
     }
     helixManager.addTopicToMirrorMaker(topicPartitionInfo);
     LOGGER.info("Whitelisted topic {} from cluster {} to {}", topic, srcCluster, dstCluster);

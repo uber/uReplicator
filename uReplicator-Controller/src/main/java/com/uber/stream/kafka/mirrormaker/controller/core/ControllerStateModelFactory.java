@@ -94,16 +94,20 @@ public class ControllerStateModelFactory extends StateModelFactory<StateModel> {
         if (srcDest.length == 3) {
           _controllerHelix.handleRouteAssignmentEvent(srcDest[1], srcDest[2], message.getPartitionName(), message.getToState());
         } else {
-          LOGGER.error("Invalid resource name for route: resource={}, partition={}",
+          String msg = String.format("Invalid resource name for route: resource=%s, partition=%s",
               message.getResourceName(), message.getPartitionName());
+          LOGGER.error(msg);
+          throw new IllegalArgumentException(msg);
         }
       } else {
         String[] srcDest = message.getPartitionName().split(SEPARATOR);
         if (srcDest.length == 4) {
           _controllerHelix.handleTopicAssignmentEvent(message.getResourceName(), srcDest[1], srcDest[2], srcDest[3], message.getToState());
         } else {
-          LOGGER.error("Invalid partition name for topic: resource={}, partition={}",
+          String msg = String.format("Invalid partition name for topic: resource=%s, partition=%s",
               message.getResourceName(), message.getPartitionName());
+          LOGGER.error(msg);
+          throw new IllegalArgumentException(msg);
         }
       }
     }
