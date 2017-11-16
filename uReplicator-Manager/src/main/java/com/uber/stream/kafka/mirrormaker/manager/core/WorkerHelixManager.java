@@ -51,7 +51,7 @@ public class WorkerHelixManager implements IHelixManager {
   private static final String BLACKLIST_TAG = "blacklisted";
   private static final String SEPARATOR = "@";
 
-  private final IuReplicatorConf _conf;
+  private final ManagerConf _conf;
   private final String _helixZkURL;
   private final String _helixClusterName;
   private HelixManager _helixManager;
@@ -149,7 +149,7 @@ public class WorkerHelixManager implements IHelixManager {
         throw new Exception("No available worker!");
       }
       List<String> instances = new ArrayList<>();
-      for (int i = 0; i < 5 && _availableWorkerList.size() >= 0; i++) {
+      for (int i = 0; i < _conf.getInitMaxNumWorkersPerRoute() && _availableWorkerList.size() >= 0; i++) {
         instances.add(_availableWorkerList.get(i));
       }
       if (!isPipelineExisted(pipeline)) {
@@ -159,7 +159,7 @@ public class WorkerHelixManager implements IHelixManager {
       } else {
         _helixAdmin.setResourceIdealState(_helixClusterName, pipeline,
             IdealStateBuilder.expandCustomIdealStateFor(_helixAdmin.getResourceIdealState(_helixClusterName, pipeline),
-                pipeline, String.valueOf(routeId), instances));
+                pipeline, String.valueOf(routeId), instances, _conf.getMaxNumWorkersPerRoute()));
       }
       TopicPartition route = new TopicPartition(pipeline, routeId);
       _routeToInstanceMap.putIfAbsent(route, new ArrayList<>());
@@ -172,15 +172,19 @@ public class WorkerHelixManager implements IHelixManager {
   }
 
   public synchronized void deletePipelineInMirrorMaker(String pipeline) {
-    _helixAdmin.dropResource(_helixClusterName, pipeline);
     _lock.lock();
     try {
+      _helixAdmin.dropResource(_helixClusterName, pipeline);
       List<String> deletedInstances = new ArrayList<>();
+      List<TopicPartition> tpToDelete = new ArrayList<>();
       for (TopicPartition tp : _routeToInstanceMap.keySet()) {
         if (tp.getTopic().equals(pipeline)) {
           deletedInstances.addAll(_routeToInstanceMap.get(tp));
-          _routeToInstanceMap.remove(tp);
+          tpToDelete.add(tp);
         }
+      }
+      for (TopicPartition tp : tpToDelete) {
+        _routeToInstanceMap.remove(tp);
       }
       _availableWorkerList.addAll(deletedInstances);
     } finally {

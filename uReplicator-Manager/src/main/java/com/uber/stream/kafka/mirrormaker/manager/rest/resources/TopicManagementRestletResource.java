@@ -256,6 +256,7 @@ public class TopicManagementRestletResource extends ServerResource {
 
         return new StringRepresentation(responseJson.toJSONString());
       } catch (Exception e) {
+        e.printStackTrace();
         LOGGER.error("Failed to delete topic: {} due to exception: {}", topicName, e);
 
         JSONObject responseJson = new JSONObject();
@@ -381,7 +382,7 @@ public class TopicManagementRestletResource extends ServerResource {
   }
 
   private boolean isValidPipeline(String src, String dst) {
-    return _conf.getSourceClusters().contains(src);
+    return _conf.getSourceClusters().contains(src) && _conf.getDestinationClusters().contains(dst);
   }
 
 }

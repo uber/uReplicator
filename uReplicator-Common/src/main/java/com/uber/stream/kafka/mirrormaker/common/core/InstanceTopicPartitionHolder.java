@@ -101,11 +101,13 @@ public class InstanceTopicPartitionHolder {
     return new Comparator<InstanceTopicPartitionHolder>() {
       @Override
       public int compare(InstanceTopicPartitionHolder o1, InstanceTopicPartitionHolder o2) {
-        TopicWorkload workload1 = (o1 == null) ? new TopicWorkload(0, 0) : o1.totalWorkload(infoRetriever, weighter);
-        TopicWorkload workload2 = (o2 == null) ? new TopicWorkload(0, 0) : o2.totalWorkload(infoRetriever, weighter);
-        int cmp = workload1.compareTotal(workload2);
-        if (cmp != 0) {
-          return cmp;
+        if (infoRetriever != null) {
+          TopicWorkload workload1 = (o1 == null) ? new TopicWorkload(0, 0) : o1.totalWorkload(infoRetriever, weighter);
+          TopicWorkload workload2 = (o2 == null) ? new TopicWorkload(0, 0) : o2.totalWorkload(infoRetriever, weighter);
+          int cmp = workload1.compareTotal(workload2);
+          if (cmp != 0) {
+            return cmp;
+          }
         }
         // if workload is the same, compare them based on the number of partitions
         int size1 = (o1 == null) ? -1 : o1.getNumServingTopicPartitions();

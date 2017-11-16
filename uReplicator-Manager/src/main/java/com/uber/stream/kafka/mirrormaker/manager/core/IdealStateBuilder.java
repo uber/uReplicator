@@ -86,19 +86,20 @@ public class IdealStateBuilder {
   }
 
   public static IdealState expandCustomIdealStateFor(IdealState oldIdealState,
-      String topicName, String newPartition, List<String> instances) {
+      String topicName, String newPartition, List<String> instances, int maxNumReplica) {
     final CustomModeISBuilder customModeIdealStateBuilder = new CustomModeISBuilder(topicName);
 
     int oldNumPartitions = oldIdealState.getNumPartitions();
 
     customModeIdealStateBuilder
         .setStateModel(OnlineOfflineStateModel.name)
-        .setNumPartitions(oldNumPartitions + 1).setNumReplica(1)
+        .setNumPartitions(oldNumPartitions + 1).setNumReplica(maxNumReplica)
         .setMaxPartitionsPerNode(oldNumPartitions + 1);
 
     for (String partitionName : oldIdealState.getPartitionSet()) {
-      String instanceName = oldIdealState.getInstanceStateMap(partitionName).keySet().iterator().next();
-      customModeIdealStateBuilder.assignInstanceAndState(partitionName, instanceName, "ONLINE");
+      for (String instanceName : oldIdealState.getInstanceStateMap(partitionName).keySet()) {
+        customModeIdealStateBuilder.assignInstanceAndState(partitionName, instanceName, "ONLINE");
+      }
     }
 
     for (String instance : instances) {

@@ -36,6 +36,8 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
 
   private static final String CONFIG_FILE = "config.file";
   private static final String CONFIG_KAFKA_SRC_CLUSTERS_KEY = "kafka.source.clusters";
+  private static final String CONFIG_KAFKA_DEST_CLUSTERS_KEY = "kafka.destination.clusters";
+
   private static final String MANAGER_ZK_STR = "manager.zk.str";
   private static final String MANAGER_PORT = "manager.port";
   private static final String MANAGER_DEPLOYMENT = "manager.deployment";
@@ -50,10 +52,20 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
   private static final String C3_PORT = "manager.c3.port";
   private static final int DEFAULT_C3_PORT = 0;
 
-  private static final String SRC_KAFKA_ZK_PATH = "manager.srckafka.zkStr";
-
   private static final String WORKLOAD_REFRESH_PERIOD_IN_SECONDS = "manager.workload.refresh.period.in.seconds";
   private static final int DEFAULT_WORKLOAD_REFRESH_PERIOD_IN_SECONDS = 600;
+
+  private static final String INIT_MAX_NUM_PARTITIONS_PER_ROUTE = "manager.init.max.num.partitions.per.route";
+  private static final int DEFAULT_INIT_MAX_NUM_PARTITIONS_PER_ROUTE = 10;
+
+  private static final String MAX_NUM_PARTITIONS_PER_ROUTE = "manager.max.num.partitions.per.route";
+  private static final int DEFAULT_MAX_NUM_PARTITIONS_PER_ROUTE = 20;
+
+  private static final String INIT_MAX_NUM_WORKERS_PER_ROUTE = "manager.init.max.num.workers.per.route";
+  private static final int DEFAULT_INIT_MAX_NUM_WORKERS_PER_ROUTE = 3;
+
+  private static final String MAX_NUM_WORKERS_PER_ROUTE = "manager.max.num.workers.per.route";
+  private static final int DEFAULT_MAX_NUM_WORKERS_PER_ROUTE = 5;
 
   public ManagerConf() {
     super();
@@ -66,6 +78,10 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
 
   public void setSourceClusters(String clusters) {
     setProperty(CONFIG_KAFKA_SRC_CLUSTERS_KEY, clusters);
+  }
+
+  public void setDestinationClusters(String clusters) {
+    setProperty(CONFIG_KAFKA_DEST_CLUSTERS_KEY, clusters);
   }
 
   public void setManagerZkStr(String zkStr) {
@@ -96,12 +112,24 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
     setProperty(C3_PORT, Integer.valueOf(C3Port));
   }
 
-  public void setSrcKafkaZkPath(String srcKafkaZkPath) {
-    setProperty(SRC_KAFKA_ZK_PATH, srcKafkaZkPath);
-  }
-
   public void setWorkloadRefreshPeriodInSeconds(String workloadRefreshPeriodInSeconds) {
     setProperty(WORKLOAD_REFRESH_PERIOD_IN_SECONDS, Integer.parseInt(workloadRefreshPeriodInSeconds));
+  }
+
+  public void setInitMaxNumPartitionsPerRoute(String initMaxNumPartitionsPerRoute) {
+    setProperty(INIT_MAX_NUM_PARTITIONS_PER_ROUTE, Integer.parseInt(initMaxNumPartitionsPerRoute));
+  }
+
+  public void setMaxNumPartitionsPerRoute(String maxNumPartitionsPerRoute) {
+    setProperty(MAX_NUM_PARTITIONS_PER_ROUTE, Integer.parseInt(maxNumPartitionsPerRoute));
+  }
+
+  public void setInitMaxNumWorkersPerRoute(String initMaxNumWorkersPerRoute) {
+    setProperty(INIT_MAX_NUM_WORKERS_PER_ROUTE, Integer.parseInt(initMaxNumWorkersPerRoute));
+  }
+
+  public void setMaxNumWorkersPerRoute(String maxNumWorkersPerRoute) {
+    setProperty(MAX_NUM_WORKERS_PER_ROUTE, Integer.parseInt(maxNumWorkersPerRoute));
   }
 
   public String getConfigFile() {
@@ -113,6 +141,10 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
 
   public Set<String> getSourceClusters() {
     return parseList(CONFIG_KAFKA_SRC_CLUSTERS_KEY, ",");
+  }
+
+  public Set<String> getDestinationClusters() {
+    return parseList(CONFIG_KAFKA_DEST_CLUSTERS_KEY, ",");
   }
 
   public String getManagerZkStr() {
@@ -152,7 +184,7 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
   }
 
   public String getSrcKafkaZkPath() {
-    return (String) getProperty(SRC_KAFKA_ZK_PATH);
+    return null;
   }
 
   public Integer getWorkloadRefreshPeriodInSeconds() {
@@ -160,6 +192,38 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
       return (Integer) getProperty(WORKLOAD_REFRESH_PERIOD_IN_SECONDS);
     } else {
       return DEFAULT_WORKLOAD_REFRESH_PERIOD_IN_SECONDS;
+    }
+  }
+
+  public Integer getInitMaxNumPartitionsPerRoute() {
+    if (containsKey(INIT_MAX_NUM_PARTITIONS_PER_ROUTE)) {
+      return (Integer) getProperty(INIT_MAX_NUM_PARTITIONS_PER_ROUTE);
+    } else {
+      return DEFAULT_INIT_MAX_NUM_PARTITIONS_PER_ROUTE;
+    }
+  }
+
+  public Integer getMaxNumPartitionsPerRoute() {
+    if (containsKey(MAX_NUM_PARTITIONS_PER_ROUTE)) {
+      return (Integer) getProperty(MAX_NUM_PARTITIONS_PER_ROUTE);
+    } else {
+      return DEFAULT_MAX_NUM_PARTITIONS_PER_ROUTE;
+    }
+  }
+
+  public Integer getInitMaxNumWorkersPerRoute() {
+    if (containsKey(INIT_MAX_NUM_WORKERS_PER_ROUTE)) {
+      return (Integer) getProperty(INIT_MAX_NUM_WORKERS_PER_ROUTE);
+    } else {
+      return DEFAULT_INIT_MAX_NUM_WORKERS_PER_ROUTE;
+    }
+  }
+
+  public Integer getMaxNumWorkersPerRoute() {
+    if (containsKey(MAX_NUM_WORKERS_PER_ROUTE)) {
+      return (Integer) getProperty(MAX_NUM_WORKERS_PER_ROUTE);
+    } else {
+      return DEFAULT_MAX_NUM_WORKERS_PER_ROUTE;
     }
   }
 
@@ -197,6 +261,7 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
     managerOptions.addOption("help", false, "Help")
         .addOption("config", true, "Config file")
         .addOption("srcClusters", true, "Source cluster names for federated uReplicator")
+        .addOption("destClusters", true, "Destination cluster names for federated uReplicator")
         .addOption("zookeeper", true, "Zookeeper path")
         .addOption("managerPort", true, "Manager port number")
         .addOption("deployment", true, "Manager deployment")
@@ -204,8 +269,11 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
         .addOption("controllerPort", true, "Controller port number")
         .addOption("c3Host", true, "Chaperone3 Host")
         .addOption("c3Port", true, "Chaperone3 Port")
-        .addOption("srcKafkaZkPath", true, "Source Kafka Zookeeper Path")
-        .addOption("workloadRefreshPeriodInSeconds", true, "The period to refresh workload information in seconds");
+        .addOption("workloadRefreshPeriodInSeconds", true, "The period to refresh workload information in seconds")
+        .addOption("initMaxNumPartitionsPerRoute", true, "The max number of partitions when init a route")
+        .addOption("maxNumPartitionsPerRoute", true, "The max number of partitions a route can have")
+        .addOption("initMaxNumWorkersPerRoute", true, "The max number of workers when init a route")
+        .addOption("maxNumWorkersPerRoute", true, "The max number of workers a route can have");
     return managerOptions;
   }
 
@@ -220,6 +288,11 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
       managerConf.setSourceClusters(cmd.getOptionValue("srcClusters"));
     } else {
       managerConf.setSourceClusters("");
+    }
+    if (cmd.hasOption("destClusters")) {
+      managerConf.setDestinationClusters(cmd.getOptionValue("destClusters"));
+    } else {
+      managerConf.setDestinationClusters("");
     }
     if (cmd.hasOption("zookeeper")) {
       managerConf.setManagerZkStr(cmd.getOptionValue("zookeeper"));
@@ -260,13 +333,30 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
     } else {
       managerConf.setC3Port(Integer.toString(DEFAULT_C3_PORT));
     }
-    if (cmd.hasOption("srcKafkaZkPath")) {
-      managerConf.setSrcKafkaZkPath(cmd.getOptionValue("srcKafkaZkPath"));
-    }
     if (cmd.hasOption("workloadRefreshPeriodInSeconds")) {
       managerConf.setWorkloadRefreshPeriodInSeconds(cmd.getOptionValue("workloadRefreshPeriodInSeconds"));
     } else {
       managerConf.setWorkloadRefreshPeriodInSeconds(Integer.toString(DEFAULT_WORKLOAD_REFRESH_PERIOD_IN_SECONDS));
+    }
+    if (cmd.hasOption("initMaxNumPartitionsPerRoute")) {
+      managerConf.setInitMaxNumPartitionsPerRoute(cmd.getOptionValue("initMaxNumPartitionsPerRoute"));
+    } else {
+      managerConf.setInitMaxNumPartitionsPerRoute(Integer.toString(DEFAULT_INIT_MAX_NUM_PARTITIONS_PER_ROUTE));
+    }
+    if (cmd.hasOption("maxNumPartitionsPerRoute")) {
+      managerConf.setMaxNumPartitionsPerRoute(cmd.getOptionValue("maxNumPartitionsPerRoute"));
+    } else {
+      managerConf.setMaxNumPartitionsPerRoute(Integer.toString(DEFAULT_MAX_NUM_PARTITIONS_PER_ROUTE));
+    }
+    if (cmd.hasOption("initMaxNumWorkersPerRoute")) {
+      managerConf.setInitMaxNumWorkersPerRoute(cmd.getOptionValue("initMaxNumWorkersPerRoute"));
+    } else {
+      managerConf.setInitMaxNumWorkersPerRoute(Integer.toString(DEFAULT_INIT_MAX_NUM_WORKERS_PER_ROUTE));
+    }
+    if (cmd.hasOption("maxNumWorkersPerRoute")) {
+      managerConf.setMaxNumWorkersPerRoute(cmd.getOptionValue("maxNumWorkersPerRoute"));
+    } else {
+      managerConf.setMaxNumWorkersPerRoute(Integer.toString(DEFAULT_MAX_NUM_WORKERS_PER_ROUTE));
     }
 
     if (cmd.hasOption("config")) {

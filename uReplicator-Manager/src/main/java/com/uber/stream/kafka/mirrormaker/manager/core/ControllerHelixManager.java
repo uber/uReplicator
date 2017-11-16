@@ -22,7 +22,6 @@ import com.uber.stream.kafka.mirrormaker.common.configuration.IuReplicatorConf;
 import com.uber.stream.kafka.mirrormaker.common.core.IHelixManager;
 import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
-import com.uber.stream.kafka.mirrormaker.common.core.WorkloadInfoRetriever;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixSetupUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.HttpClientUtils;
@@ -73,15 +72,16 @@ public class ControllerHelixManager implements IHelixManager {
   private String _instanceId;
 
   private final WorkerHelixManager _workerHelixManager;
-  private final WorkloadInfoRetriever _workloadInfoRetriever;
   private LiveInstanceChangeListener _liveInstanceChangeListener;
 
   private final CloseableHttpClient _httpClient;
   private final int _controllerPort;
   private final RequestConfig _requestConfig;
 
-  private final int _initMaxNumPartitions = 10;
-  private final int _MaxNumPartitions = 10;
+  private final int _initMaxNumPartitionsPerRoute;
+  private final int _maxNumPartitionsPerRoute;
+  private final int _initMaxNumWorkersPerRoute;
+  private final int _maxNumWorkersPerRoute;
 
   private ReentrantLock _lock = new ReentrantLock();
   private Map<String, Map<String, InstanceTopicPartitionHolder>> _topicToPipelineInstanceMap;
@@ -92,11 +92,14 @@ public class ControllerHelixManager implements IHelixManager {
       ManagerConf managerConf) {
     _conf = managerConf;
     _srcKafkaValidationManager = srcKafkaValidationManager;
+    _initMaxNumPartitionsPerRoute = managerConf.getInitMaxNumPartitionsPerRoute();
+    _maxNumPartitionsPerRoute = managerConf.getMaxNumPartitionsPerRoute();
+    _initMaxNumWorkersPerRoute = managerConf.getInitMaxNumWorkersPerRoute();
+    _maxNumWorkersPerRoute = managerConf.getMaxNumWorkersPerRoute();
     _workerHelixManager = new WorkerHelixManager(managerConf);
     _helixZkURL = HelixUtils.getAbsoluteZkPathForHelix(managerConf.getManagerZkStr());
     _helixClusterName = MANAGER_CONTROLLER_HELIX_PREFIX + "-" + managerConf.getManagerDeployment();
     _instanceId = managerConf.getManagerInstanceId();
-    _workloadInfoRetriever = new WorkloadInfoRetriever(this);
     _topicToPipelineInstanceMap = new ConcurrentHashMap<>();
     _pipelineToInstanceMap = new ConcurrentHashMap<>();
     _availableControllerList = new ArrayList<>();
@@ -175,7 +178,7 @@ public class ControllerHelixManager implements IHelixManager {
           String topicName = tp.getTopic();
           if (topicName.startsWith(SEPARATOR)) {
             currPipelineToInstanceMap.putIfAbsent(topicName, new PriorityQueue<>(1,
-                InstanceTopicPartitionHolder.getTotalWorkloadComparator(_workloadInfoRetriever, null)));
+                InstanceTopicPartitionHolder.getTotalWorkloadComparator(null, null)));
             InstanceTopicPartitionHolder itph = new InstanceTopicPartitionHolder(instanceName, tp);
             if (workerRouteToInstanceMap.get(tp) != null) {
               itph.addWorkers(workerRouteToInstanceMap.get(tp));
@@ -369,7 +372,7 @@ public class ControllerHelixManager implements IHelixManager {
 
     _availableControllerList.remove(instanceName);
     _pipelineToInstanceMap.put(pipeline, new PriorityQueue<>(1,
-        InstanceTopicPartitionHolder.getTotalWorkloadComparator(_workloadInfoRetriever, null)));
+        InstanceTopicPartitionHolder.getTotalWorkloadComparator(null, null)));
     _pipelineToInstanceMap.get(pipeline).add(instance);
     _workerHelixManager.addTopicToMirrorMaker(instance, pipeline, routeId);
 
@@ -386,7 +389,7 @@ public class ControllerHelixManager implements IHelixManager {
         pipeline);
     Set<Integer> routeIdSet = new HashSet<>();
     for (InstanceTopicPartitionHolder instance : instanceList) {
-      if (instance.getTotalNumPartitions() + numPartitions < _initMaxNumPartitions) {
+      if (instance.getTotalNumPartitions() + numPartitions < _initMaxNumPartitionsPerRoute) {
         return instance;
       }
       routeIdSet.add(instance.getRoute().getPartition());
@@ -452,19 +455,24 @@ public class ControllerHelixManager implements IHelixManager {
     LOGGER.info("Trying to delete pipeline: {}", pipeline);
 
     // TODO: delete topic first
-    _workerHelixManager.deletePipelineInMirrorMaker(pipeline);
-    _helixAdmin.dropResource(_helixClusterName, pipeline);
     _lock.lock();
     try {
+      _workerHelixManager.deletePipelineInMirrorMaker(pipeline);
+      _helixAdmin.dropResource(_helixClusterName, pipeline);
+
       _pipelineToInstanceMap.remove(pipeline);
       // Maybe clear instanceHolder's worker set
+      List<String> topicsToDelete = new ArrayList<>();
       for (String topic : _topicToPipelineInstanceMap.keySet()) {
         if (_topicToPipelineInstanceMap.get(topic).containsKey(pipeline)) {
           _topicToPipelineInstanceMap.get(topic).remove(pipeline);
         }
         if (_topicToPipelineInstanceMap.get(topic).isEmpty()) {
-          _topicToPipelineInstanceMap.remove(topic);
+          topicsToDelete.add(topic);
         }
+      }
+      for (String topic : topicsToDelete) {
+        _topicToPipelineInstanceMap.remove(topic);
       }
     } finally {
       _lock.unlock();
