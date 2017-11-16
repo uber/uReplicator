@@ -16,8 +16,9 @@
 package com.uber.stream.kafka.mirrormaker.common.utils;
 
 import com.google.common.collect.ImmutableList;
-import com.uber.stream.kafka.mirrormaker.common.core.OnlineOfflineStateModel;
 import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
+import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
+import com.uber.stream.kafka.mirrormaker.common.core.OnlineOfflineStateModel;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -40,6 +41,8 @@ import org.apache.helix.model.builder.CustomModeISBuilder;
 import org.apache.helix.store.zk.ZkHelixPropertyStore;
 
 public class HelixUtils {
+
+  private static final String BLACKLIST_TAG = "blacklisted";
 
   public static String getAbsoluteZkPathForHelix(String zkBaseUrl) {
     zkBaseUrl = StringUtils.chomp(zkBaseUrl, "/");
@@ -64,23 +67,52 @@ public class HelixUtils {
     return ImmutableList.copyOf(helixDataAccessor.getChildNames(liveInstancesKey));
   }
 
+  public static List<String> blacklistedInstances(HelixManager helixManager) {
+    return helixManager.getClusterManagmentTool()
+        .getInstancesInClusterWithTag(helixManager.getClusterName(), BLACKLIST_TAG);
+  }
+
+  private static String getSrcFromRoute(String route) {
+    return route.substring(1, route.indexOf("@", 1));
+  }
+
+  private static String getPipelineFromRoute(String route) {
+    return route.substring(0, route.lastIndexOf("@"));
+  }
+
+  public static Map<String, Set<TopicPartition>> getInstanceToTopicPartitionsMap(HelixManager helixManager) {
+    return getInstanceToTopicPartitionsMap(helixManager, null);
+  }
+
   /**
    * From IdealStates.
    *
    * @return InstanceToNumTopicPartitionMap
    */
-  public static Map<String, Set<TopicPartition>> getInstanceToTopicPartitionsMap(HelixManager helixManager) {
+  public static Map<String, Set<TopicPartition>> getInstanceToTopicPartitionsMap(HelixManager helixManager,
+      Map<String, KafkaBrokerTopicObserver> clusterToObserverMap) {
     Map<String, Set<TopicPartition>> instanceToNumTopicPartitionMap = new HashMap<>();
     HelixAdmin helixAdmin = helixManager.getClusterManagmentTool();
     String helixClusterName = helixManager.getClusterName();
     for (String topic : helixAdmin.getResourcesInCluster(helixClusterName)) {
       IdealState is = helixAdmin.getResourceIdealState(helixClusterName, topic);
       for (String partition : is.getPartitionSet()) {
-        TopicPartition tpi = new TopicPartition(topic, Integer.parseInt(partition));
-        for (String instance : is.getInstanceSet(partition)) {
-          if (!instanceToNumTopicPartitionMap.containsKey(instance)) {
-            instanceToNumTopicPartitionMap.put(instance, new HashSet<>());
+        TopicPartition tpi;
+        if (partition.startsWith("@")) {
+          // topic
+          if (clusterToObserverMap != null) {
+            int trueNumPartition = clusterToObserverMap.get(getSrcFromRoute(partition))
+                .getTopicPartitionWithRefresh(topic).getPartition();
+            tpi = new TopicPartition(topic, trueNumPartition, getPipelineFromRoute(partition));
+          } else {
+            tpi = new TopicPartition(topic, -1, getPipelineFromRoute(partition));
           }
+        } else {
+          // route
+          tpi = new TopicPartition(topic, Integer.parseInt(partition));
+        }
+        for (String instance : is.getInstanceSet(partition)) {
+          instanceToNumTopicPartitionMap.putIfAbsent(instance, new HashSet<>());
           instanceToNumTopicPartitionMap.get(instance).add(tpi);
         }
       }

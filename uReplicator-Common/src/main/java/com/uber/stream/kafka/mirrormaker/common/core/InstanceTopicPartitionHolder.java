@@ -28,13 +28,29 @@ public class InstanceTopicPartitionHolder {
 
   private final String _instanceName;
   private final Set<TopicPartition> _topicPartitionSet = new HashSet<>();
+  private final TopicPartition _route;
+  private final Set<String> _workerSet = new HashSet<>();
+  private int _totalNumPartitions = 0;
 
   public InstanceTopicPartitionHolder(String instance) {
+    this(instance, null);
+  }
+
+  public InstanceTopicPartitionHolder(String instance, TopicPartition route) {
     _instanceName = instance;
+    _route = route;
   }
 
   public String getInstanceName() {
     return _instanceName;
+  }
+
+  public TopicPartition getRoute() {
+    return _route;
+  }
+
+  public String getRouteString() {
+    return _route.getTopic() + "@" + _route.getPartition();
   }
 
   public Set<TopicPartition> getServingTopicPartitionSet() {
@@ -45,8 +61,13 @@ public class InstanceTopicPartitionHolder {
     return _topicPartitionSet.size();
   }
 
+  public int getTotalNumPartitions() {
+    return _totalNumPartitions;
+  }
+
   public void addTopicPartition(TopicPartition topicPartitionInfo) {
     _topicPartitionSet.add(topicPartitionInfo);
+    _totalNumPartitions += topicPartitionInfo.getPartition();
   }
 
   public void removeTopicPartition(TopicPartition topicPartitionInfo) {
@@ -55,6 +76,14 @@ public class InstanceTopicPartitionHolder {
 
   public void clearTopicPartitions() {
     _topicPartitionSet.clear();
+  }
+
+  public void addWorker(String worker) {
+    _workerSet.add(worker);
+  }
+
+  public void addWorkers(Collection<String> workers) {
+    _workerSet.addAll(workers);
   }
 
   public TopicWorkload totalWorkload(WorkloadInfoRetriever infoRetriever, ITopicWorkloadWeighter weighter) {
@@ -72,11 +101,13 @@ public class InstanceTopicPartitionHolder {
     return new Comparator<InstanceTopicPartitionHolder>() {
       @Override
       public int compare(InstanceTopicPartitionHolder o1, InstanceTopicPartitionHolder o2) {
-        TopicWorkload workload1 = (o1 == null) ? new TopicWorkload(0, 0) : o1.totalWorkload(infoRetriever, weighter);
-        TopicWorkload workload2 = (o2 == null) ? new TopicWorkload(0, 0) : o2.totalWorkload(infoRetriever, weighter);
-        int cmp = workload1.compareTotal(workload2);
-        if (cmp != 0) {
-          return cmp;
+        if (infoRetriever != null) {
+          TopicWorkload workload1 = (o1 == null) ? new TopicWorkload(0, 0) : o1.totalWorkload(infoRetriever, weighter);
+          TopicWorkload workload2 = (o2 == null) ? new TopicWorkload(0, 0) : o2.totalWorkload(infoRetriever, weighter);
+          int cmp = workload1.compareTotal(workload2);
+          if (cmp != 0) {
+            return cmp;
+          }
         }
         // if workload is the same, compare them based on the number of partitions
         int size1 = (o1 == null) ? -1 : o1.getNumServingTopicPartitions();
@@ -97,12 +128,13 @@ public class InstanceTopicPartitionHolder {
 
   @Override
   public String toString() {
-    return String.format("{%s=%s}", _instanceName, _topicPartitionSet);
+    return String.format("{%s,%s,topics:%s,workers:%s}",
+        _instanceName, getRouteString(), _topicPartitionSet, _workerSet);
   }
 
   @Override
   public int hashCode() {
-    return _instanceName.hashCode();
+    return _instanceName.hashCode() + (_route == null ? 0 : _route.hashCode());
   }
 
 }

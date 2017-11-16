@@ -23,16 +23,25 @@ import java.util.Comparator;
  * Simple data structure for holding topic and partitions.
  * This is kind of abused as the numPartitions could also indicate the partitionId.
  *
+ * For normal topic, _topic is topic name, _partition is number of partitions or -1, _pipeline is pipeline
+ * For pipeline, _topic is pipeline, _partition is routeId, _pipeline is null
+ *
  * @author xiangfu
  */
 public class TopicPartition {
 
   private final String _topic;
   private final int _partition;
+  private final String _pipeline;
 
   public TopicPartition(String topic, int numPartitions) {
+    this(topic, numPartitions, null);
+  }
+
+  public TopicPartition(String topic, int numPartitions, String pipeline) {
     _topic = topic;
     _partition = numPartitions;
+    _pipeline = pipeline;
   }
 
   /**
@@ -59,8 +68,12 @@ public class TopicPartition {
     return _topic;
   }
 
+  public String getPipeline() {
+    return _pipeline;
+  }
+
   public String toString() {
-    return String.format("{topic: %s, partition: %s}", _topic, _partition);
+    return String.format("{topic: %s, partition: %s, pipeline: %s}", _topic, _partition, _pipeline);
   }
 
   public JSONObject toJSON() {

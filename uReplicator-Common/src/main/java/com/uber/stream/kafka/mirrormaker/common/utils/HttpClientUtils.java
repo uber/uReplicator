@@ -24,11 +24,17 @@ import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.ResponseHandler;
 import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.HttpDelete;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.util.EntityUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HttpClientUtils {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(HttpClientUtils.class);
 
   public static ResponseHandler<String> createResponseBodyExtractor() {
     return new ResponseHandler<String>() {
@@ -55,11 +61,29 @@ public class HttpClientUtils {
     };
   }
 
+  public static String getData(final HttpClient httpClient,
+      final RequestConfig requestConfig,
+      final String host,
+      final int port,
+      final String path) throws IOException, URISyntaxException {
+    URI uri = new URIBuilder()
+        .setScheme("http")
+        .setHost(host)
+        .setPort(port)
+        .setPath(path)
+        .build();
+
+    HttpGet httpGet = new HttpGet(uri);
+    httpGet.setConfig(requestConfig);
+
+    return httpClient.execute(httpGet, HttpClientUtils.createResponseBodyExtractor());
+  }
+
   public static int postData(final HttpClient httpClient,
       final RequestConfig requestConfig,
       final String host,
       final int port,
-      final String topicName,
+      final String path,
       final String src,
       final String dst,
       final int routeId) throws IOException, URISyntaxException {
@@ -67,7 +91,7 @@ public class HttpClientUtils {
         .setScheme("http")
         .setHost(host)
         .setPort(port)
-        .setPath("/topics/" + topicName)
+        .setPath(path)
         .addParameter("src", src)
         .addParameter("dst", dst)
         .addParameter("routeid", String.valueOf(routeId))
@@ -77,6 +101,30 @@ public class HttpClientUtils {
     httpPost.setConfig(requestConfig);
 
     return httpClient.execute(httpPost, HttpClientUtils.createResponseCodeExtractor());
+  }
+
+  public static int deleteData(final HttpClient httpClient,
+      final RequestConfig requestConfig,
+      final String host,
+      final int port,
+      final String path,
+      final String src,
+      final String dst,
+      final int routeId) throws IOException, URISyntaxException {
+    URI uri = new URIBuilder()
+        .setScheme("http")
+        .setHost(host)
+        .setPort(port)
+        .setPath(path)
+        .addParameter("src", src)
+        .addParameter("dst", dst)
+        .addParameter("routeid", String.valueOf(routeId))
+        .build();
+
+    HttpDelete httpDelete = new HttpDelete(uri);
+    httpDelete.setConfig(requestConfig);
+
+    return httpClient.execute(httpDelete, HttpClientUtils.createResponseCodeExtractor());
   }
 
 }

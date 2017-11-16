@@ -16,8 +16,8 @@
 package com.uber.stream.kafka.mirrormaker.manager;
 
 import com.uber.stream.kafka.mirrormaker.manager.core.ControllerHelixManager;
-import com.uber.stream.kafka.mirrormaker.manager.core.WorkerHelixManager;
 import com.uber.stream.kafka.mirrormaker.manager.rest.ManagerRestApplication;
+import com.uber.stream.kafka.mirrormaker.manager.validation.SourceKafkaClusterValidationManager;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -39,12 +39,14 @@ public class ManagerStarter {
   private final ManagerConf _config;
   private final Component _component;
   private final ControllerHelixManager _controllerHelixManager;
+  private final SourceKafkaClusterValidationManager _srcKafkaValidationManager;
 
   public ManagerStarter(ManagerConf conf) {
     LOGGER.info("Trying to init ManagerStarter with config: {}", conf);
     _config = conf;
     _component = new Component();
-    _controllerHelixManager = new ControllerHelixManager(_config);
+    _srcKafkaValidationManager = new SourceKafkaClusterValidationManager(_config);
+    _controllerHelixManager = new ControllerHelixManager(_srcKafkaValidationManager, _config);
   }
 
   public void start() throws Exception {
@@ -54,7 +56,10 @@ public class ManagerStarter {
 
     Context applicationContext = _component.getContext().createChildContext();
     LOGGER.info("Injecting conf and helix to the api context");
+    applicationContext.getAttributes().put(ManagerConf.class.toString(), _config);
     applicationContext.getAttributes().put(ControllerHelixManager.class.toString(), _controllerHelixManager);
+    applicationContext.getAttributes()
+        .put(SourceKafkaClusterValidationManager.class.toString(), _srcKafkaValidationManager);
     Application managerRestApp = new ManagerRestApplication(null);
     managerRestApp.setContext(applicationContext);
 
@@ -63,6 +68,8 @@ public class ManagerStarter {
     try {
       LOGGER.info("Starting helix manager");
       _controllerHelixManager.start();
+      LOGGER.info("Starting source kafka cluster validation manager");
+      _srcKafkaValidationManager.start();
       LOGGER.info("Starting API component");
       _component.start();
     } catch (final Exception e) {
@@ -73,6 +80,8 @@ public class ManagerStarter {
 
   public void stop() {
     try {
+      LOGGER.info("Stopping source kafka cluster validation manager");
+      _srcKafkaValidationManager.stop();
       LOGGER.info("Stopping API component");
       _component.stop();
       LOGGER.info("Stopping helix manager");

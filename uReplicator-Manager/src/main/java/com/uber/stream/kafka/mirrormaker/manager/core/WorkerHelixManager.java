@@ -19,19 +19,16 @@ import com.uber.stream.kafka.mirrormaker.common.configuration.IuReplicatorConf;
 import com.uber.stream.kafka.mirrormaker.common.core.IHelixManager;
 import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
-import com.uber.stream.kafka.mirrormaker.common.core.WorkloadInfoRetriever;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixSetupUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
-import com.uber.stream.kafka.mirrormaker.common.utils.HttpClientUtils;
 import com.uber.stream.kafka.mirrormaker.manager.ManagerConf;
-import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import org.apache.helix.HelixAdmin;
 import org.apache.helix.HelixManager;
 import org.apache.helix.LiveInstanceChangeListener;
@@ -52,27 +49,28 @@ public class WorkerHelixManager implements IHelixManager {
 
   private static final String MANAGER_WORKER_HELIX_PREFIX = "manager-worker";
   private static final String BLACKLIST_TAG = "blacklisted";
+  private static final String SEPARATOR = "@";
 
-  private final IuReplicatorConf _conf;
+  private final ManagerConf _conf;
   private final String _helixZkURL;
   private final String _helixClusterName;
   private HelixManager _helixManager;
   private HelixAdmin _helixAdmin;
   private String _instanceId;
 
-  private final WorkloadInfoRetriever _workloadInfoRetriever;
-  private final PriorityQueue<InstanceTopicPartitionHolder> _currentServingInstance;
-
   private LiveInstanceChangeListener _liveInstanceChangeListener;
+
+  private ReentrantLock _lock = new ReentrantLock();
+  private Map<TopicPartition, List<String>> _routeToInstanceMap;
+  private List<String> _availableWorkerList;
 
   public WorkerHelixManager(ManagerConf managerConf) {
     _conf = managerConf;
     _helixZkURL = HelixUtils.getAbsoluteZkPathForHelix(managerConf.getManagerZkStr());
     _helixClusterName = MANAGER_WORKER_HELIX_PREFIX + "-" + managerConf.getManagerDeployment();
     _instanceId = managerConf.getManagerInstanceId();
-    _workloadInfoRetriever = new WorkloadInfoRetriever(this);
-    _currentServingInstance = new PriorityQueue<>(1,
-        InstanceTopicPartitionHolder.getTotalWorkloadComparator(_workloadInfoRetriever, null));
+    _routeToInstanceMap = new ConcurrentHashMap<>();
+    _availableWorkerList = new ArrayList<>();
   }
 
   public synchronized void start() {
@@ -94,36 +92,38 @@ public class WorkerHelixManager implements IHelixManager {
     _helixManager.disconnect();
   }
 
-  public synchronized void updateCurrentServingInstance() {
-    synchronized (_currentServingInstance) {
-      Map<String, InstanceTopicPartitionHolder> instanceMap = new HashMap<>();
-      Map<String, Set<TopicPartition>> instanceToTopicPartitionsMap =
-          HelixUtils.getInstanceToTopicPartitionsMap(_helixManager);
+  public synchronized void updateCurrentStatus() {
+    LOGGER.info("Trying to run worker updateCurrentStatus");
+    _lock.lock();
+    try {
+      Map<TopicPartition, List<String>> currRouteToInstanceMap = new HashMap<>();
+      List<String> currAvailableWorkerList = new ArrayList<>();
+
+      Map<String, Set<TopicPartition>> instanceToTopicPartitionsMap = HelixUtils
+          .getInstanceToTopicPartitionsMap(_helixManager);
+      LOGGER.info("\n\nfor worker instanceToTopicPartitionsMap: {}\n\n", instanceToTopicPartitionsMap);
       List<String> liveInstances = HelixUtils.liveInstances(_helixManager);
-      Set<String> blacklistedInstances = new HashSet<>(getBlacklistedInstances());
-      for (String instanceName : liveInstances) {
-        if (!blacklistedInstances.contains(instanceName)) {
-          InstanceTopicPartitionHolder instance = new InstanceTopicPartitionHolder(instanceName);
-          instanceMap.put(instanceName, instance);
-        }
-      }
+      currAvailableWorkerList.addAll(liveInstances);
+
       for (String instanceName : instanceToTopicPartitionsMap.keySet()) {
-        if (instanceMap.containsKey(instanceName)) {
-          instanceMap.get(instanceName).addTopicPartitions(instanceToTopicPartitionsMap.get(instanceName));
+        Set<TopicPartition> topicPartitions = instanceToTopicPartitionsMap.get(instanceName);
+        // TODO: one instance suppose to have only one partition
+        for (TopicPartition tp : topicPartitions) {
+          String pipeline = tp.getTopic();
+          if (pipeline.startsWith(SEPARATOR)) {
+            currRouteToInstanceMap.putIfAbsent(tp, new ArrayList<>());
+            currRouteToInstanceMap.get(tp).add(instanceName);
+            currAvailableWorkerList.remove(instanceName);
+          }
         }
       }
-      _currentServingInstance.clear();
-      int maxStandbyHosts = 0;
-      int standbyHosts = 0;
-      for (InstanceTopicPartitionHolder itph : instanceMap.values()) {
-        if (standbyHosts >= maxStandbyHosts || itph.getNumServingTopicPartitions() > 0) {
-          _currentServingInstance.add(itph);
-        } else {
-          // exclude it as a standby host
-          standbyHosts++;
-        }
-      }
+      _routeToInstanceMap = currRouteToInstanceMap;
+      _availableWorkerList = currAvailableWorkerList;
+    } finally {
+      _lock.unlock();
     }
+    LOGGER.info("For worker _routeToInstanceMap: {}", _routeToInstanceMap);
+    LOGGER.info("For worker {} available, _availableWorkerList: {}", _availableWorkerList.size(), _availableWorkerList);
   }
 
   public IdealState getIdealStateForTopic(String topicName) {
@@ -138,22 +138,58 @@ public class WorkerHelixManager implements IHelixManager {
     return _helixAdmin.getResourcesInCluster(_helixClusterName);
   }
 
-  public synchronized void addTopicToMirrorMaker(String pipeline) throws Exception {
-    updateCurrentServingInstance();
-    LOGGER.info("try to create route pipeline: {}", pipeline);
-    if (!isPipelineExisted(pipeline)) {
-      setEmptyResourceConfig(pipeline);
-      synchronized (_currentServingInstance) {
-        _helixAdmin.addResource(_helixClusterName, pipeline,
-            IdealStateBuilder.buildCustomIdealStateFor(pipeline, "0", _currentServingInstance));
+  public synchronized void addTopicToMirrorMaker(InstanceTopicPartitionHolder controller, String pipeline, int routeId)
+      throws Exception {
+    updateCurrentStatus();
+    LOGGER.info("Trying to create route pipeline: {}", pipeline);
+    _lock.lock();
+    try {
+      if (_availableWorkerList.size() == 0) {
+        LOGGER.info("No available worker!");
+        throw new Exception("No available worker!");
       }
-    } else {
-      LOGGER.info("worker pipeline existed!");
+      List<String> instances = new ArrayList<>();
+      for (int i = 0; i < _conf.getInitMaxNumWorkersPerRoute() && _availableWorkerList.size() >= 0; i++) {
+        instances.add(_availableWorkerList.get(i));
+      }
+      if (!isPipelineExisted(pipeline)) {
+        setEmptyResourceConfig(pipeline);
+        _helixAdmin.addResource(_helixClusterName, pipeline,
+            IdealStateBuilder.buildCustomIdealStateFor(pipeline, String.valueOf(routeId), instances));
+      } else {
+        _helixAdmin.setResourceIdealState(_helixClusterName, pipeline,
+            IdealStateBuilder.expandCustomIdealStateFor(_helixAdmin.getResourceIdealState(_helixClusterName, pipeline),
+                pipeline, String.valueOf(routeId), instances, _conf.getMaxNumWorkersPerRoute()));
+      }
+      TopicPartition route = new TopicPartition(pipeline, routeId);
+      _routeToInstanceMap.putIfAbsent(route, new ArrayList<>());
+      _routeToInstanceMap.get(route).addAll(instances);
+      _availableWorkerList.removeAll(instances);
+      controller.addWorkers(instances);
+    } finally {
+      _lock.unlock();
     }
   }
 
-  public synchronized void deleteTopicInMirrorMaker(String topicName) {
-    _helixAdmin.dropResource(_helixClusterName, topicName);
+  public synchronized void deletePipelineInMirrorMaker(String pipeline) {
+    _lock.lock();
+    try {
+      _helixAdmin.dropResource(_helixClusterName, pipeline);
+      List<String> deletedInstances = new ArrayList<>();
+      List<TopicPartition> tpToDelete = new ArrayList<>();
+      for (TopicPartition tp : _routeToInstanceMap.keySet()) {
+        if (tp.getTopic().equals(pipeline)) {
+          deletedInstances.addAll(_routeToInstanceMap.get(tp));
+          tpToDelete.add(tp);
+        }
+      }
+      for (TopicPartition tp : tpToDelete) {
+        _routeToInstanceMap.remove(tp);
+      }
+      _availableWorkerList.addAll(deletedInstances);
+    } finally {
+      _lock.unlock();
+    }
   }
 
   private synchronized void setEmptyResourceConfig(String topicName) {
@@ -163,6 +199,10 @@ public class WorkerHelixManager implements IHelixManager {
 
   public List<String> getBlacklistedInstances() {
     return _helixAdmin.getInstancesInClusterWithTag(_helixClusterName, BLACKLIST_TAG);
+  }
+
+  public Map<TopicPartition, List<String>> getWorkerRouteToInstanceMap() {
+    return _routeToInstanceMap;
   }
 
   public IuReplicatorConf getConf() {
