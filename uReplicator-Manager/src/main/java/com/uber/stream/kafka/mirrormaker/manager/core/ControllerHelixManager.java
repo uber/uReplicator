@@ -328,21 +328,18 @@ public class ControllerHelixManager implements IHelixManager {
     long ts1 = System.currentTimeMillis();
     while (true) {
       ExternalView externalView = getExternalViewForTopic(topicName);
-      if (externalView == null || !externalView.getPartitionSet().contains(partition)) {
-        continue;
-      }
-
-      Map<String, String> stateMap = externalView.getStateMap(partition);
-      for (String server : stateMap.keySet()) {
-        if (stateMap.get(server).equals("ONLINE")) {
-          Thread.sleep(1000);
-          return true;
+      if (externalView != null && externalView.getPartitionSet().contains(partition)) {
+        Map<String, String> stateMap = externalView.getStateMap(partition);
+        for (String server : stateMap.keySet()) {
+          if (stateMap.get(server).equals("ONLINE")) {
+            return true;
+          }
         }
       }
       if (System.currentTimeMillis() - ts1 > 10000) {
         break;
       }
-      LOGGER.info("Waiting for externalview for topic: {}, partition: {}", topicName, partition);
+      LOGGER.info("Waiting for ExternalView for topic: {}, partition: {}", topicName, partition);
       Thread.sleep(1000);
     }
     return false;

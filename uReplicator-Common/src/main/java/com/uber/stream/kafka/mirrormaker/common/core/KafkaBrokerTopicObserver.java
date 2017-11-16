@@ -38,8 +38,6 @@ import org.slf4j.LoggerFactory;
 import scala.collection.JavaConversions;
 import scala.collection.Seq;
 
-//import com.uber.stream.kafka.mirrormaker.common.reporter.HelixKafkaMirrorMakerMetricsReporter;
-
 /**
  * KafkaBrokerTopicObserver provides topic information on this broker
  * such as all topic names and partitions for each topic

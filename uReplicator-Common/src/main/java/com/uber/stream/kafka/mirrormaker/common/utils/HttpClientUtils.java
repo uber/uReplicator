@@ -83,7 +83,7 @@ public class HttpClientUtils {
       final RequestConfig requestConfig,
       final String host,
       final int port,
-      final String topicName,
+      final String path,
       final String src,
       final String dst,
       final int routeId) throws IOException, URISyntaxException {
@@ -91,7 +91,7 @@ public class HttpClientUtils {
         .setScheme("http")
         .setHost(host)
         .setPort(port)
-        .setPath("/topics/" + topicName)
+        .setPath(path)
         .addParameter("src", src)
         .addParameter("dst", dst)
         .addParameter("routeid", String.valueOf(routeId))
@@ -107,7 +107,7 @@ public class HttpClientUtils {
       final RequestConfig requestConfig,
       final String host,
       final int port,
-      final String topicName,
+      final String path,
       final String src,
       final String dst,
       final int routeId) throws IOException, URISyntaxException {
@@ -115,7 +115,7 @@ public class HttpClientUtils {
         .setScheme("http")
         .setHost(host)
         .setPort(port)
-        .setPath("/topics/" + topicName)
+        .setPath(path)
         .addParameter("src", src)
         .addParameter("dst", dst)
         .addParameter("routeid", String.valueOf(routeId))
