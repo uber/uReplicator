@@ -15,7 +15,6 @@
  */
 package com.uber.stream.kafka.mirrormaker.manager.core;
 
-import com.uber.stream.kafka.mirrormaker.manager.ManagerConf;
 import java.util.List;
 import org.apache.helix.HelixManager;
 import org.apache.helix.LiveInstanceChangeListener;
@@ -45,6 +44,7 @@ public class WorkerLiveInstanceChangeListener implements LiveInstanceChangeListe
   @Override
   public void onLiveInstanceChange(final List<LiveInstance> liveInstances, NotificationContext changeContext) {
     LOGGER.info("WorkerLiveInstanceChangeListener.onLiveInstanceChange() wakes up!");
+    LOGGER.info("Do nothing, wait for next auto rebalance");
   }
 
 }

@@ -99,7 +99,7 @@ public class TopicManagementRestletResource extends ServerResource {
           // TODO: add worker information
           JSONObject responseJson = new JSONObject();
           responseJson.put("status", Status.SUCCESS_OK.getCode());
-          responseJson.put("message", composeHelixInfoJson(topicName));
+          responseJson.put("message", getHelixInfoJsonFromManager(topicName));
 
           return new StringRepresentation(responseJson.toJSONString());
         } else {
@@ -128,7 +128,7 @@ public class TopicManagementRestletResource extends ServerResource {
       // TODO: add worker information
       JSONObject responseJson = new JSONObject();
       responseJson.put("status", Status.SUCCESS_OK.getCode());
-      responseJson.put("message", composeHelixInfoJson(topicName));
+      responseJson.put("message", getHelixInfoJsonFromManager(topicName));
 
       return new StringRepresentation(responseJson.toJSONString());
     } else {
@@ -167,7 +167,6 @@ public class TopicManagementRestletResource extends ServerResource {
       return new StringRepresentation(responseJson.toJSONString());
     }
 
-    // TODO: _srcKafkaBrokerTopicObserver is null
     TopicPartition topicPartitionInfo = _clusterToObserverMap.get(srcCluster).getTopicPartitionWithRefresh(topicName);
     LOGGER.info("topicPartitionInfo: {}", topicPartitionInfo);
     if (topicPartitionInfo == null) {
@@ -315,7 +314,7 @@ public class TopicManagementRestletResource extends ServerResource {
     }
   }
 
-  private JSONObject composeHelixInfoJson(String topicName) {
+  private JSONObject getHelixInfoJsonFromManager(String topicName) {
     IdealState idealStateForTopic = _helixMirrorMakerManager.getIdealStateForTopic(topicName);
     ExternalView externalViewForTopic = _helixMirrorMakerManager.getExternalViewForTopic(topicName);
     JSONObject helixInfoJson = new JSONObject();

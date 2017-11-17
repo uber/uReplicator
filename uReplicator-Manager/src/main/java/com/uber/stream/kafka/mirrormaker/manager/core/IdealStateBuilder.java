@@ -64,6 +64,51 @@ public class IdealStateBuilder {
     return customModeIdealStateBuilder.build();
   }
 
+  public static IdealState resetCustomIdealStateFor(IdealState oldIdealState,
+      String topicName, String partitionToReplace, String newInstanceName) {
+    final CustomModeISBuilder customModeIdealStateBuilder = new CustomModeISBuilder(topicName);
+
+    int oldNumPartitions = oldIdealState.getNumPartitions();
+
+    customModeIdealStateBuilder
+        .setStateModel(OnlineOfflineStateModel.name)
+        .setNumPartitions(oldNumPartitions).setNumReplica(1)
+        .setMaxPartitionsPerNode(oldNumPartitions);
+
+    for (String partitionName : oldIdealState.getPartitionSet()) {
+      String instanceName = oldIdealState.getInstanceStateMap(partitionName).keySet().iterator().next();
+      String instanceToUse = partitionName.equals(partitionToReplace) ? newInstanceName : instanceName;
+      customModeIdealStateBuilder.assignInstanceAndState(partitionName, instanceToUse, "ONLINE");
+    }
+
+    return customModeIdealStateBuilder.build();
+  }
+
+  public static IdealState resetCustomIdealStateFor(IdealState oldIdealState,
+      String topicName, List<String> instanceToReplace, List<String> availableInstances, int maxNumReplica) {
+    final CustomModeISBuilder customModeIdealStateBuilder = new CustomModeISBuilder(topicName);
+
+    int oldNumPartitions = oldIdealState.getNumPartitions();
+
+    customModeIdealStateBuilder
+        .setStateModel(OnlineOfflineStateModel.name)
+        .setNumPartitions(oldNumPartitions).setNumReplica(maxNumReplica)
+        .setMaxPartitionsPerNode(oldNumPartitions);
+    LOGGER.info("start instanceToReplace: {}", instanceToReplace);
+    LOGGER.info("start availableInstances: {}", availableInstances);
+    for (String partitionName : oldIdealState.getPartitionSet()) {
+      for (String instanceName : oldIdealState.getInstanceStateMap(partitionName).keySet()) {
+        String instanceToUse = instanceToReplace.contains(instanceName) ? availableInstances.get(0) : instanceName;
+        customModeIdealStateBuilder.assignInstanceAndState(partitionName, instanceToUse, "ONLINE");
+        availableInstances.remove(0);
+        LOGGER.info("replaceing: {}", availableInstances);
+        LOGGER.info("replaceing: route: {}@{}, old {}, new {}", topicName, partitionName, instanceName, instanceToUse);
+      }
+    }
+
+    return customModeIdealStateBuilder.build();
+  }
+
   public static IdealState expandCustomIdealStateFor(IdealState oldIdealState,
       String topicName, String newPartition, InstanceTopicPartitionHolder instance) {
     final CustomModeISBuilder customModeIdealStateBuilder = new CustomModeISBuilder(topicName);

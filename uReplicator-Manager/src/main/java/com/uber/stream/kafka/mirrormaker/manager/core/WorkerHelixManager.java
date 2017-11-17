@@ -192,6 +192,23 @@ public class WorkerHelixManager implements IHelixManager {
     }
   }
 
+  public synchronized void replaceWorkerInMirrorMaker(Map<String, List<String>> pipelineToRouteIdToReplace, List<String> workerToReplace) {
+    _lock.lock();
+    try {
+      LOGGER.info("replace: {}", _availableWorkerList);
+      for (String pipeline : pipelineToRouteIdToReplace.keySet()) {
+        LOGGER.info("replace: {} : {}", pipeline, pipelineToRouteIdToReplace.get(pipeline));
+        // TODO: if there aren't enough workers
+        _helixAdmin.setResourceIdealState(_helixClusterName, pipeline,
+            IdealStateBuilder.resetCustomIdealStateFor(_helixAdmin.getResourceIdealState(_helixClusterName, pipeline),
+                pipeline, workerToReplace, _availableWorkerList,
+                _conf.getMaxNumWorkersPerRoute()));
+      }
+    } finally {
+      _lock.unlock();
+    }
+  }
+
   private synchronized void setEmptyResourceConfig(String topicName) {
     _helixAdmin.setConfig(new HelixConfigScopeBuilder(ConfigScopeProperty.RESOURCE).forCluster(_helixClusterName)
         .forResource(topicName).build(), new HashMap<>());
@@ -199,6 +216,14 @@ public class WorkerHelixManager implements IHelixManager {
 
   public List<String> getBlacklistedInstances() {
     return _helixAdmin.getInstancesInClusterWithTag(_helixClusterName, BLACKLIST_TAG);
+  }
+
+  public List<String> getAvailableWorkerList() {
+    return _availableWorkerList;
+  }
+
+  public HelixManager getHelixManager() {
+    return _helixManager;
   }
 
   public Map<TopicPartition, List<String>> getWorkerRouteToInstanceMap() {

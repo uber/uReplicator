@@ -15,9 +15,11 @@
  */
 package com.uber.stream.kafka.mirrormaker.manager.core;
 
-import com.uber.stream.kafka.mirrormaker.common.core.IHelixManager;
-import com.uber.stream.kafka.mirrormaker.manager.ManagerConf;
+import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import org.apache.helix.HelixManager;
 import org.apache.helix.LiveInstanceChangeListener;
 import org.apache.helix.NotificationContext;
@@ -27,8 +29,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * We only considering add or remove box(es), not considering the replacing.
- * For replacing, we just need to bring up a new box and give the old instanceId no auto-balancing
- * needed.
+ * For replacing, we just need to bring up a new box and give the old instanceId no auto-balancing needed.
  */
 public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeListener {
 
@@ -37,15 +38,63 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
   private final ControllerHelixManager _controllerHelixManager;
   private final HelixManager _helixManager;
 
+  private final ScheduledExecutorService _delayedScheuler = Executors.newSingleThreadScheduledExecutor();
+
   public ControllerLiveInstanceChangeListener(ControllerHelixManager controllerHelixManager,
       HelixManager helixManager) {
     _controllerHelixManager = controllerHelixManager;
     _helixManager = helixManager;
+
+    LOGGER.info("Trying to schedule auto rebalancing");
+    _delayedScheuler.scheduleWithFixedDelay(
+        new Runnable() {
+          @Override
+          public void run() {
+            try {
+              rebalanceCurrentCluster(false);
+            } catch (Exception e) {
+              LOGGER.error("Got exception during periodically rebalancing the whole cluster! ", e);
+            }
+          }
+        }, 10, 30, TimeUnit.SECONDS);
   }
 
   @Override
   public void onLiveInstanceChange(final List<LiveInstance> liveInstances, NotificationContext changeContext) {
     LOGGER.info("ControllerLiveInstanceChangeListener.onLiveInstanceChange() wakes up!");
+    _delayedScheuler.schedule(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          rebalanceCurrentCluster(true);
+        } catch (Exception e) {
+          LOGGER.error("Got exception during rebalance the whole cluster! ", e);
+        }
+      }
+    }, 5, TimeUnit.SECONDS);
+  }
+
+  public synchronized void rebalanceCurrentCluster(boolean onlyCheckOffline) {
+    if (!_helixManager.isLeader()) {
+      LOGGER.info("Not leader, do nothing!");
+      return;
+    }
+    if (HelixUtils.liveInstances(_helixManager).isEmpty() ||
+        HelixUtils.liveInstances(_controllerHelixManager.getWorkerHelixManager().getHelixManager()).isEmpty()) {
+      LOGGER.info("No live instances, do nothing!");
+      return;
+    }
+
+    LOGGER.info("Only check controller/worker online/offline");
+    // Check controller and worker online/offline
+    try {
+      _controllerHelixManager.handleLiveInstanceChange(true);
+    } catch (Exception e) {
+      e.printStackTrace();
+      LOGGER.error("Failed to handle live instance change!", e);
+    }
+
+
   }
 
 }
