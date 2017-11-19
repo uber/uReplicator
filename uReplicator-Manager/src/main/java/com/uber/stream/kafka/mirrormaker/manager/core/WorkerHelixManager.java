@@ -149,7 +149,7 @@ public class WorkerHelixManager implements IHelixManager {
         throw new Exception("No available worker!");
       }
       List<String> instances = new ArrayList<>();
-      for (int i = 0; i < _conf.getInitMaxNumWorkersPerRoute() && _availableWorkerList.size() >= 0; i++) {
+      for (int i = 0; i < _conf.getInitMaxNumWorkersPerRoute() && i < _availableWorkerList.size(); i++) {
         instances.add(_availableWorkerList.get(i));
       }
       if (!isPipelineExisted(pipeline)) {
@@ -192,7 +192,35 @@ public class WorkerHelixManager implements IHelixManager {
     }
   }
 
-  public synchronized void replaceWorkerInMirrorMaker(Map<String, List<String>> pipelineToRouteIdToReplace, List<String> workerToReplace) {
+  public synchronized void addWorkersToMirrorMaker(InstanceTopicPartitionHolder controller, String pipeline,
+      int routeId, int numWorkersToAdd) throws Exception {
+    LOGGER.info("Trying to add {} workers to route: {}@{}", numWorkersToAdd, pipeline, routeId);
+    _lock.lock();
+    try {
+      if (_availableWorkerList.size() == 0) {
+        LOGGER.info("No available worker!");
+        throw new Exception("No available worker!");
+      }
+      List<String> instances = new ArrayList<>();
+      for (int i = 0; i < numWorkersToAdd && i < _availableWorkerList.size(); i++) {
+        instances.add(_availableWorkerList.get(i));
+      }
+
+      _helixAdmin.setResourceIdealState(_helixClusterName, pipeline,
+          IdealStateBuilder.expandInstanceCustomIdealStateFor(_helixAdmin.getResourceIdealState(_helixClusterName, pipeline),
+              pipeline, String.valueOf(routeId), instances, _conf.getMaxNumWorkersPerRoute()));
+
+      TopicPartition route = new TopicPartition(pipeline, routeId);
+      _routeToInstanceMap.get(route).addAll(instances);
+      _availableWorkerList.removeAll(instances);
+      controller.addWorkers(instances);
+    } finally {
+      _lock.unlock();
+    }
+  }
+
+  public synchronized void replaceWorkerInMirrorMaker(Map<String, List<String>> pipelineToRouteIdToReplace,
+      List<String> workerToReplace) {
     _lock.lock();
     try {
       LOGGER.info("replace: {}", _availableWorkerList);

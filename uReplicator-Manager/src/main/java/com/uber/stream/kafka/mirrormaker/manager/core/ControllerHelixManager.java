@@ -222,6 +222,24 @@ public class ControllerHelixManager implements IHelixManager {
     return result;
   }
 
+  public JSONObject getTopicInfoFromController(String topicName) {
+    JSONObject resultJson = new JSONObject();
+    Map<String, InstanceTopicPartitionHolder> pipelineToInstanceMap = _topicToPipelineInstanceMap.get(topicName);
+    for (String pipeline : pipelineToInstanceMap.keySet()) {
+      InstanceTopicPartitionHolder itph = pipelineToInstanceMap.get(pipeline);
+      try {
+        String topicResponseBody = HttpClientUtils.getData(_httpClient, _requestConfig,
+            itph.getInstanceName(), _controllerPort, "/topics/" + topicName);
+        JSONObject topicsInfoInJson = JSON.parseObject(topicResponseBody);
+        resultJson.put(itph.getRouteString(), topicsInfoInJson);
+      } catch (Exception e) {
+        LOGGER.warn("Failed to curl topic info from controller: {}", itph.getInstanceName(), e);
+      }
+    }
+
+    return resultJson;
+  }
+
   public void updateStatusFromController(InstanceTopicPartitionHolder itph) {
     try {
       LOGGER.info("get request");
@@ -345,6 +363,8 @@ public class ControllerHelixManager implements IHelixManager {
         LOGGER.info("No controller in route is changed, do nothing!");
       } else {
         LOGGER.info("Controller need to replace: {}", instanceToReplace);
+        // Make sure controller status is up-to-date
+        updateCurrentStatus();
         for (String instance : instanceToReplace) {
           Set<TopicPartition> tpOrRouteSet = instanceToTopicPartitionsMap.get(instance);
           for (TopicPartition tpOrRoute : tpOrRouteSet) {
@@ -370,7 +390,7 @@ public class ControllerHelixManager implements IHelixManager {
                           pipeline, String.valueOf(routeId), newInstanceName));
 
               // Wait for controller to join
-              if (!waitForExternalView(pipeline, String.valueOf(routeId))) {
+              /*if (!waitForExternalView(pipeline, String.valueOf(routeId))) {
                 LOGGER.info("Failed to find controller {} in pipeline {} routeId {} online, drop it", newInstanceName,
                     pipeline, routeId);
                 // TODO: make sense to set back?
@@ -381,7 +401,7 @@ public class ControllerHelixManager implements IHelixManager {
                 throw new Exception(
                     String.format("Failed to find controller %s in ExternalView in pipeline %s routeId %s!",
                         newInstanceName, pipeline, routeId));
-              }
+              }*/
 
               for (TopicPartition tp : tpToReassign) {
                 _helixAdmin.setResourceIdealState(_helixClusterName, tp.getTopic(),
@@ -390,8 +410,8 @@ public class ControllerHelixManager implements IHelixManager {
                             tp.getTopic(), pipeline + SEPARATOR + routeId, newInstanceName));
               }
 
-              LOGGER
-                  .info("Controller {} in route {}@{} is replaced by {}", instance, pipeline, routeId, newInstanceName);
+              LOGGER.info("Controller {} in route {}@{} is replaced by {}",
+                  instance, pipeline, routeId, newInstanceName);
               break;
             }
           }
@@ -404,7 +424,6 @@ public class ControllerHelixManager implements IHelixManager {
       Map<String, Set<TopicPartition>> workerInstanceToTopicPartitionsMap = HelixUtils
           .getInstanceToTopicPartitionsMap(workeManager, null);
       List<String> workerLiveInstances = HelixUtils.liveInstances(workeManager);
-      LOGGER.info("on handle, workerLiveInstances: {}", workerLiveInstances);
       Map<String, List<String>> workerPipelineToRouteIdToReplace = new HashMap<>();
       List<String> workerToReplace = new ArrayList<>();
       boolean routeWorkerDown = false;
@@ -421,13 +440,115 @@ public class ControllerHelixManager implements IHelixManager {
         LOGGER.info("No worker in route is changed, do nothing!");
       } else {
         LOGGER.info("Worker need to replace: {}, {}", workerToReplace, workerPipelineToRouteIdToReplace);
+        // Make sure worker status is up-to-date
+        if (!routeControllerDown) {
+          updateCurrentStatus();
+        }
         _workerHelixManager.replaceWorkerInMirrorMaker(workerPipelineToRouteIdToReplace, workerToReplace);
 
         updateCurrentStatus();
       }
+
+      if (onlyCheckOffline) {
+        return;
+      }
+
+      LOGGER.info("Start rebalancing current cluster");
+      // Haven't run updateCurrentStatus() before
+      if (!routeControllerDown && !routeWorkerDown) {
+        updateCurrentStatus();
+      }
+
+      rebalanceCurrentCluster();
+
     } finally {
       _lock.unlock();
     }
+  }
+
+  public void rebalanceCurrentCluster() throws Exception {
+    for (String pipeline : _pipelineToInstanceMap.keySet()) {
+      LOGGER.info("Start rebalancing pipeline: {}", pipeline);
+      PriorityQueue<InstanceTopicPartitionHolder> newItphQueue = new PriorityQueue<>(1,
+          InstanceTopicPartitionHolder.getTotalWorkloadComparator(null, null));
+      int nextRouteId = _pipelineToInstanceMap.get(pipeline).size();
+      for (InstanceTopicPartitionHolder itph : _pipelineToInstanceMap.get(pipeline)) {
+        if (itph.getTotalNumPartitions() > _maxNumPartitionsPerRoute) {
+          LOGGER.info("Checking route {} with controller {} and topics {} since it exceeds maxNumPartitionsPerRoute {}",
+              itph.getRouteString(), itph.getInstanceName(), itph.getServingTopicPartitionSet(),
+              _maxNumPartitionsPerRoute);
+          while (itph.getTotalNumPartitions() > _maxNumPartitionsPerRoute) {
+            if (itph.getNumServingTopicPartitions() == 1) {
+              LOGGER.info("Only one topic {} in route {}, do nothing",
+                  itph.getServingTopicPartitionSet().iterator().next(), itph.getRouteString());
+              break;
+            }
+            TopicPartition tpToMove = new TopicPartition("tmp", -1);
+            for (TopicPartition tp : itph.getServingTopicPartitionSet()) {
+              if (tp.getPartition() > tpToMove.getPartition()) {
+                tpToMove = tp;
+              }
+            }
+            if (newItphQueue.isEmpty() ||
+                newItphQueue.peek().getTotalNumPartitions() + tpToMove.getPartition() > _maxNumPartitionsPerRoute) {
+              try {
+                InstanceTopicPartitionHolder newHolder = createNewRoute(pipeline, nextRouteId);
+
+                _helixAdmin.setResourceIdealState(_helixClusterName, tpToMove.getTopic(),
+                    IdealStateBuilder.resetCustomIdealStateFor(
+                        _helixAdmin.getResourceIdealState(_helixClusterName, tpToMove.getTopic()),
+                        tpToMove.getTopic(), itph.getRouteString(), newHolder.getRouteString(),
+                        newHolder.getInstanceName()));
+
+                itph.removeTopicPartition(tpToMove);
+                newHolder.addTopicPartition(tpToMove);
+                newItphQueue.add(newHolder);
+                nextRouteId++;
+
+              } catch (Exception e) {
+                LOGGER.error("Got exception when create a new route when rebalancing, abandon!", e);
+                throw new Exception("Got exception when create a new route when rebalancing, abandon!", e);
+              }
+            } else {
+              InstanceTopicPartitionHolder newHolder = newItphQueue.poll();
+
+              _helixAdmin.setResourceIdealState(_helixClusterName, tpToMove.getTopic(),
+                  IdealStateBuilder.resetCustomIdealStateFor(
+                      _helixAdmin.getResourceIdealState(_helixClusterName, tpToMove.getTopic()),
+                      tpToMove.getTopic(), itph.getRouteString(), newHolder.getRouteString(),
+                      newHolder.getInstanceName()));
+              itph.removeTopicPartition(tpToMove);
+              newHolder.addTopicPartition(tpToMove);
+              newItphQueue.add(newHolder);
+
+            }
+          }
+        }
+
+        if (itph.getTotalNumPartitions() > _initMaxNumPartitionsPerRoute) {
+          LOGGER.info("Checking route {} with controller {} and topics {} since it exceeds "
+                  + "initMaxNumPartitionsPerRoute {}", itph.getRouteString(), itph.getInstanceName(),
+              itph.getServingTopicPartitionSet(), _initMaxNumPartitionsPerRoute);
+          int expectedNumWorkers = getExpectedNumWorkers(itph.getTotalNumPartitions());
+          LOGGER.info("current {}, expected {}", itph.getWorkerSet().size(), expectedNumWorkers);
+          if (itph.getWorkerSet().size() < expectedNumWorkers) {
+            LOGGER.info("Current {} workers in route {}, expect {} workers",
+                itph.getWorkerSet().size(), itph.getRouteString(), expectedNumWorkers);
+            _workerHelixManager.addWorkersToMirrorMaker(itph, itph.getRoute().getTopic(),
+                itph.getRoute().getPartition(), expectedNumWorkers - itph.getWorkerSet().size());
+          }
+        }
+        newItphQueue.add(itph);
+      }
+      _pipelineToInstanceMap.put(pipeline, newItphQueue);
+    }
+  }
+
+  public int getExpectedNumWorkers(int currNumPartitions) {
+    return Math.min(_maxNumWorkersPerRoute, _initMaxNumWorkersPerRoute +
+        (_maxNumWorkersPerRoute - _initMaxNumWorkersPerRoute) *
+            (currNumPartitions - _initMaxNumPartitionsPerRoute) /
+            (_maxNumPartitionsPerRoute - _initMaxNumPartitionsPerRoute));
   }
 
   public boolean waitForExternalView(String topicName, String partition) throws InterruptedException {
@@ -462,13 +583,15 @@ public class ControllerHelixManager implements IHelixManager {
       _helixAdmin.addResource(_helixClusterName, pipeline,
           IdealStateBuilder.buildCustomIdealStateFor(pipeline, String.valueOf(routeId), instance));
     } else {
+      LOGGER.info("expanding pipeline {} new partition {} to instance {}", pipeline, routeId, instance);
       _helixAdmin.setResourceIdealState(_helixClusterName, pipeline,
           IdealStateBuilder.expandCustomIdealStateFor(_helixAdmin.getResourceIdealState(_helixClusterName, pipeline),
               pipeline, String.valueOf(routeId), instance));
+      LOGGER.info("new idealstate: {}", _helixAdmin.getResourceIdealState(_helixClusterName, pipeline));
     }
 
     // Wait for controller to join
-    if (!waitForExternalView(pipeline, String.valueOf(routeId))) {
+    /*if (!waitForExternalView(pipeline, String.valueOf(routeId))) {
       LOGGER.info("Failed to find controller {} in pipeline {} online, drop it", instanceName, pipeline);
       if (isNewPipeline) {
         _helixAdmin.dropResource(_helixClusterName, pipeline);
@@ -477,9 +600,9 @@ public class ControllerHelixManager implements IHelixManager {
         _helixAdmin.setResourceIdealState(_helixClusterName, pipeline,
             IdealStateBuilder.shrinkCustomIdealStateFor(currIdealState, pipeline, String.valueOf(routeId)));
       }
-      throw new Exception(String.format("Failed to find controller %s in externalview in pipeline %s!",
-          instanceName, pipeline));
-    }
+      throw new Exception(String.format("Failed to find controller %s in externalview in pipeline %s routeId %s!",
+          instanceName, pipeline, routeId));
+    }*/
 
     _availableControllerList.remove(instanceName);
     _pipelineToInstanceMap.put(pipeline, new PriorityQueue<>(1,
@@ -500,7 +623,8 @@ public class ControllerHelixManager implements IHelixManager {
         pipeline);
     Set<Integer> routeIdSet = new HashSet<>();
     for (InstanceTopicPartitionHolder instance : instanceList) {
-      if (instance.getTotalNumPartitions() + numPartitions < _initMaxNumPartitionsPerRoute) {
+      if (instance.getServingTopicPartitionSet().isEmpty() ||
+          instance.getTotalNumPartitions() + numPartitions < _initMaxNumPartitionsPerRoute) {
         return instance;
       }
       routeIdSet.add(instance.getRoute().getPartition());

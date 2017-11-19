@@ -56,7 +56,7 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
               LOGGER.error("Got exception during periodically rebalancing the whole cluster! ", e);
             }
           }
-        }, 10, 30, TimeUnit.SECONDS);
+        }, 60, 50, TimeUnit.SECONDS);
   }
 
   @Override
@@ -79,16 +79,16 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
       LOGGER.info("Not leader, do nothing!");
       return;
     }
+
     if (HelixUtils.liveInstances(_helixManager).isEmpty() ||
         HelixUtils.liveInstances(_controllerHelixManager.getWorkerHelixManager().getHelixManager()).isEmpty()) {
       LOGGER.info("No live instances, do nothing!");
       return;
     }
 
-    LOGGER.info("Only check controller/worker online/offline");
-    // Check controller and worker online/offline
+    LOGGER.info("onlyCheckOffline={}", onlyCheckOffline);
     try {
-      _controllerHelixManager.handleLiveInstanceChange(true);
+      _controllerHelixManager.handleLiveInstanceChange(onlyCheckOffline);
     } catch (Exception e) {
       e.printStackTrace();
       LOGGER.error("Failed to handle live instance change!", e);

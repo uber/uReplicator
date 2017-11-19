@@ -53,6 +53,10 @@ public class InstanceTopicPartitionHolder {
     return _route.getTopic() + "@" + _route.getPartition();
   }
 
+  public Set<String> getWorkerSet() {
+    return _workerSet;
+  }
+
   public Set<TopicPartition> getServingTopicPartitionSet() {
     return ImmutableSet.copyOf(_topicPartitionSet);
   }
@@ -72,10 +76,12 @@ public class InstanceTopicPartitionHolder {
 
   public void removeTopicPartition(TopicPartition topicPartitionInfo) {
     _topicPartitionSet.remove(topicPartitionInfo);
+    _totalNumPartitions -= topicPartitionInfo.getPartition();
   }
 
   public void clearTopicPartitions() {
     _topicPartitionSet.clear();
+    _totalNumPartitions = 0;
   }
 
   public void addWorker(String worker) {
@@ -123,7 +129,9 @@ public class InstanceTopicPartitionHolder {
   }
 
   public void addTopicPartitions(Collection<TopicPartition> topicPartitionInfos) {
-    _topicPartitionSet.addAll(topicPartitionInfos);
+    for (TopicPartition tp : topicPartitionInfos) {
+      addTopicPartition(tp);
+    }
   }
 
   @Override

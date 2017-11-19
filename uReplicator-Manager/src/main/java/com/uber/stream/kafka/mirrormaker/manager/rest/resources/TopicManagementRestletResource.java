@@ -23,6 +23,7 @@ import org.restlet.representation.Variant;
 import org.restlet.resource.Delete;
 import org.restlet.resource.Get;
 import org.restlet.resource.Post;
+import org.restlet.resource.Put;
 import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,8 +82,9 @@ public class TopicManagementRestletResource extends ServerResource {
 
           for (String pipeline : topicToPipelineInstanceMap.get(topic).keySet()) {
             JSONObject instanceInfoJson = new JSONObject();
-            instanceInfoJson.put("instance", topicToPipelineInstanceMap.get(topic).get(pipeline).getInstanceName());
+            instanceInfoJson.put("controller", topicToPipelineInstanceMap.get(topic).get(pipeline).getInstanceName());
             instanceInfoJson.put("route", topicToPipelineInstanceMap.get(topic).get(pipeline).getRouteString());
+            instanceInfoJson.put("workers", topicToPipelineInstanceMap.get(topic).get(pipeline).getWorkerSet());
             topicInfoJson.put(pipeline, instanceInfoJson);
           }
           topicToInstanceMappingJson.put(topic, topicInfoJson);
@@ -127,8 +129,11 @@ public class TopicManagementRestletResource extends ServerResource {
 
       // TODO: add worker information
       JSONObject responseJson = new JSONObject();
+      JSONObject messageJson = new JSONObject();
+      messageJson.put("managerView", getHelixInfoJsonFromManager(topicName));
+      messageJson.put("controllerView", _helixMirrorMakerManager.getTopicInfoFromController(topicName));
       responseJson.put("status", Status.SUCCESS_OK.getCode());
-      responseJson.put("message", getHelixInfoJsonFromManager(topicName));
+      responseJson.put("message", messageJson);
 
       return new StringRepresentation(responseJson.toJSONString());
     } else {
@@ -280,11 +285,12 @@ public class TopicManagementRestletResource extends ServerResource {
         try {
           _helixMirrorMakerManager.deleteTopicInMirrorMaker(topicName, srcCluster, dstCluster, pipeline);
 
-          LOGGER.info("Successfully delete topic: {}", topicName);
+          LOGGER.info("Successfully delete topic: {} from {} to {}", topicName, srcCluster, dstCluster);
 
           JSONObject responseJson = new JSONObject();
           responseJson.put("status", Status.SUCCESS_OK.getCode());
-          responseJson.put("message", String.format("Successfully delete topic: %s", topicName));
+          responseJson.put("message", String.format("Successfully delete topic: %s from %s to %s",
+              topicName, srcCluster, dstCluster));
 
           return new StringRepresentation(responseJson.toJSONString());
         } catch (Exception e) {
@@ -374,6 +380,14 @@ public class TopicManagementRestletResource extends ServerResource {
         }
       }
     }
+
+    JSONObject workerMappingJson = new JSONObject();
+    for (InstanceTopicPartitionHolder itph : _helixMirrorMakerManager.getTopicToPipelineInstanceMap()
+        .get(topicName).values()) {
+      workerMappingJson.put(itph.getRouteString(), itph.getWorkerSet());
+    }
+    helixInfoJson.put("workers", workerMappingJson);
+
     helixInfoJson.put("serverToPartitionMapping", serverToPartitionMappingJson);
     helixInfoJson.put("serverToNumPartitionsMapping", serverToNumPartitionsMappingJson);
 
