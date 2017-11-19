@@ -110,6 +110,26 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
     }
   }
 
+  public void tryUpdateopic(String topic) {
+    scala.collection.mutable.Map<String, scala.collection.Map<Object, Seq<Object>>> partitionAssignmentForTopics =
+        _zkUtils.getPartitionAssignmentForTopics(JavaConversions.asScalaBuffer(ImmutableList.of(topic)));
+    if (partitionAssignmentForTopics.get(topic).isEmpty()
+        || partitionAssignmentForTopics.get(topic).get().size() == 0) {
+      LOGGER.info("try to update for topic {} but found no topic partition for it", topic);
+      return;
+    }
+    synchronized (_lock) {
+      LOGGER.info("starting to refresh for update topic {}", topic);
+      try {
+        _topicPartitionInfoMap.put(topic, new TopicPartition(topic,
+            partitionAssignmentForTopics.get(topic).get().size()));
+      } catch (Exception e) {
+        LOGGER.warn("Failed to get topicPartition info for {} from kafka zk: {}", topic, e);
+      }
+      LOGGER.info("finished refreshing for updating topic {}", topic);
+    }
+  }
+
   private void tryAddTopic(String topic) {
     scala.collection.mutable.Map<String, scala.collection.Map<Object, Seq<Object>>> partitionAssignmentForTopics =
         _zkUtils.getPartitionAssignmentForTopics(JavaConversions.asScalaBuffer(ImmutableList.of(topic)));

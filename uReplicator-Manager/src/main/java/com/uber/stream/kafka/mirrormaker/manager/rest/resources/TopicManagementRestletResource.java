@@ -230,6 +230,59 @@ public class TopicManagementRestletResource extends ServerResource {
   }
 
   @Override
+  @Put
+  public Representation put(Representation entity) {
+    final String topicName = (String) getRequest().getAttributes().get("topicName");
+    Form queryParams = getRequest().getResourceRef().getQueryAsForm();
+    String srcCluster = queryParams.getFirstValue("src");
+    String dstCluster = queryParams.getFirstValue("dst");
+    String newNumPartitions = queryParams.getFirstValue("partitions");
+
+    LOGGER.info("Received request to expand topic {} from {} to {} to {} partitions on uReplicator",
+        topicName, srcCluster, dstCluster, newNumPartitions);
+
+    _helixMirrorMakerManager.updateCurrentStatus();
+    String pipeline = SEPARATOR + srcCluster + SEPARATOR + dstCluster;
+    if (!_helixMirrorMakerManager.isTopicPipelineExisted(topicName, pipeline)) {
+      LOGGER.info("Topic {} doesn't exist in pipeline {}, abandon expanding topic", topicName, pipeline);
+      JSONObject responseJson = new JSONObject();
+      responseJson.put("status", Status.CLIENT_ERROR_NOT_FOUND.getCode());
+      responseJson.put("message",
+          String.format("Topic %s doesn't exist in pipeline %s, abandon expanding topic!", topicName, pipeline));
+
+      getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
+      return new StringRepresentation(responseJson.toJSONString());
+    } else {
+      try {
+        _helixMirrorMakerManager.expandTopicInMirrorMaker(topicName, srcCluster, pipeline,
+            Integer.valueOf(newNumPartitions));
+        LOGGER.info("Successfully expand the topic {} in pipeline {} to {} partitions",
+            topicName, pipeline, newNumPartitions);
+
+        JSONObject responseJson = new JSONObject();
+        responseJson.put("status", Status.SUCCESS_OK.getCode());
+        responseJson.put("message",
+            String.format("Successfully expand the topic %s in pipeline %s to %s partitions",
+                topicName, pipeline, newNumPartitions));
+
+        return new StringRepresentation(responseJson.toJSONString());
+      } catch (Exception e) {
+        LOGGER.info("Failed to expand the topic {} in pipeline {} to {} partitions due to exception {}",
+            topicName, pipeline, newNumPartitions, e);
+
+        JSONObject responseJson = new JSONObject();
+        responseJson.put("status", Status.SERVER_ERROR_INTERNAL.getCode());
+        responseJson.put("message",
+            String.format("Failed to expand the topic %s in pipeline %s to %s partitions due to exception: %s",
+                topicName, pipeline, newNumPartitions, e.toString()));
+
+        getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
+        return new StringRepresentation(responseJson.toJSONString());
+      }
+    }
+  }
+
+  @Override
   @Delete
   public Representation delete() {
     final String topicName = (String) getRequest().getAttributes().get("topicName");
@@ -250,7 +303,7 @@ public class TopicManagementRestletResource extends ServerResource {
         return new StringRepresentation(responseJson.toJSONString());
       }
       try {
-        _helixMirrorMakerManager.deletePipelineMirrorMaker(topicName);
+        _helixMirrorMakerManager.deletePipelineInMirrorMaker(topicName);
 
         LOGGER.info("Successfully delete pipeline: {}", topicName);
 
