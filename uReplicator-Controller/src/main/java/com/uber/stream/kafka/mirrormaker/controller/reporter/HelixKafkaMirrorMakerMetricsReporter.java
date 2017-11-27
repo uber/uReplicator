@@ -126,7 +126,7 @@ public class HelixKafkaMirrorMakerMetricsReporter {
     }
     InetSocketAddress graphiteAddress =
         new InetSocketAddress(config.getGraphiteHost(), config.getGraphitePort());
-    LOGGER.warn(String.format("Trying to connect to Graphite with address: %s",
+    LOGGER.info(String.format("Trying to connect to Graphite with address: %s",
         graphiteAddress.toString()));
     return new Graphite(graphiteAddress);
   }

@@ -85,7 +85,7 @@ public class OffsetMonitor {
         controllerConf.getSrcKafkaZkPath() : controllerConf.getConsumerCommitZkPath();
     // disable monitor if SRC_KAFKA_ZK or GROUP_ID is not set
     if (StringUtils.isEmpty(controllerConf.getSrcKafkaZkPath()) || controllerConf.getGroupId().isEmpty()) {
-      logger.warn("Consumer GROUP_ID is not set. Offset manager is disabled");
+      logger.info("Consumer GROUP_ID is not set. Offset manager is disabled");
       this.refreshIntervalInSec = 0;
     } else {
       this.refreshIntervalInSec = controllerConf.getOffsetRefreshIntervalInSec();
