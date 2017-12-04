@@ -95,6 +95,7 @@
   </repositories>
 
   <properties>
+    <sentry-log4j.version>1.6.3</sentry-log4j.version>
     <slf4j.version>1.7.6</slf4j.version>
     <log4j.version>1.2.17</log4j.version>
     <jdk.version>1.8</jdk.version>
@@ -283,6 +284,11 @@
       <groupId>org.eclipse.jgit</groupId>
       <artifactId>org.eclipse.jgit</artifactId>
       <version>4.0.0.201506020755-rc3</version>
+    </dependency>
+    <dependency>
+      <groupId>io.sentry</groupId>
+      <artifactId>sentry-log4j</artifactId>
+      <version>${sentry-log4j.version}</version>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
