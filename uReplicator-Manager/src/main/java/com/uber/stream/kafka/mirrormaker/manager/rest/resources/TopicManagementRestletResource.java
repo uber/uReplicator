@@ -77,6 +77,7 @@ public class TopicManagementRestletResource extends ServerResource {
         responseJson.put("status", Status.SUCCESS_OK.getCode());
 
         JSONObject topicToInstanceMappingJson = new JSONObject();
+        topicToInstanceMappingJson.put("topics", _helixMirrorMakerManager.getTopicToPipelineInstanceMap().keySet());
         for (String topic : topicToPipelineInstanceMap.keySet()) {
           JSONObject topicInfoJson = new JSONObject();
 

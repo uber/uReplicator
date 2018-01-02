@@ -608,6 +608,7 @@ public class ControllerHelixManager implements IHelixManager {
     _pipelineToInstanceMap.put(pipeline, new PriorityQueue<>(1,
         InstanceTopicPartitionHolder.getTotalWorkloadComparator(null, null)));
     _pipelineToInstanceMap.get(pipeline).add(instance);
+    Thread.sleep(1000);
     _workerHelixManager.addTopicToMirrorMaker(instance, pipeline, routeId);
 
     return instance;
