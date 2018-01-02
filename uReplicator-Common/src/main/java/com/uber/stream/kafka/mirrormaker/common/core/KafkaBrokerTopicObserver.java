@@ -110,7 +110,7 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
     }
   }
 
-  public void tryUpdateopic(String topic) {
+  public void tryUpdateTopic(String topic) {
     scala.collection.mutable.Map<String, scala.collection.Map<Object, Seq<Object>>> partitionAssignmentForTopics =
         _zkUtils.getPartitionAssignmentForTopics(JavaConversions.asScalaBuffer(ImmutableList.of(topic)));
     if (partitionAssignmentForTopics.get(topic).isEmpty()

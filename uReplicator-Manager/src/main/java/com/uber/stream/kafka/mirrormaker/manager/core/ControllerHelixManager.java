@@ -389,20 +389,6 @@ public class ControllerHelixManager implements IHelixManager {
                       .resetCustomIdealStateFor(_helixAdmin.getResourceIdealState(_helixClusterName, pipeline),
                           pipeline, String.valueOf(routeId), newInstanceName));
 
-              // Wait for controller to join
-              /*if (!waitForExternalView(pipeline, String.valueOf(routeId))) {
-                LOGGER.info("Failed to find controller {} in pipeline {} routeId {} online, drop it", newInstanceName,
-                    pipeline, routeId);
-                // TODO: make sense to set back?
-                _helixAdmin.setResourceIdealState(_helixClusterName, pipeline,
-                    IdealStateBuilder
-                        .resetCustomIdealStateFor(_helixAdmin.getResourceIdealState(_helixClusterName, pipeline),
-                            pipeline, String.valueOf(routeId), instance));
-                throw new Exception(
-                    String.format("Failed to find controller %s in ExternalView in pipeline %s routeId %s!",
-                        newInstanceName, pipeline, routeId));
-              }*/
-
               for (TopicPartition tp : tpToReassign) {
                 _helixAdmin.setResourceIdealState(_helixClusterName, tp.getTopic(),
                     IdealStateBuilder
@@ -738,7 +724,7 @@ public class ControllerHelixManager implements IHelixManager {
 
       itph.removeTopicPartition(new TopicPartition(topicName, oldNumPartitions, pipeline));
       itph.addTopicPartition(new TopicPartition(topicName, newNumPartitions, pipeline));
-      _srcKafkaValidationManager.getClusterToObserverMap().get(srcCluster).tryUpdateopic(topicName);
+      _srcKafkaValidationManager.getClusterToObserverMap().get(srcCluster).tryUpdateTopic(topicName);
     } finally {
       _lock.unlock();
     }
