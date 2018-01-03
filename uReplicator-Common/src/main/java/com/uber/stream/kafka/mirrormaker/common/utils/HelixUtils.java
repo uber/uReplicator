@@ -101,6 +101,7 @@ public class HelixUtils {
         if (partition.startsWith("@")) {
           // topic
           if (clusterToObserverMap != null) {
+            // TODO: topic not existed
             int trueNumPartition = clusterToObserverMap.get(getSrcFromRoute(partition))
                 .getTopicPartitionWithRefresh(topic).getPartition();
             tpi = new TopicPartition(topic, trueNumPartition, getPipelineFromRoute(partition));

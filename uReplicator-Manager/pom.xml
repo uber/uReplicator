@@ -18,6 +18,16 @@
       <artifactId>uReplicator-Common</artifactId>
       <version>${project.parent.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.uber.uReplicator</groupId>
+      <artifactId>uReplicator-Controller</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.uber.uReplicator</groupId>
+      <artifactId>uReplicator-Worker</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>

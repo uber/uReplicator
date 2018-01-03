@@ -23,6 +23,7 @@ import org.restlet.representation.Variant;
 import org.restlet.resource.Delete;
 import org.restlet.resource.Get;
 import org.restlet.resource.Post;
+import org.restlet.resource.Put;
 import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,13 +77,15 @@ public class TopicManagementRestletResource extends ServerResource {
         responseJson.put("status", Status.SUCCESS_OK.getCode());
 
         JSONObject topicToInstanceMappingJson = new JSONObject();
+        topicToInstanceMappingJson.put("topics", _helixMirrorMakerManager.getTopicToPipelineInstanceMap().keySet());
         for (String topic : topicToPipelineInstanceMap.keySet()) {
           JSONObject topicInfoJson = new JSONObject();
 
           for (String pipeline : topicToPipelineInstanceMap.get(topic).keySet()) {
             JSONObject instanceInfoJson = new JSONObject();
-            instanceInfoJson.put("instance", topicToPipelineInstanceMap.get(topic).get(pipeline).getInstanceName());
+            instanceInfoJson.put("controller", topicToPipelineInstanceMap.get(topic).get(pipeline).getInstanceName());
             instanceInfoJson.put("route", topicToPipelineInstanceMap.get(topic).get(pipeline).getRouteString());
+            instanceInfoJson.put("workers", topicToPipelineInstanceMap.get(topic).get(pipeline).getWorkerSet());
             topicInfoJson.put(pipeline, instanceInfoJson);
           }
           topicToInstanceMappingJson.put(topic, topicInfoJson);
@@ -99,7 +102,7 @@ public class TopicManagementRestletResource extends ServerResource {
           // TODO: add worker information
           JSONObject responseJson = new JSONObject();
           responseJson.put("status", Status.SUCCESS_OK.getCode());
-          responseJson.put("message", composeHelixInfoJson(topicName));
+          responseJson.put("message", getHelixInfoJsonFromManager(topicName));
 
           return new StringRepresentation(responseJson.toJSONString());
         } else {
@@ -127,8 +130,11 @@ public class TopicManagementRestletResource extends ServerResource {
 
       // TODO: add worker information
       JSONObject responseJson = new JSONObject();
+      JSONObject messageJson = new JSONObject();
+      messageJson.put("managerView", getHelixInfoJsonFromManager(topicName));
+      messageJson.put("controllerView", _helixMirrorMakerManager.getTopicInfoFromController(topicName));
       responseJson.put("status", Status.SUCCESS_OK.getCode());
-      responseJson.put("message", composeHelixInfoJson(topicName));
+      responseJson.put("message", messageJson);
 
       return new StringRepresentation(responseJson.toJSONString());
     } else {
@@ -167,7 +173,6 @@ public class TopicManagementRestletResource extends ServerResource {
       return new StringRepresentation(responseJson.toJSONString());
     }
 
-    // TODO: _srcKafkaBrokerTopicObserver is null
     TopicPartition topicPartitionInfo = _clusterToObserverMap.get(srcCluster).getTopicPartitionWithRefresh(topicName);
     LOGGER.info("topicPartitionInfo: {}", topicPartitionInfo);
     if (topicPartitionInfo == null) {
@@ -226,6 +231,59 @@ public class TopicManagementRestletResource extends ServerResource {
   }
 
   @Override
+  @Put
+  public Representation put(Representation entity) {
+    final String topicName = (String) getRequest().getAttributes().get("topicName");
+    Form queryParams = getRequest().getResourceRef().getQueryAsForm();
+    String srcCluster = queryParams.getFirstValue("src");
+    String dstCluster = queryParams.getFirstValue("dst");
+    String newNumPartitions = queryParams.getFirstValue("partitions");
+
+    LOGGER.info("Received request to expand topic {} from {} to {} to {} partitions on uReplicator",
+        topicName, srcCluster, dstCluster, newNumPartitions);
+
+    _helixMirrorMakerManager.updateCurrentStatus();
+    String pipeline = SEPARATOR + srcCluster + SEPARATOR + dstCluster;
+    if (!_helixMirrorMakerManager.isTopicPipelineExisted(topicName, pipeline)) {
+      LOGGER.info("Topic {} doesn't exist in pipeline {}, abandon expanding topic", topicName, pipeline);
+      JSONObject responseJson = new JSONObject();
+      responseJson.put("status", Status.CLIENT_ERROR_NOT_FOUND.getCode());
+      responseJson.put("message",
+          String.format("Topic %s doesn't exist in pipeline %s, abandon expanding topic!", topicName, pipeline));
+
+      getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
+      return new StringRepresentation(responseJson.toJSONString());
+    } else {
+      try {
+        _helixMirrorMakerManager.expandTopicInMirrorMaker(topicName, srcCluster, pipeline,
+            Integer.valueOf(newNumPartitions));
+        LOGGER.info("Successfully expand the topic {} in pipeline {} to {} partitions",
+            topicName, pipeline, newNumPartitions);
+
+        JSONObject responseJson = new JSONObject();
+        responseJson.put("status", Status.SUCCESS_OK.getCode());
+        responseJson.put("message",
+            String.format("Successfully expand the topic %s in pipeline %s to %s partitions",
+                topicName, pipeline, newNumPartitions));
+
+        return new StringRepresentation(responseJson.toJSONString());
+      } catch (Exception e) {
+        LOGGER.info("Failed to expand the topic {} in pipeline {} to {} partitions due to exception {}",
+            topicName, pipeline, newNumPartitions, e);
+
+        JSONObject responseJson = new JSONObject();
+        responseJson.put("status", Status.SERVER_ERROR_INTERNAL.getCode());
+        responseJson.put("message",
+            String.format("Failed to expand the topic %s in pipeline %s to %s partitions due to exception: %s",
+                topicName, pipeline, newNumPartitions, e.toString()));
+
+        getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
+        return new StringRepresentation(responseJson.toJSONString());
+      }
+    }
+  }
+
+  @Override
   @Delete
   public Representation delete() {
     final String topicName = (String) getRequest().getAttributes().get("topicName");
@@ -246,7 +304,7 @@ public class TopicManagementRestletResource extends ServerResource {
         return new StringRepresentation(responseJson.toJSONString());
       }
       try {
-        _helixMirrorMakerManager.deletePipelineMirrorMaker(topicName);
+        _helixMirrorMakerManager.deletePipelineInMirrorMaker(topicName);
 
         LOGGER.info("Successfully delete pipeline: {}", topicName);
 
@@ -281,11 +339,12 @@ public class TopicManagementRestletResource extends ServerResource {
         try {
           _helixMirrorMakerManager.deleteTopicInMirrorMaker(topicName, srcCluster, dstCluster, pipeline);
 
-          LOGGER.info("Successfully delete topic: {}", topicName);
+          LOGGER.info("Successfully delete topic: {} from {} to {}", topicName, srcCluster, dstCluster);
 
           JSONObject responseJson = new JSONObject();
           responseJson.put("status", Status.SUCCESS_OK.getCode());
-          responseJson.put("message", String.format("Successfully delete topic: %s", topicName));
+          responseJson.put("message", String.format("Successfully delete topic: %s from %s to %s",
+              topicName, srcCluster, dstCluster));
 
           return new StringRepresentation(responseJson.toJSONString());
         } catch (Exception e) {
@@ -315,7 +374,7 @@ public class TopicManagementRestletResource extends ServerResource {
     }
   }
 
-  private JSONObject composeHelixInfoJson(String topicName) {
+  private JSONObject getHelixInfoJsonFromManager(String topicName) {
     IdealState idealStateForTopic = _helixMirrorMakerManager.getIdealStateForTopic(topicName);
     ExternalView externalViewForTopic = _helixMirrorMakerManager.getExternalViewForTopic(topicName);
     JSONObject helixInfoJson = new JSONObject();
@@ -375,6 +434,14 @@ public class TopicManagementRestletResource extends ServerResource {
         }
       }
     }
+
+    JSONObject workerMappingJson = new JSONObject();
+    for (InstanceTopicPartitionHolder itph : _helixMirrorMakerManager.getTopicToPipelineInstanceMap()
+        .get(topicName).values()) {
+      workerMappingJson.put(itph.getRouteString(), itph.getWorkerSet());
+    }
+    helixInfoJson.put("workers", workerMappingJson);
+
     helixInfoJson.put("serverToPartitionMapping", serverToPartitionMappingJson);
     helixInfoJson.put("serverToNumPartitionsMapping", serverToNumPartitionsMappingJson);
 

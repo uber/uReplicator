@@ -15,6 +15,7 @@
  */
 package com.uber.stream.kafka.mirrormaker.common.utils;
 
+import com.alibaba.fastjson.JSONObject;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -27,7 +28,9 @@ import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -101,6 +104,28 @@ public class HttpClientUtils {
     httpPost.setConfig(requestConfig);
 
     return httpClient.execute(httpPost, HttpClientUtils.createResponseCodeExtractor());
+  }
+
+  public static int putData(final HttpClient httpClient,
+      final RequestConfig requestConfig,
+      final String host,
+      final int port,
+      final String path,
+      final JSONObject entity) throws IOException, URISyntaxException {
+    URI uri = new URIBuilder()
+        .setScheme("http")
+        .setHost(host)
+        .setPort(port)
+        .setPath(path)
+        .build();
+
+    HttpPut httpPut = new HttpPut(uri);
+    httpPut.setConfig(requestConfig);
+
+    StringEntity params =new StringEntity(entity.toJSONString());
+    httpPut.setEntity(params);
+
+    return httpClient.execute(httpPut, HttpClientUtils.createResponseCodeExtractor());
   }
 
   public static int deleteData(final HttpClient httpClient,
