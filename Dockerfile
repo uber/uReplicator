@@ -7,4 +7,7 @@ WORKDIR /usr/src/app
 RUN mvn clean package -DskipTests
 RUN chmod +x /usr/src/app/bin/pkg/*.sh
 
-ENTRYPOINT [ "./uReplicator-Distribution/target/uReplicator-Distribution-pkg/bin/start-controller.sh" ]
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+
+ENTRYPOINT [ "/docker-entrypoint.sh" ]
+CMD [ "controller" ]
