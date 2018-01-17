@@ -27,7 +27,9 @@ import org.apache.helix.participant.statemachine.{StateModel, StateModelFactory}
  * @param connector
  */
 class HelixWorkerOnlineOfflineStateModelFactory(final val instanceId: String,
-                                                final val connector: KafkaConnector) extends StateModelFactory[StateModel] with Logging {
+                                                final val connector: KafkaConnector,
+                                                final val topicPartitionCountObserver: TopicPartitionCountObserver)
+  extends StateModelFactory[StateModel] with Logging {
   override def createNewStateModel(partitionName: String) = new OnlineOfflineStateModel(instanceId, connector)
 
   // register mm instance
@@ -39,6 +41,9 @@ class HelixWorkerOnlineOfflineStateModelFactory(final val instanceId: String,
         + " to instance: " + instanceId)
       // add topic partition on the instance
       connectors.addTopicPartition(message.getResourceName, message.getPartitionName.toInt)
+      if (topicPartitionCountObserver != null) {
+        topicPartitionCountObserver.addTopic(message.getResourceName)
+      }
       debug("Finish OnlineOfflineStateModel.onBecomeOnlineFromOffline for topic: "
         + message.getResourceName() + ", partition: " + message.getPartitionName()
         + " to instance: " + instanceId)

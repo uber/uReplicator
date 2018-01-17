@@ -49,6 +49,12 @@ class MirrorMakerWorkerConf {
       .describedAs("config file")
       .ofType(classOf[String])
 
+  val dstZkConfigOpt = parser.accepts("dstzk.config",
+    "Embedded destination zookeeper config.")
+    .withRequiredArg()
+    .describedAs("config file")
+    .ofType(classOf[String])
+
   private val offsetCommitIntervalMsOpt: ArgumentAcceptingOptionSpec[Integer] =
     parser.accepts("offset.commit.interval.ms",
       "Offset commit interval in ms")
@@ -92,6 +98,10 @@ class MirrorMakerWorkerConf {
 
   def getClusterConfigOpt: ArgumentAcceptingOptionSpec[String] = {
     clusterConfigOpt
+  }
+
+  def getDstZkConfigOpt: ArgumentAcceptingOptionSpec[String] = {
+    dstZkConfigOpt
   }
 
   def getOffsetCommitIntervalMsOpt: ArgumentAcceptingOptionSpec[Integer] = {
