@@ -396,9 +396,9 @@ public class ControllerConf extends PropertiesConfiguration {
       controllerConf.setAutoRebalanceDelayInSeconds("120");
     }
     if (cmd.hasOption("refreshTimeInSeconds")) {
-      controllerConf.setInitWaitTimeInSeconds(cmd.getOptionValue("refreshTimeInSeconds"));
+      controllerConf.setRefreshTimeInSeconds(cmd.getOptionValue("refreshTimeInSeconds"));
     } else {
-      controllerConf.setInitWaitTimeInSeconds("600");
+      controllerConf.setRefreshTimeInSeconds("600");
     }
     if (cmd.hasOption("initWaitTimeInSeconds")) {
       controllerConf.setInitWaitTimeInSeconds(cmd.getOptionValue("initWaitTimeInSeconds"));
