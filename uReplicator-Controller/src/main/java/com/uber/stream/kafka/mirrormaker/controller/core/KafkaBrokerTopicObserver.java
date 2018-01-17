@@ -49,6 +49,7 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
       LoggerFactory.getLogger(KafkaBrokerTopicObserver.class);
 
   private static String KAFKA_TOPICS_PATH = "/brokers/topics";
+
   private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
 
   private final ZkClient _zkClient;
@@ -57,16 +58,18 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
   private final Map<String, TopicPartition> _topicPartitionInfoMap =
       new ConcurrentHashMap<String, TopicPartition>();
   private final AtomicLong _lastRefreshTime = new AtomicLong(0);
-  private final long _refreshTimeIntervalInMillis = 60 * 60 * 1000;
+
+  private long _refreshTimeIntervalInMillis;
   private final Timer _refreshLatency = new Timer();
   private final Counter _kafkaTopicsCounter = new Counter();
   private final static String METRIC_TEMPLATE = "KafkaBrokerTopicObserver.%s.%s";
   private final Object _lock = new Object();
 
-  public KafkaBrokerTopicObserver(String brokerClusterName, String zkString) {
+  public KafkaBrokerTopicObserver(String brokerClusterName, String zkString, long refreshTimeIntervalInMillis) {
     LOGGER.info("Trying to init KafkaBrokerTopicObserver {} with ZK: {}", brokerClusterName,
-        zkString);
+            zkString);
     _kakfaClusterName = brokerClusterName;
+    _refreshTimeIntervalInMillis = refreshTimeIntervalInMillis;
     _zkClient = new ZkClient(zkString, 30000, 30000, ZKStringSerializer$.MODULE$);
     _zkClient.subscribeChildChanges(KAFKA_TOPICS_PATH, this);
     _zkUtils = ZkUtils.apply(_zkClient, false);
@@ -76,7 +79,7 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
       public void run() {
         tryToRefreshCache();
       }
-    }, 0, 600, TimeUnit.SECONDS);
+    }, 0, _refreshTimeIntervalInMillis, TimeUnit.SECONDS);
   }
 
   private void registerMetric() {

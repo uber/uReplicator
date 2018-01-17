@@ -69,7 +69,7 @@ public class ControllerStarterTest {
     } catch (Exception e) {
     }
     kafkaBrokerTopicObserver =
-        new KafkaBrokerTopicObserver("broker0", KafkaStarterUtils.DEFAULT_ZK_STR);
+        new KafkaBrokerTopicObserver("broker0", KafkaStarterUtils.DEFAULT_ZK_STR, 1);
 
     ZK_CLIENT = new ZkClient(ZkStarter.DEFAULT_ZK_STR);
     ZK_CLIENT.deleteRecursive("/" + HELIX_CLUSTER_NAME);
