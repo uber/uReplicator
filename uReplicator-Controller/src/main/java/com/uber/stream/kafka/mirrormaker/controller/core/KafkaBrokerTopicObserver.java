@@ -49,7 +49,6 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
       LoggerFactory.getLogger(KafkaBrokerTopicObserver.class);
 
   private static String KAFKA_TOPICS_PATH = "/brokers/topics";
-  private static long defaultRefreshTimeIntervalInMillis = 5 * 60 * 1000;
 
   private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
 
@@ -65,10 +64,6 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
   private final Counter _kafkaTopicsCounter = new Counter();
   private final static String METRIC_TEMPLATE = "KafkaBrokerTopicObserver.%s.%s";
   private final Object _lock = new Object();
-
-  public KafkaBrokerTopicObserver(String brokerClusterName, String zkString) {
-    this(brokerClusterName, zkString, defaultRefreshTimeIntervalInMillis);
-  }
 
   public KafkaBrokerTopicObserver(String brokerClusterName, String zkString, long refreshTimeIntervalInMillis) {
     LOGGER.info("Trying to init KafkaBrokerTopicObserver {} with ZK: {}", brokerClusterName,

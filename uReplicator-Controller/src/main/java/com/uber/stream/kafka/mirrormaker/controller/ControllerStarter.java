@@ -83,7 +83,7 @@ public class ControllerStarter {
     if (_config.getEnableSrcKafkaValidation()) {
       if (!_kafkaBrokerTopicObserverMap.containsKey(SRC_KAFKA_CLUSTER)) {
         _kafkaBrokerTopicObserverMap.put(SRC_KAFKA_CLUSTER,
-            new KafkaBrokerTopicObserver(SRC_KAFKA_CLUSTER, _config.getSrcKafkaZkPath()));
+            new KafkaBrokerTopicObserver(SRC_KAFKA_CLUSTER, _config.getSrcKafkaZkPath(), _config.getRefreshTimeInSeconds()));
       }
       return new SourceKafkaClusterValidationManager(
           _kafkaBrokerTopicObserverMap.get(SRC_KAFKA_CLUSTER),
@@ -98,11 +98,11 @@ public class ControllerStarter {
     if (_config.getEnableAutoWhitelist()) {
       if (!_kafkaBrokerTopicObserverMap.containsKey(SRC_KAFKA_CLUSTER)) {
         _kafkaBrokerTopicObserverMap.put(SRC_KAFKA_CLUSTER,
-            new KafkaBrokerTopicObserver(SRC_KAFKA_CLUSTER, _config.getSrcKafkaZkPath()));
+            new KafkaBrokerTopicObserver(SRC_KAFKA_CLUSTER, _config.getSrcKafkaZkPath(), _config.getRefreshTimeInSeconds()));
       }
       if (!_kafkaBrokerTopicObserverMap.containsKey(DEST_KAFKA_CLUSTER)) {
         _kafkaBrokerTopicObserverMap.put(DEST_KAFKA_CLUSTER,
-            new KafkaBrokerTopicObserver(DEST_KAFKA_CLUSTER, _config.getDestKafkaZkPath()));
+            new KafkaBrokerTopicObserver(DEST_KAFKA_CLUSTER, _config.getDestKafkaZkPath(), _config.getRefreshTimeInSeconds()));
       }
 
       String patternToExcludeTopics = _config.getPatternToExcludeTopics();

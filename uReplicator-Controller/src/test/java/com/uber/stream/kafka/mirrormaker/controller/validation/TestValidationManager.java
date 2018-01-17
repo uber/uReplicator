@@ -60,7 +60,7 @@ public class TestValidationManager {
     } catch (Exception e) {
     }
     kafkaBrokerTopicObserver =
-        new KafkaBrokerTopicObserver("broker0", KafkaStarterUtils.DEFAULT_ZK_STR);
+        new KafkaBrokerTopicObserver("broker0", KafkaStarterUtils.DEFAULT_ZK_STR, 1);
 
     ControllerConf controllerConf = new ControllerConf();
     controllerConf.setControllerPort("9090");
