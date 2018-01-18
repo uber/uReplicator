@@ -68,7 +68,7 @@ public class TopicManagementRestletResource extends ServerResource {
 
       if (topicToPipelineInstanceMap == null || topicToPipelineInstanceMap.isEmpty()) {
         JSONObject responseJson = new JSONObject();
-        responseJson.put("status", Status.CLIENT_ERROR_NOT_FOUND.getCode());
+        responseJson.put("status", Status.SUCCESS_OK.getCode());
         responseJson.put("message", "No topic is added in uReplicator!");
 
         return new StringRepresentation(responseJson.toJSONString());
@@ -194,12 +194,12 @@ public class TopicManagementRestletResource extends ServerResource {
       LOGGER.info("Topic {} already on uReplicator in pipeline {}", topicName, pipeline);
 
       JSONObject responseJson = new JSONObject();
-      responseJson.put("status", Status.CLIENT_ERROR_NOT_FOUND.getCode());
+      responseJson.put("status", Status.SUCCESS_OK.getCode());
       responseJson.put("message",
           String.format("Failed to add new topic: %s from: %s to: %s, it is already existed!",
               topicName, srcCluster, dstCluster));
 
-      getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
+      getResponse().setStatus(Status.SUCCESS_OK);
       return new StringRepresentation(responseJson.toJSONString());
     } else {
       try {
