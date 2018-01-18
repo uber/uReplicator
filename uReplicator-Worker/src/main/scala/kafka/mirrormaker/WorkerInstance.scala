@@ -122,8 +122,6 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
             throw new Exception("No cluster configuration provided")
           }
           info("TopicPartitionCountObserver is enabled")
-          info("dstCluster: " + "kafka.cluster.zkStr." + dstCluster)
-          info("dstCluster: " + clusterProps.getProperty("kafka.cluster.zkStr." + dstCluster, ""))
           topicPartitionCountObserver = new TopicPartitionCountObserver(
             clusterProps.getProperty("kafka.cluster.zkStr." + dstCluster, ""),
             dstZkProps.getProperty("zkPath", "/brokers/topics"),
@@ -195,8 +193,8 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
         } else {
           consumerConfigProps.setProperty("zookeeper.connect", srcClusterZk)
           consumerConfigProps.setProperty("commit.zookeeper.connect", srcClusterZk)
-          consumerConfigProps.setProperty("group.id", srcCluster + "-" + dstCluster.getOrElse("none"))
-          consumerConfigProps.setProperty("client.id", srcCluster + "-" + dstCluster.getOrElse("none"))
+          consumerConfigProps.setProperty("group.id", "ureplicator-" + srcCluster + "-" + dstCluster.getOrElse("none"))
+          consumerConfigProps.setProperty("client.id", "ureplicator-" + srcCluster + "-" + dstCluster.getOrElse("none"))
         }
       case None // non-federated mode
       =>
