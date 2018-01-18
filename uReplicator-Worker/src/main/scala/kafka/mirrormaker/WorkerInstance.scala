@@ -90,7 +90,7 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
   var topicPartitionCountObserver: TopicPartitionCountObserver = null
 
   def start() {
-    info("Starting mirror maker instance")
+    info("Starting uReplicator worker instance")
 
     abortOnSendFailure = options.valueOf(workerConfig.getAbortOnSendFailureOpt).toBoolean
     offsetCommitIntervalMs = options.valueOf(workerConfig.getOffsetCommitIntervalMsOpt).toInt
@@ -107,7 +107,6 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
 
     val dstZkProps = {
       try {
-        info("getDstZkConfigOpt: " + workerConfig.getDstZkConfigOpt)
         Utils.loadProps(options.valueOf(workerConfig.getDstZkConfigOpt))
       } catch {
         case e: Exception
@@ -115,16 +114,32 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
       }
     }
 
-    info("dstZkProps: " + dstZkProps)
-
     if (dstZkProps != null && dstZkProps.getProperty("enable", "false").toBoolean) {
-      info("TopicPartitionCountObserver is enabled")
-      topicPartitionCountObserver = new TopicPartitionCountObserver(
-        dstZkProps.getProperty("zkServer", "localhost:2181"),
-        dstZkProps.getProperty("zkPath", "/brokers/topics"),
-        dstZkProps.getProperty("connection.timeout.ms", "120000").toInt,
-        dstZkProps.getProperty("session.timeout.ms", "600000").toInt,
-        dstZkProps.getProperty("refresh.interval.ms", "3600000").toInt)
+      dstCluster match {
+        case Some(dstCluster)
+        =>
+          if (clusterProps == null) {
+            throw new Exception("No cluster configuration provided")
+          }
+          info("TopicPartitionCountObserver is enabled")
+          info("dstCluster: " + "kafka.cluster.zkStr." + dstCluster)
+          info("dstCluster: " + clusterProps.getProperty("kafka.cluster.zkStr." + dstCluster, ""))
+          topicPartitionCountObserver = new TopicPartitionCountObserver(
+            clusterProps.getProperty("kafka.cluster.zkStr." + dstCluster, ""),
+            dstZkProps.getProperty("zkPath", "/brokers/topics"),
+            dstZkProps.getProperty("connection.timeout.ms", "120000").toInt,
+            dstZkProps.getProperty("session.timeout.ms", "600000").toInt,
+            dstZkProps.getProperty("refresh.interval.ms", "3600000").toInt)
+        case None // non-federated mode
+        =>
+          info("TopicPartitionCountObserver is enabled")
+          topicPartitionCountObserver = new TopicPartitionCountObserver(
+            dstZkProps.getProperty("zkServer", "localhost:2181"),
+            dstZkProps.getProperty("zkPath", "/brokers/topics"),
+            dstZkProps.getProperty("connection.timeout.ms", "120000").toInt,
+            dstZkProps.getProperty("session.timeout.ms", "600000").toInt,
+            dstZkProps.getProperty("refresh.interval.ms", "3600000").toInt)
+      }
       topicPartitionCountObserver.start()
     } else {
       info("Disable TopicPartitionCountObserver to use round robin to produce msg")
@@ -284,12 +299,10 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
   def maybeFlushAndCommitOffsets(forceCommit: Boolean) {
     if (forceCommit || System.currentTimeMillis() - lastOffsetCommitMs > offsetCommitIntervalMs) {
       info("Flushing producer.")
-      info("here 0")
       flushLatency.time {
         producer.flush()
       }
 
-      info("here 1")
       callbackLatency.time {
         flushCommitLock.synchronized {
           while (!exitingOnSendFailure && recordCount.get() != 0) {
@@ -298,7 +311,6 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
         }
       }
 
-      info("here 2")
       if (!exitingOnSendFailure) {
         info("Committing offsets.")
         commitLatency.time {

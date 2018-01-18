@@ -55,8 +55,9 @@ public class TopicPartitionCountObserver implements IZkChildListener {
 
   public TopicPartitionCountObserver(final String zkConnect, final String zkPath,
       final int zkConnectionTimeoutMs, final int zkSessionTimeoutMs, final int refreshIntervalMs) {
-    this.zkPath = zkPath;
+    logger.info("Init TopicPartitionCountObserver for zkConnect={} and zkPath={}", zkConnect, zkPath);
     this.zkConnect = zkConnect;
+    this.zkPath = zkPath;
 
     zkClient = new ZkClient(zkConnect, zkSessionTimeoutMs, zkConnectionTimeoutMs,
         ZKStringSerializer$.MODULE$);
@@ -68,8 +69,7 @@ public class TopicPartitionCountObserver implements IZkChildListener {
   }
 
   public void start() {
-    logger.info("Start TopicPartitionCountObserver for zkConnect={} and zkPath={}", zkConnect,
-        zkPath);
+    logger.info("Start TopicPartitionCountObserver for zkConnect={} and zkPath={}", zkConnect, zkPath);
 
     zkClient.subscribeChildChanges(zkPath, this);
 
