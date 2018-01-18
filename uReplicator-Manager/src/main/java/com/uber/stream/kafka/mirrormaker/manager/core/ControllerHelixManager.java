@@ -39,6 +39,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.helix.HelixAdmin;
 import org.apache.helix.HelixManager;
+import org.apache.helix.HelixManagerFactory;
+import org.apache.helix.InstanceType;
 import org.apache.helix.LiveInstanceChangeListener;
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.HelixConfigScope.ConfigScopeProperty;
@@ -520,6 +522,7 @@ public class ControllerHelixManager implements IHelixManager {
           if (itph.getWorkerSet().size() < expectedNumWorkers) {
             LOGGER.info("Current {} workers in route {}, expect {} workers",
                 itph.getWorkerSet().size(), itph.getRouteString(), expectedNumWorkers);
+            // TODO: handle exception
             _workerHelixManager.addWorkersToMirrorMaker(itph, itph.getRoute().getTopic(),
                 itph.getRoute().getPartition(), expectedNumWorkers - itph.getWorkerSet().size());
           }
@@ -559,12 +562,20 @@ public class ControllerHelixManager implements IHelixManager {
   }
 
   public InstanceTopicPartitionHolder createNewRoute(String pipeline, int routeId) throws Exception {
+    if (_availableControllerList.isEmpty()) {
+      LOGGER.info("No available controller!");
+      throw new Exception("No available controller!");
+    }
+
+    if (_workerHelixManager.getAvailableWorkerList().isEmpty()) {
+      LOGGER.info("No available worker!");
+      throw new Exception("No available worker!");
+    }
+
     String instanceName = _availableControllerList.get(0);
     InstanceTopicPartitionHolder instance = new InstanceTopicPartitionHolder(instanceName,
         new TopicPartition(pipeline, routeId));
-    boolean isNewPipeline = false;
     if (!isPipelineExisted(pipeline)) {
-      isNewPipeline = true;
       setEmptyResourceConfig(pipeline);
       _helixAdmin.addResource(_helixClusterName, pipeline,
           IdealStateBuilder.buildCustomIdealStateFor(pipeline, String.valueOf(routeId), instance));
@@ -576,27 +587,36 @@ public class ControllerHelixManager implements IHelixManager {
       LOGGER.info("new idealstate: {}", _helixAdmin.getResourceIdealState(_helixClusterName, pipeline));
     }
 
-    // Wait for controller to join
-    /*if (!waitForExternalView(pipeline, String.valueOf(routeId))) {
-      LOGGER.info("Failed to find controller {} in pipeline {} online, drop it", instanceName, pipeline);
-      if (isNewPipeline) {
-        _helixAdmin.dropResource(_helixClusterName, pipeline);
-      } else {
-        IdealState currIdealState = getIdealStateForTopic(pipeline);
-        _helixAdmin.setResourceIdealState(_helixClusterName, pipeline,
-            IdealStateBuilder.shrinkCustomIdealStateFor(currIdealState, pipeline, String.valueOf(routeId)));
+    String[] srcDst = pipeline.split(SEPARATOR);
+    String controllerWokerHelixClusterName = "controller-worker-" + srcDst[1] + "-" + srcDst[2] + "-" + routeId;
+    HelixManager spectator = HelixManagerFactory.getZKHelixManager(controllerWokerHelixClusterName,
+        _instanceId,
+        InstanceType.SPECTATOR,
+        _helixZkURL);
+
+    long ts1 = System.currentTimeMillis();
+    while (true) {
+      try {
+        spectator.connect();
+        break;
+      } catch (Exception e) {
+        // Do nothing
       }
-      throw new Exception(String.format("Failed to find controller %s in externalview in pipeline %s routeId %s!",
-          instanceName, pipeline, routeId));
-    }*/
+
+      if (System.currentTimeMillis() - ts1 > 5000) {
+        throw new Exception(String.format("Controller %s failed to set up new route cluster %s!",
+            instanceName, controllerWokerHelixClusterName));
+      }
+      Thread.sleep(1000);
+    }
 
     _availableControllerList.remove(instanceName);
     _pipelineToInstanceMap.put(pipeline, new PriorityQueue<>(1,
         InstanceTopicPartitionHolder.getTotalWorkloadComparator(null, null)));
     _pipelineToInstanceMap.get(pipeline).add(instance);
-    Thread.sleep(1000);
     _workerHelixManager.addTopicToMirrorMaker(instance, pipeline, routeId);
 
+    spectator.disconnect();
     return instance;
   }
 
@@ -635,11 +655,6 @@ public class ControllerHelixManager implements IHelixManager {
     try {
       LOGGER.info("Trying to add topic: {} to pipeline: {}", topicName, pipeline);
 
-      if (_availableControllerList.isEmpty() || _workerHelixManager.getAvailableWorkerList().isEmpty()) {
-        LOGGER.info("No available controller or worker!");
-        throw new Exception("No available controller or worker!");
-      }
-
       if (!isPipelineExisted(pipeline)) {
         createNewRoute(pipeline, 0);
       } else {
@@ -659,9 +674,10 @@ public class ControllerHelixManager implements IHelixManager {
                 topicName, route, instance));
       }
 
-      if (!waitForExternalView(topicName, route)) {
+      // TODO: Verify if there is need to wait
+      /*if (!waitForExternalView(topicName, route)) {
         throw new Exception(String.format("Failed to whitelist topic %s in route %s!", topicName, route));
-      }
+      }*/
 
       instance.addTopicPartition(new TopicPartition(topicName, numPartitions, pipeline));
       _topicToPipelineInstanceMap.putIfAbsent(topicName, new ConcurrentHashMap<>());
