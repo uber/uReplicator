@@ -17,16 +17,16 @@
 # Zookeeper connection string
 # comma separated host:port pairs, each corresponding to a zk
 # server. e.g. "127.0.0.1:3000,127.0.0.1:3001,127.0.0.1:3002"
-zookeeper.connect=10.48.208.70:2181
+zookeeper.connect={{ env "SRC_ZOOKEEPER_ADDR"}}
 
 # timeout in ms for connecting to zookeeper
 zookeeper.connection.timeout.ms=30000
 zookeeper.session.timeout.ms=30000
 
 #consumer group id
-group.id=ureplicator-consumer-group
+group.id={{ keyOrDefault "consumer/group_id" "ureplicator-consumer-group" }}
 
-consumer.id=platform-ureplicator-consumer
+consumer.id={{env "SRC_CLUSTER_NAME"}}-{{ keyOrDefault "consumer/id" "ureplicator-consumer" }}
 partition.assignment.strategy=roundrobin
 socket.receive.buffer.bytes=1048576
 fetch.message.max.bytes=8388608
@@ -35,4 +35,4 @@ queued.max.message.chunks=5
 #consumer timeout
 #consumer.timeout.ms=5000
 
-auto.offset.reset=smallest
+auto.offset.reset={{ keyOrDefault "consumer/offset_reset" "smallest" }}

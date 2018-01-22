@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+
+set -x
+
+ROOT=$(dirname $0)
+DISTRIB_ROOT=${ROOT}/uReplicator-Distribution/target/uReplicator-Distribution-pkg
+DISTRIB_BIN=${DISTRIB_ROOT}/bin
+
+if [ ! -f ${ROOT}/docker_env.sh ]; then
+  /usr/bin/env bash ${ROOT}/init.sh
+fi
+
+source ${ROOT}/docker_env.sh
+
+function print_help {
+  echo "Usage: ${0} worker|controller"
+}
+
+CONSUL_ADDR=${CONSUL_ADDR:-"localhost:8500"}
+
+function start_worker {
+  ## Start the worker job
+  EXEC_CMD="${DISTRIB_BIN}/start-worker.sh --consumer.config ${ROOT}/config/consumer.properties --helix.config ${ROOT}/config/helix.properties --producer.config ${ROOT}/config/producer.properties --topic.mappings ${ROOT}/config/topicmapping.properties"
+  exec consul-template \
+    -consul-addr=${CONSUL_ADDR} \
+    -template="${ROOT}/config/producer.properties.ctmpl:${ROOT}/config/producer.properties" \
+    -template="${ROOT}/config/consumer.properties.ctmpl:${ROOT}/config/consumer.properties" \
+    -template="${ROOT}/config/helix.properties.ctmpl:${ROOT}/config/helix.properties" \
+    -template="${ROOT}/config/topicmapping.properties.ctmpl:${ROOT}/config/topicmapping.properties" \
+    -exec="${EXEC_CMD}"
+}
+
+function start_controller {
+  ## Start the controller
+  EXEC_CMD="${DISTRIB_BIN}/start-controller.sh -srcKafkaZkPath ${SRC_ZOOKEEPER_ADDR} -destKafkaZkPath ${DEST_ZOOKEEPER_ADDR} -helixClusterName ureplicator-${DEST_CLUSTER_NAME} -env ${ENV:-prod} -port ${UREPLICATOR_PORT:-8080} -zookeeper ${DEST_ZOOKEEPER_ADDR}"
+  exec consul-template \
+    -consul-addr=${CONSUL_ADDR} \
+    -template="${ROOT}/config/producer.properties.ctmpl:${ROOT}/config/producer.properties" \
+    -template="${ROOT}/config/consumer.properties.ctmpl:${ROOT}/config/consumer.properties" \
+    -template="${ROOT}/config/helix.properties.ctmpl:${ROOT}/config/helix.properties" \
+    -template="${ROOT}/config/topicmapping.properties.ctmpl:${ROOT}/config/topicmapping.properties" \
+    -exec="${EXEC_CMD}"
+}
+
+case $1 in
+  worker) start_worker ;;
+  controller) start_controller ;;
+  *) print_help
+esac
+

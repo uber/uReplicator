@@ -18,14 +18,14 @@
 
 # list of brokers used for bootstrapping knowledge about the rest of the cluster
 # format: host1:port1,host2:port2 ...
-bootstrap.servers=10.48.208.228:9092
-client.id=visits-ureplicator-producer
+bootstrap.servers={{ env "DEST_KAFKA_BROKER_ADDR" }}
+client.id={{ env "DEST_CLUSTER_NAME"}}-ureplicator-producer
 
 # name of the partitioner class for partitioning events; default partition spreads data randomly
 #partitioner.class=
 
 # specifies whether the messages are sent asynchronously (async) or synchronously (sync)
-producer.type=async
+producer.type={{ keyOrDefault "ureplicator/producer/type" "async" }}
 
 # specify the compression codec for all data generated: none, gzip, snappy, lz4.
 # the old config values work as well: 0, 1, 2, 3 for none, gzip, snappy, lz4, respectively
