@@ -123,7 +123,7 @@ public class ControllerStarterTest {
     try {
       starter.start();
     } catch (Exception e) {
-      throw new RuntimeException("Cannot start Helix Mirror Maker Controller");
+      throw new RuntimeException("Cannot start Helix Mirror Maker Controller", e);
     }
     return starter;
   }
