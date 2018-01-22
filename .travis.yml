@@ -1,0 +1,25 @@
+language: java
+
+env:
+
+os:
+  - linux
+
+jdk:
+  - oraclejdk8
+
+cache:
+  directories:
+    - $HOME/.m2
+
+sudo: false
+
+install:
+  - ./.travis_install.sh
+
+script:
+  - ./.travis_test.sh
+
+branches:
+  only:
+    - master
