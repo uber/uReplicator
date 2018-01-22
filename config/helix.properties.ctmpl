@@ -1,0 +1,3 @@
+ zkServer={{ env "DEST_ZOOKEEPER_ADDR" }}
+ instanceId={{keyOrDefault "helix/instanceId" "ureplicator-helix-instance" }}
+ helixClusterName={{ keyOrDefault "helix/clusterName" "ureplicator-" }}{{ env "DEST_CLUSTER_NAME" }}

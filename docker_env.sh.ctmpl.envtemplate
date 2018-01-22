@@ -1,0 +1,4 @@
+export DEST_KAFKA_BROKER_ADDR={{with service "${DEST_CLUSTER_NAME}-kafka-broker"}}{{with index . 0 }}{{.Address}}:{{.Port}}{{end}}{{end}}
+export DEST_ZOOKEEPER_ADDR={{with service "${DEST_CLUSTER_NAME}-zookeeper-node"}}{{with index . 0 }}{{.Address}}:{{.Port}}{{end}}{{end}}
+export SRC_KAFKA_BROKER_ADDR={{with service "${SRC_CLUSTER_NAME}-kafka-broker"}}{{with index . 0 }}{{.Address}}:{{.Port}}{{end}}{{end}}
+export SRC_ZOOKEEPER_ADDR={{with service "${SRC_CLUSTER_NAME}-zookeeper-node"}}{{with index . 0 }}{{.Address}}:{{.Port}}{{end}}{{end}}

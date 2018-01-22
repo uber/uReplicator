@@ -1,0 +1,2 @@
+{{ range ls "ureplicator/topicmapping" }}
+{{ .Key }} {{ .Value }}{{ end }}
