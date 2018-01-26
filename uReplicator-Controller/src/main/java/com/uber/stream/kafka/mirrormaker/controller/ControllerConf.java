@@ -162,7 +162,8 @@ public class ControllerConf extends PropertiesConfiguration {
 
   public String getPatternToExcludeTopics() {
     String pattern = (String) getProperty(PATTERN_TO_EXCLUDE_TOPICS);
-    return pattern.contains(DEFAULT_PATTERN_TO_EXCLUDE_TOPICS) ? pattern : pattern + "|" + DEFAULT_PATTERN_TO_EXCLUDE_TOPICS;
+    return pattern != null && pattern.contains(DEFAULT_PATTERN_TO_EXCLUDE_TOPICS) ? pattern
+        : pattern + "|" + DEFAULT_PATTERN_TO_EXCLUDE_TOPICS;
   }
 
   public String getRemoteBackupRepo() {
