@@ -1,5 +1,7 @@
 uReplicator 
 ============
+[![Build Status](https://travis-ci.org/uber/uReplicator.svg?branch=master)](https://travis-ci.org/uber/uReplicator)
+
 uReplicator provides the ability to replicate across Kafka clusters in other data centers. Instead of publishing to a single Kafka cluster, you can publish data to multiple regional Kafka clusters and aggregate it all in one Kafka cluster.
 
 =========
