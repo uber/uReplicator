@@ -44,7 +44,6 @@ public class ControllerStarter {
   public ControllerStarter(ControllerConf conf) {
     LOGGER.info("Trying to init ControllerStarter with config: {}", conf);
     _config = conf;
-    HelixKafkaMirrorMakerMetricsReporter.init(conf);
     _managerControllerHelix = new ManagerControllerHelix(_config);
   }
 
