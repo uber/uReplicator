@@ -54,13 +54,12 @@ import scala.io.Source
  *       3. Mirror Maker Setting:
  *            abort.on.send.failure=true
  */
-class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private val options: OptionSet,
-    private val srcCluster: Option[String], private val dstCluster: Option[String], private val helixClusterName: String)
-    extends Logging with KafkaMetricsGroup {
-  private var federatedEnabled: Boolean = false
-  private var deploymentName: String = null
-  private var managerWorkerHelixName: String = null
-
+class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
+                     private val options: OptionSet,
+                     private val srcCluster: Option[String],
+                     private val dstCluster: Option[String],
+                     private val helixClusterName: String,
+                     private val route: String) extends Logging with KafkaMetricsGroup {
   private var instanceId: String = null
   private var clientId: String = null
   private var zkServer: String = null
@@ -157,6 +156,7 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
           throw new Exception("Cannot find bootstrap servers for destination cluster: " + dstCluster)
         } else {
           producerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, dstServers)
+          producerProps.setProperty(ProducerConfig.CLIENT_ID_CONFIG, route)
         }
       case None // non-federated mode
       =>
@@ -194,7 +194,7 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
           consumerConfigProps.setProperty("zookeeper.connect", srcClusterZk)
           consumerConfigProps.setProperty("commit.zookeeper.connect", srcClusterZk)
           consumerConfigProps.setProperty("group.id", "ureplicator-" + srcCluster + "-" + dstCluster.getOrElse("none"))
-          consumerConfigProps.setProperty("client.id", "ureplicator-" + srcCluster + "-" + dstCluster.getOrElse("none"))
+          consumerConfigProps.setProperty("client.id", route)
         }
       case None // non-federated mode
       =>
