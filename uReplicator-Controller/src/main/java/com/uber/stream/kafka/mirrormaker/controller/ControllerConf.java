@@ -49,6 +49,9 @@ public class ControllerConf extends PropertiesConfiguration {
   private static final String GRAPHITE_HOST = "controller.graphite.host";
   private static final String GRAPHITE_PORT = "controller.graphite.port";
 
+  private static final String METRICS_PREFIX = "controller.metrics.prefix";
+  private static final String DEFAULT_METRICS_PREFIX = "kafka-mirror-maker-controller";
+
   private static final String C3_HOST = "controller.c3.host";
   private static final String DEFAULT_C3_HOST = "localhost";
 
@@ -202,6 +205,10 @@ public class ControllerConf extends PropertiesConfiguration {
     setProperty(GRAPHITE_PORT, Integer.valueOf(graphitePort));
   }
 
+  public void setMetricsPrefix(String metricsPrefix) {
+    setProperty(METRICS_PREFIX, metricsPrefix);
+  }
+
   public void setC3Host(String C3Host) {
     setProperty(C3_HOST, C3Host);
   }
@@ -350,6 +357,16 @@ public class ControllerConf extends PropertiesConfiguration {
     return (String) getProperty(HELIX_CLUSTER_NAME);
   }
 
+  public String getRoute() {
+    if (!isFederatedEnabled()) {
+      return null;
+    }
+    String CONTROLLER_WORKER_HELIX_PREFIX = "controller-worker-";
+
+    return getHelixClusterName().startsWith(CONTROLLER_WORKER_HELIX_PREFIX) ?
+        getHelixClusterName().substring(CONTROLLER_WORKER_HELIX_PREFIX.length()) : getHelixClusterName();
+  }
+
   public boolean isFederatedEnabled() {
     if (!containsKey(FEDERATED_ENABLED)) {
       return false;
@@ -394,6 +411,14 @@ public class ControllerConf extends PropertiesConfiguration {
 
   public Integer getGraphitePort() {
     return (Integer) getProperty(GRAPHITE_PORT);
+  }
+
+  public String getMetricsPrefix() {
+    if (containsKey(METRICS_PREFIX)) {
+      return (String) getProperty(METRICS_PREFIX);
+    } else {
+      return DEFAULT_METRICS_PREFIX;
+    }
   }
 
   public String getC3Host() {
@@ -659,6 +684,7 @@ public class ControllerConf extends PropertiesConfiguration {
         .addOption("instanceId", true, "InstanceId")
         .addOption("graphiteHost", true, "Graphite Host")
         .addOption("graphitePort", true, "Graphite Port")
+        .addOption("metricsPrefix", true, "Metrics prefix")
         .addOption("c3Host", true, "Chaperone3 Host")
         .addOption("c3Port", true, "Chaperone3 Port")
         .addOption("enableAutoWhitelist", true, "Enable Auto Whitelist")
@@ -773,6 +799,11 @@ public class ControllerConf extends PropertiesConfiguration {
       controllerConf.setGraphitePort(cmd.getOptionValue("graphitePort"));
     } else {
       controllerConf.setGraphitePort("0");
+    }
+    if (cmd.hasOption("metricsPrefix")) {
+      controllerConf.setMetricsPrefix(cmd.getOptionValue("metricsPrefix"));
+    } else {
+      controllerConf.setMetricsPrefix(DEFAULT_METRICS_PREFIX);
     }
     if (cmd.hasOption("c3Host")) {
       controllerConf.setC3Host(cmd.getOptionValue("c3Host"));

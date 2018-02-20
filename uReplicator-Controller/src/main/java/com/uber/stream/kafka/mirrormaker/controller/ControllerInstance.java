@@ -22,6 +22,7 @@ import com.uber.stream.kafka.mirrormaker.controller.core.GitBackUpHandler;
 import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
 import com.uber.stream.kafka.mirrormaker.controller.core.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.controller.core.ManagerControllerHelix;
+import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import com.uber.stream.kafka.mirrormaker.controller.rest.ControllerRestApplication;
 import com.uber.stream.kafka.mirrormaker.controller.validation.SourceKafkaClusterValidationManager;
 import com.uber.stream.kafka.mirrormaker.controller.validation.ValidationManager;
@@ -60,6 +61,7 @@ public class ControllerInstance {
     LOGGER.info("Trying to init ControllerStarter with config: {}", conf);
     _managerControllerHelix = managerControllerHelix;
     _config = conf;
+    HelixKafkaMirrorMakerMetricsReporter.init(conf);
     _component = new Component();
     _controllerRestApp = new ControllerRestApplication(null);
     _helixMirrorMakerManager = new HelixMirrorMakerManager(_config);
