@@ -363,7 +363,7 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
 
       removeCustomizedMetrics()
 
-      info("Kafka mirror maker shutdown successfully")
+      info("Kafka uReplicator worker shutdown successfully")
     }
   }
 

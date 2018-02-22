@@ -53,8 +53,8 @@ class CompactConsumerFetcherThread(name: String,
   private val minBytes = config.fetchMinBytes
   private val fetchBackOffMs = config.refreshLeaderBackoffMs
 
-  private var lastDumpTime = 0L;
-  private final val DUMP_INTERVAL_MS = 5 * 60 * 1000;
+  private var lastDumpTime = 0L
+  private final val DUMP_INTERVAL_MS = 5 * 60 * 1000
 
   // a (topic, partition) -> partitionFetchState map
   private val partitionMap = new mutable.HashMap[TopicAndPartition, PartitionFetchState]
@@ -103,14 +103,33 @@ class CompactConsumerFetcherThread(name: String,
   }
 
   // handle a partition whose offset is out of range and return a new fetch offset
-  def handleOffsetOutOfRange(topicAndPartition: TopicAndPartition): Long = {
-    var startTimestamp: Long = 0
+  def handleOffsetOutOfRange(topicAndPartition: TopicAndPartition, committedOffset: Long): Long = {
+    var startTimestamp : Long = 0
     config.autoOffsetReset match {
       case OffsetRequest.SmallestTimeString => startTimestamp = OffsetRequest.EarliestTime
       case OffsetRequest.LargestTimeString => startTimestamp = OffsetRequest.LatestTime
       case _ => startTimestamp = OffsetRequest.LatestTime
     }
-    val newOffset = simpleConsumer.earliestOrLatestOffset(topicAndPartition, startTimestamp, Request.OrdinaryConsumerId)
+
+    // Don't need to check if hw > 0 here
+    // If committedOffset <= 0, it is a new topic which doesn't exit before
+    var newOffset : Long = -1
+    if (committedOffset > 0) {
+      val lw = simpleConsumer.earliestOrLatestOffset(topicAndPartition, OffsetRequest.EarliestTime, Request.OrdinaryConsumerId)
+      if (committedOffset < lw) {
+        error("Current offset %d for partition [%s,%d] smaller than lw %d; reset offset to lw %d"
+          .format(committedOffset, topicAndPartition.topic, topicAndPartition.partition, lw, lw))
+        newOffset = simpleConsumer.earliestOrLatestOffset(topicAndPartition, OffsetRequest.EarliestTime, Request.OrdinaryConsumerId)
+      } else {
+        error("Current offset %d for partition [%s,%d] larger than hw; reset offset to hw"
+          .format(committedOffset, topicAndPartition.topic, topicAndPartition.partition))
+        val hw = simpleConsumer.earliestOrLatestOffset(topicAndPartition, OffsetRequest.LatestTime, Request.OrdinaryConsumerId)
+        newOffset = Math.min(hw, committedOffset)
+      }
+    } else {
+      newOffset = simpleConsumer.earliestOrLatestOffset(topicAndPartition, startTimestamp, Request.OrdinaryConsumerId)
+    }
+
     val pti = partitionInfoMap.get(topicAndPartition)
     pti.resetFetchOffset(newOffset)
     pti.resetConsumeOffset(newOffset)
@@ -264,7 +283,7 @@ class CompactConsumerFetcherThread(name: String,
                     }
                   case ErrorMapping.OffsetOutOfRangeCode =>
                     try {
-                      val newOffset = handleOffsetOutOfRange(topicAndPartition)
+                      val newOffset = handleOffsetOutOfRange(topicAndPartition, currentPartitionFetchState.offset)
                       partitionMap.put(topicAndPartition, new PartitionFetchState(newOffset))
                       error("Current offset %d for partition [%s,%d] out of range; reset offset to %d"
                         .format(currentPartitionFetchState.offset, topic, partitionId, newOffset))
@@ -309,7 +328,7 @@ class CompactConsumerFetcherThread(name: String,
         if (!partitionAddMap.containsKey(topicAndPartition)) {
           partitionAddMap.put(
             topicAndPartition,
-            if (kafka.consumer.PartitionTopicInfo.isOffsetInvalid(offset)) new PartitionFetchState(handleOffsetOutOfRange(topicAndPartition))
+            if (kafka.consumer.PartitionTopicInfo.isOffsetInvalid(offset)) new PartitionFetchState(handleOffsetOutOfRange(topicAndPartition, offset))
             else new PartitionFetchState(offset)
           )
         }
