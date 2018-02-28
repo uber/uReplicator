@@ -22,20 +22,20 @@ import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 import java.util.{Collections, Properties, UUID}
 
-import com.yammer.metrics.core.Gauge
+import com.yammer.metrics.core.{Gauge, Meter}
+import joptsimple.OptionSet
 import kafka.consumer._
 import kafka.message.MessageAndMetadata
-import kafka.metrics.KafkaMetricsGroup
-import kafka.utils.{CommandLineUtils, Logging}
+import kafka.metrics.{KafkaMetricsGroup, KafkaTimer}
+import kafka.utils.Logging
 import org.apache.helix.manager.zk.ZKHelixManager
 import org.apache.helix.participant.StateMachineEngine
-import org.apache.helix.{HelixManager, HelixManagerFactory, InstanceType}
+import org.apache.helix.{HelixManager, InstanceType}
 import org.apache.kafka.clients.producer.internals.ErrorLoggingCallback
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord, RecordMetadata}
 import org.apache.kafka.common.utils.Utils
 
 import scala.io.Source
-import joptsimple.OptionSet
 
 /**
  * The mirror maker has the following architecture:
@@ -54,13 +54,12 @@ import joptsimple.OptionSet
  *       3. Mirror Maker Setting:
  *            abort.on.send.failure=true
  */
-class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private val options: OptionSet,
-    private val srcCluster: Option[String], private val dstCluster: Option[String], private val helixClusterName: String)
-    extends Logging with KafkaMetricsGroup {
-  private var federatedEnabled: Boolean = false
-  private var deploymentName: String = null
-  private var managerWorkerHelixName: String = null
-
+class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
+                     private val options: OptionSet,
+                     private val srcCluster: Option[String],
+                     private val dstCluster: Option[String],
+                     private val helixClusterName: String,
+                     private val route: String) extends Logging with KafkaMetricsGroup {
   private var instanceId: String = null
   private var clientId: String = null
   private var zkServer: String = null
@@ -82,8 +81,15 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
   private val recordCount: AtomicInteger = new AtomicInteger(0)
   private val flushCommitLock: ReentrantLock = new ReentrantLock
 
+  var flushLatency: KafkaTimer = null
+  var commitLatency: KafkaTimer = null
+  var callbackLatency: KafkaTimer = null
+  var startMeter: Meter = null
+  var mapFailureMeter: Meter = null
+  var topicPartitionCountObserver: TopicPartitionCountObserver = null
+
   def start() {
-    info("Starting mirror maker instance")
+    info("Starting uReplicator worker instance")
 
     abortOnSendFailure = options.valueOf(workerConfig.getAbortOnSendFailureOpt).toBoolean
     offsetCommitIntervalMs = options.valueOf(workerConfig.getOffsetCommitIntervalMsOpt).toInt
@@ -96,6 +102,44 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
         case e: Exception
         => null
       }
+    }
+
+    val dstZkProps = {
+      try {
+        Utils.loadProps(options.valueOf(workerConfig.getDstZkConfigOpt))
+      } catch {
+        case e: Exception
+        => null
+      }
+    }
+
+    if (dstZkProps != null && dstZkProps.getProperty("enable", "false").toBoolean) {
+      dstCluster match {
+        case Some(dstCluster)
+        =>
+          if (clusterProps == null) {
+            throw new Exception("No cluster configuration provided")
+          }
+          info("TopicPartitionCountObserver is enabled")
+          topicPartitionCountObserver = new TopicPartitionCountObserver(
+            clusterProps.getProperty("kafka.cluster.zkStr." + dstCluster, ""),
+            dstZkProps.getProperty("zkPath", "/brokers/topics"),
+            dstZkProps.getProperty("connection.timeout.ms", "120000").toInt,
+            dstZkProps.getProperty("session.timeout.ms", "600000").toInt,
+            dstZkProps.getProperty("refresh.interval.ms", "3600000").toInt)
+        case None // non-federated mode
+        =>
+          info("TopicPartitionCountObserver is enabled")
+          topicPartitionCountObserver = new TopicPartitionCountObserver(
+            dstZkProps.getProperty("zkServer", "localhost:2181"),
+            dstZkProps.getProperty("zkPath", "/brokers/topics"),
+            dstZkProps.getProperty("connection.timeout.ms", "120000").toInt,
+            dstZkProps.getProperty("session.timeout.ms", "600000").toInt,
+            dstZkProps.getProperty("refresh.interval.ms", "3600000").toInt)
+      }
+      topicPartitionCountObserver.start()
+    } else {
+      info("Disable TopicPartitionCountObserver to use round robin to produce msg")
     }
 
     // create producer
@@ -112,6 +156,7 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
           throw new Exception("Cannot find bootstrap servers for destination cluster: " + dstCluster)
         } else {
           producerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, dstServers)
+          producerProps.setProperty(ProducerConfig.CLIENT_ID_CONFIG, route)
         }
       case None // non-federated mode
       =>
@@ -148,8 +193,8 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
         } else {
           consumerConfigProps.setProperty("zookeeper.connect", srcClusterZk)
           consumerConfigProps.setProperty("commit.zookeeper.connect", srcClusterZk)
-          consumerConfigProps.setProperty("group.id", srcCluster + "-" + dstCluster.getOrElse("none"))
-          consumerConfigProps.setProperty("client.id", srcCluster + "-" + dstCluster.getOrElse("none"))
+          consumerConfigProps.setProperty("group.id", "ureplicator-" + srcCluster + "-" + dstCluster.getOrElse("none"))
+          consumerConfigProps.setProperty("client.id", route)
         }
       case None // non-federated mode
       =>
@@ -182,6 +227,20 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
       },
       Map("clientId" -> clientId)
     )
+
+    flushLatency = new KafkaTimer(newTimer("MirrorMaker-flushLatencyMs",
+      TimeUnit.MILLISECONDS, TimeUnit.SECONDS, Map("clientId" -> consumerConfig.clientId)))
+    commitLatency = new KafkaTimer(newTimer("MirrorMaker-commitLatencyMs",
+      TimeUnit.MILLISECONDS, TimeUnit.SECONDS, Map("clientId" -> consumerConfig.clientId)))
+    callbackLatency = new KafkaTimer(newTimer("MirrorMaker-callbackLatency",
+      TimeUnit.MILLISECONDS, TimeUnit.SECONDS, Map("clientId" -> consumerConfig.clientId)))
+
+    startMeter = newMeter("MirrorMaker-startPerSec", "start", TimeUnit.SECONDS,
+      Map("clientId" -> consumerConfig.clientId))
+    startMeter.mark()
+
+    mapFailureMeter = newMeter("MirrorMaker-mapFailurePerSec", "start", TimeUnit.SECONDS,
+      Map("clientId" -> consumerConfig.clientId))
 
     // initialize topic mappings for rewriting topic names between consuming side and producing side
     topicMappings = if (options.has(workerConfig.getTopicMappingsOpt)) {
@@ -230,7 +289,7 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
     helixZkManager = new WorkerZKHelixManager(helixClusterName, instanceId, InstanceType.PARTICIPANT, zkServer)
     val stateMachineEngine: StateMachineEngine = helixZkManager.getStateMachineEngine()
     // register the MirrorMaker worker
-    val stateModelFactory = new HelixWorkerOnlineOfflineStateModelFactory(instanceId, connector)
+    val stateModelFactory = new HelixWorkerOnlineOfflineStateModelFactory(instanceId, connector, topicPartitionCountObserver)
     stateMachineEngine.registerStateModelFactory("OnlineOffline", stateModelFactory)
     helixZkManager.connect()
   }
@@ -238,17 +297,23 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
   def maybeFlushAndCommitOffsets(forceCommit: Boolean) {
     if (forceCommit || System.currentTimeMillis() - lastOffsetCommitMs > offsetCommitIntervalMs) {
       info("Flushing producer.")
-      producer.flush()
+      flushLatency.time {
+        producer.flush()
+      }
 
-      flushCommitLock.synchronized {
-        while (!exitingOnSendFailure && recordCount.get() != 0) {
-          flushCommitLock.wait(100)
+      callbackLatency.time {
+        flushCommitLock.synchronized {
+          while (!exitingOnSendFailure && recordCount.get() != 0) {
+            flushCommitLock.wait(100)
+          }
         }
       }
 
       if (!exitingOnSendFailure) {
         info("Committing offsets.")
-        connector.commitOffsets
+        commitLatency.time {
+          connector.commitOffsets
+        }
         lastOffsetCommitMs = System.currentTimeMillis()
       } else {
         info("Exiting on send failure, skip committing offsets.")
@@ -285,6 +350,11 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
         producer.close()
       }
 
+      // shutdown topic observer for destination kafka cluster
+      if (topicPartitionCountObserver != null) {
+        topicPartitionCountObserver.shutdown()
+      }
+
       if (helixZkManager != null) {
         // disconnect with helixZkManager
         helixZkManager.disconnect()
@@ -293,7 +363,7 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
 
       removeCustomizedMetrics()
 
-      info("Kafka mirror maker shutdown successfully")
+      info("Kafka uReplicator worker shutdown successfully")
     }
   }
 
@@ -449,7 +519,21 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf, private va
     override def handle(record: MessageAndMetadata[Array[Byte], Array[Byte]]): util.List[ProducerRecord[Array[Byte], Array[Byte]]] = {
       // rewrite topic between consuming side and producing side
       val topic = topicMappings.get(record.topic).getOrElse(record.topic)
-      Collections.singletonList(new ProducerRecord[Array[Byte], Array[Byte]](topic, record.key(), record.message()))
+      var partitionCount = 0
+      if (topicPartitionCountObserver != null) {
+        partitionCount = topicPartitionCountObserver.getPartitionCount(topic)
+      }
+      if (partitionCount > 0 && record.partition >= 0) {
+        Collections.singletonList(new ProducerRecord[Array[Byte], Array[Byte]](topic,
+          record.partition % partitionCount, record.key(), record.message()))
+      } else {
+        if (topicPartitionCountObserver != null) {
+          // this is failure if topicPartitionCountObserver is enabled
+          mapFailureMeter.mark()
+        }
+        Collections.singletonList(new ProducerRecord[Array[Byte], Array[Byte]](topic,
+          record.key(), record.message()))
+      }
     }
   }
 

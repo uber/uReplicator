@@ -22,9 +22,6 @@ import org.apache.helix.participant.statemachine.{StateModel, StateModelFactory}
 
 /**
  * Manager-Worker Helix State model.
- *
- * @param instanceId
- * @param connector
  */
 class ManagerWorkerOnlineOfflineStateModelFactory(
   final val managerWorkerHelixHandler: ManagerWorkerHelixHandler) extends StateModelFactory[StateModel] with Logging {

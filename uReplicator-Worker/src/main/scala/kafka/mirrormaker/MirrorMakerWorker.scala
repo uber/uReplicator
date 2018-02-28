@@ -15,27 +15,15 @@
  */
 package kafka.mirrormaker
 
-import java.net.InetAddress
-import java.util
-import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
-import java.util.concurrent.locks.ReentrantLock
-import java.util.concurrent.{CountDownLatch, TimeUnit}
-import java.util.{Collections, Properties, UUID}
+import java.util.concurrent.CountDownLatch
 
-import com.yammer.metrics.core.Gauge
-import kafka.consumer._
-import kafka.message.MessageAndMetadata
+import joptsimple.OptionSet
 import kafka.metrics.KafkaMetricsGroup
 import kafka.utils.{CommandLineUtils, Logging}
+import org.apache.helix.InstanceType
 import org.apache.helix.manager.zk.ZKHelixManager
 import org.apache.helix.participant.StateMachineEngine
-import org.apache.helix.{HelixManager, HelixManagerFactory, InstanceType}
-import org.apache.kafka.clients.producer.internals.ErrorLoggingCallback
-import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord, RecordMetadata}
 import org.apache.kafka.common.utils.Utils
-
-import scala.io.Source
-import joptsimple.OptionSet
 
 /**
  * The mirror maker has the following architecture:
@@ -112,7 +100,7 @@ class MirrorMakerWorker extends Logging with KafkaMetricsGroup {
       mainThread.start()
     } else {
       val helixClusterName = helixProps.getProperty("helixClusterName", "testMirrorMaker")
-      val worker = new WorkerInstance(mirrorMakerWorkerConf, options, None, None, helixClusterName)
+      val worker = new WorkerInstance(mirrorMakerWorkerConf, options, None, None, helixClusterName, null)
       Runtime.getRuntime.addShutdownHook(new Thread("MirrorMakerShutdownHook") {
         override def run() {
           worker.cleanShutdown()
@@ -124,7 +112,12 @@ class MirrorMakerWorker extends Logging with KafkaMetricsGroup {
 
   def getWorkerInstance(workerConfig: MirrorMakerWorkerConf, options: OptionSet,
     srcCluster: Option[String], dstCluster: Option[String], helixClusterName: String): WorkerInstance = {
-    new WorkerInstance(workerConfig, options, srcCluster, dstCluster, helixClusterName);
+    val HexliClusterPrefix = "controller-worker-"
+    if (helixClusterName.startsWith(HexliClusterPrefix)) {
+      new WorkerInstance(workerConfig, options, srcCluster, dstCluster, helixClusterName, helixClusterName.substring(HexliClusterPrefix.length));
+    } else {
+      new WorkerInstance(workerConfig, options, srcCluster, dstCluster, helixClusterName, null)
+    }
   }
 
   def getMirrorMakerWorkerConf: MirrorMakerWorkerConf = {

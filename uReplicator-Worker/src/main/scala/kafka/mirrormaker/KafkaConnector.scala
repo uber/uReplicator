@@ -18,6 +18,7 @@ package kafka.mirrormaker
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong}
 import java.util.concurrent.{ConcurrentHashMap, LinkedBlockingQueue, TimeUnit}
 
+import com.yammer.metrics.core.Gauge
 import kafka.common.{AppInfo, OffsetAndMetadata, OffsetMetadataAndError, TopicAndPartition}
 import kafka.consumer._
 import kafka.metrics.{KafkaMetricsGroup, KafkaMetricsReporter}
@@ -51,6 +52,17 @@ class KafkaConnector(private val consumerIdString: String,
   // useful for tracking migration of consumers to store offsets in kafka
   private val kafkaCommitMeter = newMeter("KafkaCommitsPerSec", "commits", TimeUnit.SECONDS, Map("clientId" -> config.clientId))
   private val zkCommitMeter = newMeter("ZooKeeperCommitsPerSec", "commits", TimeUnit.SECONDS, Map("clientId" -> config.clientId))
+
+  newGauge(
+    "TotalBlockingQueueSize",
+    new Gauge[Long] {
+      // calculate the total size of those blocking queues
+      def value = {
+        queue.size()
+      }
+    },
+    Map("clientId" -> config.clientId)
+  )
 
   // Initialize the fetcher manager
   fetcherManager.startConnections(Nil, cluster)

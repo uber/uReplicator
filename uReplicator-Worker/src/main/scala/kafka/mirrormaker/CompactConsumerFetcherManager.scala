@@ -88,6 +88,20 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
   )
 
   newGauge(
+    "TotalLag",
+    new Gauge[Long] {
+      // current total lag across all fetchers/topics/partitions
+      def value = fetcherThreadMap.foldLeft(0L)((curTotalAll, fetcherThreadMapEntry) => {
+        fetcherThreadMapEntry._2.fetcherLagStats.stats.foldLeft(0L)((curTotalThread, fetcherLagStatsEntry) => {
+          curTotalThread + fetcherLagStatsEntry._2.lag
+        }) + curTotalAll
+      })
+    },
+    Map("clientId" -> clientId)
+  )
+
+
+  newGauge(
     "MinFetchRate", {
       new Gauge[Double] {
         // current min fetch rate across all fetchers/topics/partitions
