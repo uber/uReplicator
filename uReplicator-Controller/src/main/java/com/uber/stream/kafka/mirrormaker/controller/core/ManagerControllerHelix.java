@@ -206,6 +206,12 @@ public class ManagerControllerHelix {
   public boolean handleTopicAssignmentEvent(String topic, String srcCluster, String dstCluster, String routePartition, String toState) {
     synchronized (_handlerLock) {
       if (_currentControllerInstance == null) {
+        if (toState.equals("OFFLINE") || toState.equals("DROPPED")) {
+          LOGGER.error(
+              "Controller is not started yet. Failed to action={} topic={} for srcCluster={}, dstCluster={}, routePartition={}",
+              toState, topic, srcCluster, dstCluster, routePartition);
+          return false;
+        }
         LOGGER.info(
             "Controller is not started yet. Start a new instance: srcCluster={}, dstCluster={}, routePartition={}",
             srcCluster, dstCluster, routePartition);

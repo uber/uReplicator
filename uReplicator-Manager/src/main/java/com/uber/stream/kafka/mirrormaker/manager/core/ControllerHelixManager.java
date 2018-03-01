@@ -466,17 +466,22 @@ public class ControllerHelixManager implements IHelixManager {
               itph.getRouteString(), itph.getInstanceName(), itph.getServingTopicPartitionSet(),
               _maxNumPartitionsPerRoute);
           while (itph.getTotalNumPartitions() > _maxNumPartitionsPerRoute) {
+            // Only one topic left, do nothing
             if (itph.getNumServingTopicPartitions() == 1) {
               LOGGER.info("Only one topic {} in route {}, do nothing",
                   itph.getServingTopicPartitionSet().iterator().next(), itph.getRouteString());
               break;
             }
+
+            // Get the topic with largest number of partitions
             TopicPartition tpToMove = new TopicPartition("tmp", -1);
             for (TopicPartition tp : itph.getServingTopicPartitionSet()) {
               if (tp.getPartition() > tpToMove.getPartition()) {
                 tpToMove = tp;
               }
             }
+
+            // If existing lightest route cannot fit the largest topic to move
             if (newItphQueue.isEmpty() ||
                 newItphQueue.peek().getTotalNumPartitions() + tpToMove.getPartition() > _maxNumPartitionsPerRoute) {
               try {
@@ -513,6 +518,7 @@ public class ControllerHelixManager implements IHelixManager {
           }
         }
 
+        // Expand route when topics are expanded
         if (itph.getTotalNumPartitions() > _initMaxNumPartitionsPerRoute) {
           LOGGER.info("Checking route {} with controller {} and topics {} since it exceeds "
                   + "initMaxNumPartitionsPerRoute {}", itph.getRouteString(), itph.getInstanceName(),
@@ -527,6 +533,23 @@ public class ControllerHelixManager implements IHelixManager {
                 itph.getRoute().getPartition(), expectedNumWorkers - itph.getWorkerSet().size());
           }
         }
+
+        // Expand route when configs are changed
+        if (itph.getWorkerSet().size() < _initMaxNumWorkersPerRoute) {
+          LOGGER.info("Checking route {} with controller {} and topics {} since its number of workers {} "
+                  + "is smaller than initMaxNumWorkersPerRoute {}", itph.getRouteString(), itph.getInstanceName(),
+              itph.getServingTopicPartitionSet(), itph.getWorkerSet().size(), _initMaxNumWorkersPerRoute);
+          int expectedNumWorkers = _initMaxNumWorkersPerRoute;
+          LOGGER.info("current {}, expected {}", itph.getWorkerSet().size(), expectedNumWorkers);
+          if (itph.getWorkerSet().size() < expectedNumWorkers) {
+            LOGGER.info("Current {} workers in route {}, expect {} workers",
+                itph.getWorkerSet().size(), itph.getRouteString(), expectedNumWorkers);
+            // TODO: handle exception
+            _workerHelixManager.addWorkersToMirrorMaker(itph, itph.getRoute().getTopic(),
+                itph.getRoute().getPartition(), expectedNumWorkers - itph.getWorkerSet().size());
+          }
+        }
+
         newItphQueue.add(itph);
       }
       _pipelineToInstanceMap.put(pipeline, newItphQueue);
