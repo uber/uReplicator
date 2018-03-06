@@ -104,9 +104,9 @@ public class HelixUtils {
             // TODO: topic not existed
             int trueNumPartition = clusterToObserverMap.get(getSrcFromRoute(partition))
                 .getTopicPartitionWithRefresh(topic).getPartition();
-            tpi = new TopicPartition(topic, trueNumPartition, getPipelineFromRoute(partition));
+            tpi = new TopicPartition(topic, trueNumPartition, partition);
           } else {
-            tpi = new TopicPartition(topic, -1, getPipelineFromRoute(partition));
+            tpi = new TopicPartition(topic, -1, partition);
           }
         } else {
           // route

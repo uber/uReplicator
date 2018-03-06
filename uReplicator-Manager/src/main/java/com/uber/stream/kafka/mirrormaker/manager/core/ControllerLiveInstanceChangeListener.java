@@ -38,7 +38,7 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
   private final ControllerHelixManager _controllerHelixManager;
   private final HelixManager _helixManager;
 
-  private final ScheduledExecutorService _delayedScheuler = Executors.newSingleThreadScheduledExecutor();
+  private final ScheduledExecutorService _delayedScheduler = Executors.newSingleThreadScheduledExecutor();
 
   public ControllerLiveInstanceChangeListener(ControllerHelixManager controllerHelixManager,
       HelixManager helixManager) {
@@ -46,7 +46,7 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
     _helixManager = helixManager;
 
     LOGGER.info("Trying to schedule auto rebalancing");
-    _delayedScheuler.scheduleWithFixedDelay(
+    _delayedScheduler.scheduleWithFixedDelay(
         new Runnable() {
           @Override
           public void run() {
@@ -62,7 +62,7 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
   @Override
   public void onLiveInstanceChange(final List<LiveInstance> liveInstances, NotificationContext changeContext) {
     LOGGER.info("ControllerLiveInstanceChangeListener.onLiveInstanceChange() wakes up!");
-    _delayedScheuler.schedule(new Runnable() {
+    _delayedScheduler.schedule(new Runnable() {
       @Override
       public void run() {
         try {
@@ -93,7 +93,6 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
       e.printStackTrace();
       LOGGER.error("Failed to handle live instance change!", e);
     }
-
 
   }
 
