@@ -15,7 +15,7 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.reporter;
 
-import com.codahale.metrics.JmxReporter;
+import com.codahale.metrics.jmx.*;
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.graphite.Graphite;
