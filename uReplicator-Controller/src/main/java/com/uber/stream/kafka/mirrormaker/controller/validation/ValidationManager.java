@@ -114,6 +114,7 @@ public class ValidationManager {
       LOGGER.info("Stop ValidationManager got interrupted");
     }
     _executorService.shutdownNow();
+    unregisterMetrics();
   }
 
   private void registerMetrics() {
@@ -134,6 +135,16 @@ public class ValidationManager {
           _numErrorTopicPartitions);
     } catch (Exception e) {
       LOGGER.error("Error registering metrics!", e);
+    }
+  }
+
+  private void unregisterMetrics() {
+    try {
+      for (String name : HelixKafkaMirrorMakerMetricsReporter.get().getRegistry().getNames()) {
+        HelixKafkaMirrorMakerMetricsReporter.get().getRegistry().remove(name);
+      }
+    } catch (Exception e) {
+      LOGGER.error("Error unregistering metrics!", e);
     }
   }
 
@@ -191,7 +202,7 @@ public class ValidationManager {
       if (_helixMirrorMakerManager.isLeader()) {
         updateMetrics(numOnlineTopicPartitions, numOfflineTopicPartitions, numErrorTopicPartitions,
             numTopicPartitions, numServingTopics, numErrorTopics);
-        updatePerWorkerISMetrics(topicPartitionMapForExternalView);
+        updatePerWorkerISMetrics(topicPartitionMapForIdealState);
         updatePerWorkerEVMetrics(topicPartitionMapForExternalView);
       }
       JSONObject perWorkerISCounterJson =
@@ -257,13 +268,18 @@ public class ValidationManager {
         _idealStatePerWorkerTopicPartitionCounter.put(worker, workCounter);
       }
       Counter counter = _idealStatePerWorkerTopicPartitionCounter.get(worker);
-      counter.inc(topicPartitionMapForIdealState.get(worker) -
-          counter.getCount());
+      counter.inc(topicPartitionMapForIdealState.get(worker) - counter.getCount());
     }
     for (String worker : _idealStatePerWorkerTopicPartitionCounter.keySet()) {
       if (!topicPartitionMapForIdealState.containsKey(worker)) {
-        Counter counter = _idealStatePerWorkerTopicPartitionCounter.get(worker);
-        counter.dec(counter.getCount());
+        //Counter counter = _idealStatePerWorkerTopicPartitionCounter.get(worker);
+        //counter.dec(counter.getCount());
+        _idealStatePerWorkerTopicPartitionCounter.remove(worker);
+        try {
+          HelixKafkaMirrorMakerMetricsReporter.get().getRegistry().remove(getIdealStatePerWorkMetricName(worker));
+        } catch (Exception e) {
+          LOGGER.warn("Got exception when removing metrics for {}", getIdealStatePerWorkMetricName(worker), e);
+        }
       }
     }
   }
@@ -282,13 +298,18 @@ public class ValidationManager {
         _externalViewPerWorkerTopicPartitionCounter.put(worker, workCounter);
       }
       Counter counter = _externalViewPerWorkerTopicPartitionCounter.get(worker);
-      counter.inc(topicPartitionMapForExternalView.get(worker) -
-          counter.getCount());
+      counter.inc(topicPartitionMapForExternalView.get(worker) - counter.getCount());
     }
     for (String worker : _externalViewPerWorkerTopicPartitionCounter.keySet()) {
       if (!topicPartitionMapForExternalView.containsKey(worker)) {
-        Counter counter = _externalViewPerWorkerTopicPartitionCounter.get(worker);
-        counter.dec(counter.getCount());
+        //Counter counter = _externalViewPerWorkerTopicPartitionCounter.get(worker);
+        //counter.dec(counter.getCount());
+        _externalViewPerWorkerTopicPartitionCounter.remove(getExternalViewPerWorkMetricName(worker));
+        try {
+          HelixKafkaMirrorMakerMetricsReporter.get().getRegistry().remove(getExternalViewPerWorkMetricName(worker));
+        } catch (Exception e) {
+          LOGGER.warn("Got exception when removing metrics for {}", getExternalViewPerWorkMetricName(worker), e);
+        }
       }
     }
   }

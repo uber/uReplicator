@@ -13,16 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.uber.stream.kafka.mirrormaker.controller.reporter;
+package com.uber.stream.kafka.mirrormaker.manager.reporter;
 
-import com.codahale.metrics.jmx.*;
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
+import com.codahale.metrics.jmx.JmxReporter;
 import com.google.common.base.Preconditions;
 import com.google.common.io.Closeables;
-import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
+import com.uber.stream.kafka.mirrormaker.manager.ManagerConf;
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 import org.apache.log4j.Logger;
@@ -44,9 +44,9 @@ public class HelixKafkaMirrorMakerMetricsReporter {
   private final String _reporterMetricPrefix;
 
   // Exposed for tests. Call Metrics.get() instead.
-  HelixKafkaMirrorMakerMetricsReporter(ControllerConf config) {
+  HelixKafkaMirrorMakerMetricsReporter(ManagerConf config) {
     final String environment = config.getEnvironment();
-    final String clientId = config.getInstanceId();
+    final String clientId = config.getManagerInstanceId();
     String[] dcNenv = parse(environment);
     if (dcNenv == null) {
       LOGGER.error("Error parsing environment info");
@@ -56,10 +56,7 @@ public class HelixKafkaMirrorMakerMetricsReporter {
       _reporterMetricPrefix = null;
       return;
     }
-    _reporterMetricPrefix = config.isFederatedEnabled() ?
-        String.format("stats.%s.counter.%s.%s.%s.%s",
-            dcNenv[0], config.getMetricsPrefix(), dcNenv[1], config.getRoute(), clientId) :
-        String.format("stats.%s.counter.%s.%s.%s",
+    _reporterMetricPrefix = String.format("stats.%s.counter.%s.%s.%s",
             dcNenv[0], config.getMetricsPrefix(), dcNenv[1], clientId);
     LOGGER.info("Reporter Metric Prefix is : " + _reporterMetricPrefix);
     _registry = new MetricRegistry();
@@ -119,7 +116,7 @@ public class HelixKafkaMirrorMakerMetricsReporter {
   }
 
   // Exposed for test
-  static Graphite getGraphite(ControllerConf config) {
+  static Graphite getGraphite(ManagerConf config) {
     if (config.getGraphiteHost() == null || config.getGraphitePort() == 0) {
       LOGGER.warn("No Graphite built!");
       return null;
@@ -137,7 +134,7 @@ public class HelixKafkaMirrorMakerMetricsReporter {
    *
    * @param config Specifies config pertaining to Metrics
    */
-  public static synchronized void init(ControllerConf config) {
+  public static synchronized void init(ManagerConf config) {
     if (DID_INIT) {
       return;
     }

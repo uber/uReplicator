@@ -15,6 +15,7 @@
  */
 package com.uber.stream.kafka.mirrormaker.manager.core;
 
+import com.codahale.metrics.Counter;
 import com.uber.stream.kafka.mirrormaker.common.configuration.IuReplicatorConf;
 import com.uber.stream.kafka.mirrormaker.common.core.IHelixManager;
 import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
@@ -22,8 +23,11 @@ import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixSetupUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
 import com.uber.stream.kafka.mirrormaker.manager.ManagerConf;
+import com.uber.stream.kafka.mirrormaker.manager.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -101,10 +105,11 @@ public class WorkerHelixManager implements IHelixManager {
 
       Map<String, Set<TopicPartition>> instanceToTopicPartitionsMap = HelixUtils
           .getInstanceToTopicPartitionsMap(_helixManager);
-      LOGGER.info("\n\nfor worker instanceToTopicPartitionsMap: {}\n\n", instanceToTopicPartitionsMap);
+      LOGGER.debug("For worker instanceToTopicPartitionsMap: {}", instanceToTopicPartitionsMap);
       List<String> liveInstances = HelixUtils.liveInstances(_helixManager);
       currAvailableWorkerList.addAll(liveInstances);
 
+      Map<String, List<TopicPartition>> incorrectInstanceToTopicPartitionsMap = new HashMap<>();
       for (String instanceName : instanceToTopicPartitionsMap.keySet()) {
         Set<TopicPartition> topicPartitions = instanceToTopicPartitionsMap.get(instanceName);
         // TODO: one instance suppose to have only one partition
@@ -113,17 +118,28 @@ public class WorkerHelixManager implements IHelixManager {
           if (pipeline.startsWith(SEPARATOR)) {
             currRouteToInstanceMap.putIfAbsent(tp, new ArrayList<>());
             currRouteToInstanceMap.get(tp).add(instanceName);
+            if (!currAvailableWorkerList.contains(instanceName)) {
+              LOGGER.info("not contain {} in {}@{}", instanceName, tp.getTopic(), tp.getPartition());
+            }
             currAvailableWorkerList.remove(instanceName);
+          } else {
+            incorrectInstanceToTopicPartitionsMap.putIfAbsent(instanceName, new ArrayList<>());
+            incorrectInstanceToTopicPartitionsMap.get(instanceName).add(tp);
           }
         }
       }
       _routeToInstanceMap = currRouteToInstanceMap;
       _availableWorkerList = currAvailableWorkerList;
+      if (!incorrectInstanceToTopicPartitionsMap.isEmpty()) {
+        LOGGER.error("Validate WRONG: wrong incorrectInstanceToTopicPartitionsMap: {}", incorrectInstanceToTopicPartitionsMap);
+      }
     } finally {
       _lock.unlock();
     }
-    LOGGER.info("For worker _routeToInstanceMap: {}", _routeToInstanceMap);
-    LOGGER.info("For worker {} available, _availableWorkerList: {}", _availableWorkerList.size(), _availableWorkerList);
+
+    //LOGGER.info("For worker _routeToInstanceMap: {}", _routeToInstanceMap);
+    //LOGGER.info("For worker {} available, _availableWorkerList: {}", _availableWorkerList.size(), _availableWorkerList);
+    LOGGER.info("For worker {} available", _availableWorkerList.size());
   }
 
   public IdealState getIdealStateForTopic(String topicName) {
@@ -206,11 +222,21 @@ public class WorkerHelixManager implements IHelixManager {
         instances.add(_availableWorkerList.get(i));
       }
 
-      _helixAdmin.setResourceIdealState(_helixClusterName, pipeline,
-          IdealStateBuilder.expandInstanceCustomIdealStateFor(_helixAdmin.getResourceIdealState(_helixClusterName, pipeline),
-              pipeline, String.valueOf(routeId), instances, _conf.getMaxNumWorkersPerRoute()));
+      LOGGER.info("Add {} instance to route {}: {}", instances.size(), pipeline + SEPARATOR + routeId, instances);
+      if (_helixAdmin.getResourceIdealState(_helixClusterName, pipeline).getPartitionSet().contains(String.valueOf(routeId))) {
+        LOGGER.info("Topic {} Partition {} exists", pipeline, routeId);
+        _helixAdmin.setResourceIdealState(_helixClusterName, pipeline,
+            IdealStateBuilder.expandInstanceCustomIdealStateFor(_helixAdmin.getResourceIdealState(_helixClusterName, pipeline),
+                    pipeline, String.valueOf(routeId), instances, _conf.getMaxNumWorkersPerRoute()));
+      } else {
+        LOGGER.info("Topic {} Partition {} does not exist", pipeline, routeId);
+        _helixAdmin.setResourceIdealState(_helixClusterName, pipeline,
+            IdealStateBuilder.expandCustomIdealStateFor(_helixAdmin.getResourceIdealState(_helixClusterName, pipeline),
+                pipeline, String.valueOf(routeId), instances, _conf.getMaxNumWorkersPerRoute()));
+      }
 
       TopicPartition route = new TopicPartition(pipeline, routeId);
+      _routeToInstanceMap.putIfAbsent(route, new ArrayList<>());
       _routeToInstanceMap.get(route).addAll(instances);
       _availableWorkerList.removeAll(instances);
       controller.addWorkers(instances);

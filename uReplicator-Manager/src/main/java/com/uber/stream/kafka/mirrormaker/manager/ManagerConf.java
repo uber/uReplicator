@@ -46,6 +46,12 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
 
   private static final String CONTROLLER_PORT = "controller.port";
 
+  private static final String GRAPHITE_HOST = "controller.graphite.host";
+  private static final String GRAPHITE_PORT = "controller.graphite.port";
+
+  private static final String METRICS_PREFIX = "controller.metrics.prefix";
+  private static final String DEFAULT_METRICS_PREFIX = "ureplicator2-manager";
+
   private static final String C3_HOST = "manager.c3.host";
   private static final String DEFAULT_C3_HOST = "localhost";
 
@@ -102,6 +108,22 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
 
   public void setControllerPort(String port) {
     setProperty(CONTROLLER_PORT, Integer.valueOf(port));
+  }
+
+  public void setEnvironment(String environment) {
+    setProperty(ENV, environment);
+  }
+
+  public void setGraphiteHost(String graphiteHost) {
+    setProperty(GRAPHITE_HOST, graphiteHost);
+  }
+
+  public void setGraphitePort(String graphitePort) {
+    setProperty(GRAPHITE_PORT, Integer.valueOf(graphitePort));
+  }
+
+  public void setMetricsPrefix(String metricsPrefix) {
+    setProperty(METRICS_PREFIX, metricsPrefix);
   }
 
   public void setC3Host(String C3Host) {
@@ -165,6 +187,26 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
 
   public Integer getControllerPort() {
     return (Integer) getProperty(CONTROLLER_PORT);
+  }
+
+  public String getEnvironment() {
+    return (String) getProperty(ENV);
+  }
+
+  public String getGraphiteHost() {
+    return (String) getProperty(GRAPHITE_HOST);
+  }
+
+  public Integer getGraphitePort() {
+    return (Integer) getProperty(GRAPHITE_PORT);
+  }
+
+  public String getMetricsPrefix() {
+    if (containsKey(METRICS_PREFIX)) {
+      return (String) getProperty(METRICS_PREFIX);
+    } else {
+      return DEFAULT_METRICS_PREFIX;
+    }
   }
 
   public String getC3Host() {
@@ -265,8 +307,12 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
         .addOption("zookeeper", true, "Zookeeper path")
         .addOption("managerPort", true, "Manager port number")
         .addOption("deployment", true, "Manager deployment")
+        .addOption("env", true, "Manager env")
         .addOption("instanceId", true, "InstanceId")
         .addOption("controllerPort", true, "Controller port number")
+        .addOption("graphiteHost", true, "GraphiteHost")
+        .addOption("graphitePort", true, "GraphitePort")
+        .addOption("metricsPrefix", true, "MetricsPrefix")
         .addOption("c3Host", true, "Chaperone3 Host")
         .addOption("c3Port", true, "Chaperone3 Port")
         .addOption("workloadRefreshPeriodInSeconds", true, "The period to refresh workload information in seconds")
@@ -309,6 +355,11 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
     } else {
       throw new RuntimeException("Missing option: --deployment");
     }
+    if (cmd.hasOption("env")) {
+      managerConf.setEnvironment(cmd.getOptionValue("env"));
+    } else {
+      throw new RuntimeException("Missing option: --env");
+    }
     if (cmd.hasOption("instanceId")) {
       managerConf.setManagerInstanceId(cmd.getOptionValue("instanceId"));
     } else {
@@ -322,6 +373,19 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
       managerConf.setControllerPort(cmd.getOptionValue("controllerPort"));
     } else {
       throw new RuntimeException("Missing option: --controllerPort");
+    }
+    if (cmd.hasOption("graphiteHost")) {
+      managerConf.setGraphiteHost(cmd.getOptionValue("graphiteHost"));
+    }
+    if (cmd.hasOption("graphitePort")) {
+      managerConf.setGraphitePort(cmd.getOptionValue("graphitePort"));
+    } else {
+      managerConf.setGraphitePort("0");
+    }
+    if (cmd.hasOption("metricsPrefix")) {
+      managerConf.setMetricsPrefix(cmd.getOptionValue("metricsPrefix"));
+    } else {
+      managerConf.setMetricsPrefix(DEFAULT_METRICS_PREFIX);
     }
     if (cmd.hasOption("c3Host")) {
       managerConf.setC3Host(cmd.getOptionValue("c3Host"));

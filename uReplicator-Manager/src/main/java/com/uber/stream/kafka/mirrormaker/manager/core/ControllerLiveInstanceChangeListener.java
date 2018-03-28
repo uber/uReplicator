@@ -15,7 +15,9 @@
  */
 package com.uber.stream.kafka.mirrormaker.manager.core;
 
+import com.codahale.metrics.Counter;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
+import com.uber.stream.kafka.mirrormaker.manager.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -38,12 +40,18 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
   private final ControllerHelixManager _controllerHelixManager;
   private final HelixManager _helixManager;
 
+  private final int minIntervalInSeconds = 60;
+  private long _lastRebalanceTimeMillis = 0;
+
   private final ScheduledExecutorService _delayedScheduler = Executors.newSingleThreadScheduledExecutor();
 
+  private final Counter _isLeaderCounter = new Counter();
+
   public ControllerLiveInstanceChangeListener(ControllerHelixManager controllerHelixManager,
-      HelixManager helixManager) {
+      HelixManager helixManager, int _workloadRefreshPeriodInSeconds) {
     _controllerHelixManager = controllerHelixManager;
     _helixManager = helixManager;
+    registerMetrics();
 
     LOGGER.info("Trying to schedule auto rebalancing");
     _delayedScheduler.scheduleWithFixedDelay(
@@ -56,7 +64,7 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
               LOGGER.error("Got exception during periodically rebalancing the whole cluster! ", e);
             }
           }
-        }, 60, 50, TimeUnit.SECONDS);
+        }, 60, _workloadRefreshPeriodInSeconds, TimeUnit.SECONDS);
   }
 
   @Override
@@ -75,7 +83,9 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
   }
 
   public synchronized void rebalanceCurrentCluster(boolean onlyCheckOffline) {
-    if (!_helixManager.isLeader()) {
+    if (_helixManager.isLeader()) {
+      _isLeaderCounter.inc(1 - _isLeaderCounter.getCount());
+    } else {
       LOGGER.info("Not leader, do nothing!");
       return;
     }
@@ -94,6 +104,15 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
       LOGGER.error("Failed to handle live instance change!", e);
     }
 
+  }
+
+  private void registerMetrics() {
+    try {
+      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("leader.counter",
+          _isLeaderCounter);
+    } catch (Exception e) {
+      LOGGER.error("Error registering metrics!", e);
+    }
   }
 
 }

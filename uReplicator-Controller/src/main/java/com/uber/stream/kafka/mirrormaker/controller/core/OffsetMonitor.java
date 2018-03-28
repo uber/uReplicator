@@ -22,9 +22,11 @@ import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -164,6 +166,7 @@ public class OffsetMonitor {
     // update topicList
     topicList = helixMirrorMakerManager.getTopicLists();
     logger.debug("TopicList: {}", topicList);
+    Set<String> topicSet = new HashSet<>(topicList);
 
     // update partitionLeader
     for (String broker : srcBrokerList) {
@@ -175,8 +178,10 @@ public class OffsetMonitor {
 
         for (TopicMetadata tmd : metaData) {
           for (PartitionMetadata pmd : tmd.partitionsMetadata()) {
-            TopicAndPartition topicAndPartition = new TopicAndPartition(tmd.topic(), pmd.partitionId());
-            partitionLeader.put(topicAndPartition, pmd.leader());
+            if (topicSet.contains(tmd.topic())) {
+              TopicAndPartition topicAndPartition = new TopicAndPartition(tmd.topic(), pmd.partitionId());
+              partitionLeader.put(topicAndPartition, pmd.leader());
+            }
           }
         }
         break;
@@ -184,6 +189,7 @@ public class OffsetMonitor {
         logger.warn("Got exception to get metadata from broker=" + broker, e);
       }
     }
+    logger.debug("partitionLeader: {}", partitionLeader);
   }
 
   protected void updateOffset() {

@@ -18,6 +18,7 @@ package com.uber.stream.kafka.mirrormaker.manager.core;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.codahale.metrics.Counter;
 import com.uber.stream.kafka.mirrormaker.common.configuration.IuReplicatorConf;
 import com.uber.stream.kafka.mirrormaker.common.core.IHelixManager;
 import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
@@ -26,8 +27,10 @@ import com.uber.stream.kafka.mirrormaker.common.utils.HelixSetupUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.HttpClientUtils;
 import com.uber.stream.kafka.mirrormaker.manager.ManagerConf;
+import com.uber.stream.kafka.mirrormaker.manager.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import com.uber.stream.kafka.mirrormaker.manager.validation.SourceKafkaClusterValidationManager;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -80,10 +83,23 @@ public class ControllerHelixManager implements IHelixManager {
   private final int _controllerPort;
   private final RequestConfig _requestConfig;
 
+  private final int _workloadRefreshPeriodInSeconds;
   private final int _initMaxNumPartitionsPerRoute;
   private final int _maxNumPartitionsPerRoute;
   private final int _initMaxNumWorkersPerRoute;
   private final int _maxNumWorkersPerRoute;
+
+  private Map<String, Map<String, Counter>> _routeToCounterMap;
+  private static final String TOPIC_TOTAL_NUMBER = "topicTotalNumber";
+  private static final String TOPIC_ERROR_NUMBER = "topicErrorNumber";
+  private static final String CONTROLLER_TOTAL_NUMBER = "controllerTotalNumber";
+  private static final String CONTROLLER_ERROR_NUMBER = "controllerErrorNumber";
+  private static final String WORKER_TOTAL_NUMBER = "workerTotalNumber";
+  private static final String WORKER_ERROR_NUMBER = "workerErrorNumber";
+
+  private static final Counter _availableController = new Counter();
+  private static final Counter _availableWorker = new Counter();
+  private static final Counter _nonParityTopic = new Counter();
 
   private ReentrantLock _lock = new ReentrantLock();
   private Map<String, Map<String, InstanceTopicPartitionHolder>> _topicToPipelineInstanceMap;
@@ -98,6 +114,7 @@ public class ControllerHelixManager implements IHelixManager {
     _maxNumPartitionsPerRoute = managerConf.getMaxNumPartitionsPerRoute();
     _initMaxNumWorkersPerRoute = managerConf.getInitMaxNumWorkersPerRoute();
     _maxNumWorkersPerRoute = managerConf.getMaxNumWorkersPerRoute();
+    _workloadRefreshPeriodInSeconds = managerConf.getWorkloadRefreshPeriodInSeconds();
     _workerHelixManager = new WorkerHelixManager(managerConf);
     _helixZkURL = HelixUtils.getAbsoluteZkPathForHelix(managerConf.getManagerZkStr());
     _helixClusterName = MANAGER_CONTROLLER_HELIX_PREFIX + "-" + managerConf.getManagerDeployment();
@@ -105,6 +122,8 @@ public class ControllerHelixManager implements IHelixManager {
     _topicToPipelineInstanceMap = new ConcurrentHashMap<>();
     _pipelineToInstanceMap = new ConcurrentHashMap<>();
     _availableControllerList = new ArrayList<>();
+    _routeToCounterMap = new ConcurrentHashMap<>();
+    registerMetrics();
 
     PoolingHttpClientConnectionManager limitedConnMgr = new PoolingHttpClientConnectionManager();
     // TODO: make it configurable
@@ -134,7 +153,7 @@ public class ControllerHelixManager implements IHelixManager {
     updateCurrentStatus();
 
     LOGGER.info("Trying to register ControllerLiveInstanceChangeListener");
-    _liveInstanceChangeListener = new ControllerLiveInstanceChangeListener(this, _helixManager);
+    _liveInstanceChangeListener = new ControllerLiveInstanceChangeListener(this, _helixManager, _workloadRefreshPeriodInSeconds);
     try {
       _helixManager.addLiveInstanceChangeListener(_liveInstanceChangeListener);
     } catch (Exception e) {
@@ -147,6 +166,256 @@ public class ControllerHelixManager implements IHelixManager {
     _workerHelixManager.stop();
     _helixManager.disconnect();
     _httpClient.close();
+  }
+
+  private void registerMetrics() {
+    try {
+      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("controller.available.counter",
+          _availableController);
+      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("worker.available.counter",
+          _availableWorker);
+      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("topic.non-parity.counter",
+          _nonParityTopic);
+    } catch (Exception e) {
+      LOGGER.error("Error registering metrics!", e);
+    }
+  }
+
+  private void maybeRegisterMetrics(String route) {
+    if (!_routeToCounterMap.containsKey(route)) {
+      _routeToCounterMap.putIfAbsent(route, new ConcurrentHashMap<>());
+      _routeToCounterMap.get(route).put(TOPIC_TOTAL_NUMBER, new Counter());
+      //_routeToCounterMap.get(routeString).put(TOPIC_ERROR_NUMBER, new Counter());
+      _routeToCounterMap.get(route).put(CONTROLLER_TOTAL_NUMBER, new Counter());
+      //_routeToCounterMap.get(routeString).put(CONTROLLER_ERROR_NUMBER, new Counter());
+      _routeToCounterMap.get(route).put(WORKER_TOTAL_NUMBER, new Counter());
+      //_routeToCounterMap.get(routeString).put(WORKER_ERROR_NUMBER, new Counter());
+      try {
+        HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(route + ".topic.totalNumber",
+            _routeToCounterMap.get(route).get(TOPIC_TOTAL_NUMBER));
+        //HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(routeString + ".topic.errorNumber",
+        //    _routeToCounterMap.get(routeString).get(TOPIC_ERROR_NUMBER));
+        HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(route + ".controller.totalNumber",
+            _routeToCounterMap.get(route).get(CONTROLLER_TOTAL_NUMBER));
+        //HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(routeString + "controller.errorNumber",
+        //    _routeToCounterMap.get(routeString).get(CONTROLLER_ERROR_NUMBER));
+        HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(route + ".worker.totalNumber",
+            _routeToCounterMap.get(route).get(WORKER_TOTAL_NUMBER));
+        //HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(routeString + "worker.errorNumber",
+        //    _routeToCounterMap.get(routeString).get(WORKER_ERROR_NUMBER));
+      } catch (Exception e) {
+        LOGGER.error("Error registering metrics!", e);
+      }
+    }
+  }
+
+  private String convert(String route) {
+    return route.replace('@', '-').substring(1);
+  }
+
+  private void validateInstanceToTopicPartitionsMap(Map<String, Set<TopicPartition>> instanceToTopicPartitionsMap,
+      Map<String, InstanceTopicPartitionHolder> instanceMap) {
+    LOGGER.info("\n\nFor controller instanceToTopicPartitionsMap:");
+    for (String instanceName : instanceToTopicPartitionsMap.keySet()) {
+      Set<TopicPartition> topicPartitions = instanceToTopicPartitionsMap.get(instanceName);
+      Set<TopicPartition> routeSet = new HashSet<>();
+      // TODO: one instance suppose to have only one route
+      for (TopicPartition tp : topicPartitions) {
+        String topicName = tp.getTopic();
+        if (topicName.startsWith(SEPARATOR)) {
+          routeSet.add(tp);
+        }
+      }
+
+      if (routeSet.size() != 1) {
+        int partitionCount = 0;
+        Set<String> topicRouteSet = new HashSet<>();
+        for (TopicPartition tp : topicPartitions) {
+          String topicName = tp.getTopic();
+          if (!topicName.startsWith(SEPARATOR)) {
+            topicRouteSet.add(tp.getPipeline());
+            partitionCount += tp.getPartition();
+          }
+        }
+        LOGGER.error("Validate WRONG: Incorrect route found for InstanceName: {}, route: {}, pipelines: {}, #workers: {}, worker: {}",
+            instanceName, routeSet, topicRouteSet, instanceMap.get(instanceName).getWorkerSet().size(), instanceMap.get(instanceName).getWorkerSet());
+      } else {
+        int partitionCount = 0;
+        Set<TopicPartition> mismatchTopicPartition = new HashSet<>();
+        TopicPartition route = routeSet.iterator().next();
+        String routeString = route.getTopic() + SEPARATOR + route.getPartition();
+        for (TopicPartition tp : topicPartitions) {
+          String topicName = tp.getTopic();
+          if (!topicName.startsWith(SEPARATOR)) {
+            partitionCount += tp.getPartition();
+            if (!tp.getPipeline().equals(routeString)) {
+              mismatchTopicPartition.add(tp);
+            }
+          }
+        }
+        if (mismatchTopicPartition.isEmpty()) {
+          LOGGER.info("Validate OK: InstanceName: {}, route: {}, #topics: {}, #partitions: {}, #workers: {}, worker: {}", instanceName, routeSet,
+              topicPartitions.size() - 1, partitionCount, instanceMap.get(instanceName).getWorkerSet().size(), instanceMap.get(instanceName).getWorkerSet());
+
+          try {
+            String result = HttpClientUtils.getData(_httpClient, _requestConfig,
+                instanceName, _controllerPort, "/topics");
+            LOGGER.debug("Get topic from {}: {}", instanceName, result);
+            String rawTopicNames = result.substring(25, result.length()-1);
+            Set<String> controllerTopics = new HashSet<>();
+            if (!rawTopicNames.equals("No topic is added in MirrorMaker Controller!")) {
+              String[] topicNames = rawTopicNames.split(", ");
+              for (String name : topicNames) {
+                controllerTopics.add(name);
+              }
+            }
+
+            Set<String> topicOnlyInManager = new HashSet<>();
+            for (TopicPartition tp : topicPartitions) {
+              if (!controllerTopics.contains(tp.getTopic())) {
+                topicOnlyInManager.add(tp.getTopic());
+              } else {
+                controllerTopics.remove(tp.getTopic());
+              }
+            }
+
+            if (topicOnlyInManager.size() > 1 || (topicOnlyInManager.size() == 1 && !topicOnlyInManager.iterator().next().startsWith(SEPARATOR))) {
+              LOGGER.info("Validate Wrong: InstanceName: {}, route: {}, topic only in manager: {}", instanceName, routeSet, topicOnlyInManager);
+            }
+
+            if (!controllerTopics.isEmpty() ) {
+              LOGGER.info("Validate Wrong: InstanceName: {}, route: {}, topic only in controller: {}", instanceName, routeSet, controllerTopics);
+            }
+
+          } catch (IOException e) {
+            e.printStackTrace();
+          } catch (URISyntaxException e) {
+            e.printStackTrace();
+          }
+
+        } else {
+          LOGGER.error("Validate WRONG: mismatch route found for InstanceName: {}, route: {}, mismatch: {}, #workers: {}, worker: {}",
+              instanceName, routeSet, mismatchTopicPartition, instanceMap.get(instanceName).getWorkerSet().size(), instanceMap.get(instanceName).getWorkerSet());
+        }
+      }
+    }
+    LOGGER.info("\n\n");
+
+    Map<String, Set<String>> topicToRouteMap = new HashMap<>();
+    for (String instanceName : instanceToTopicPartitionsMap.keySet()) {
+      Set<TopicPartition> topicPartitions = instanceToTopicPartitionsMap.get(instanceName);
+      Set<TopicPartition> routeSet = new HashSet<>();
+      // TODO: one instance suppose to have only one route
+      for (TopicPartition tp : topicPartitions) {
+        String topicName = tp.getTopic();
+        if (topicName.startsWith(SEPARATOR)) {
+          routeSet.add(tp);
+        }
+      }
+      TopicPartition route = routeSet.iterator().next();
+      String routeString = route.getTopic() + SEPARATOR + route.getPartition();
+      for (TopicPartition tp : topicPartitions) {
+        String topicName = tp.getTopic();
+        if (!topicName.startsWith(SEPARATOR)) {
+          if (!topicToRouteMap.containsKey(topicName)) {
+            topicToRouteMap.put(topicName, new HashSet<>());
+            topicToRouteMap.get(topicName).add(routeString);
+          } else {
+            Set<String> existingRouteSet = topicToRouteMap.get(topicName);
+            for (String existingRoute : existingRouteSet) {
+              if (existingRoute.split(SEPARATOR)[0].equals(routeString.split(SEPARATOR)[0])) {
+                existingRouteSet.remove(existingRoute);
+              }
+            }
+            if (existingRouteSet.isEmpty()) {
+              topicToRouteMap.remove(topicName);
+            }
+          }
+        }
+      }
+    }
+    LOGGER.info("Non-parity topicToRouteMap: {}", topicToRouteMap);
+    if (_helixManager.isLeader()) {
+      _nonParityTopic.inc(topicToRouteMap.size() - _nonParityTopic.getCount());
+    }
+
+    LOGGER.info("\n\nFor controller _pipelineToInstanceMap:");
+    Map<String, Set<String>> workerMap = new HashMap<>();
+    for (String pipeline: _pipelineToInstanceMap.keySet()) {
+      PriorityQueue<InstanceTopicPartitionHolder> itphSet = _pipelineToInstanceMap.get(pipeline);
+      for (InstanceTopicPartitionHolder itph : itphSet) {
+        Set<String> workers = itph.getWorkerSet();
+        for (String worker : workers) {
+          if (workerMap.containsKey(worker)) {
+            workerMap.get(worker).add(itph.getRouteString());
+          } else {
+            Set<String> routeSet = new HashSet<>();
+            routeSet.add(itph.getRouteString());
+            workerMap.put(worker, routeSet);
+          }
+        }
+      }
+    }
+    for (String worker : workerMap.keySet()) {
+      if (workerMap.get(worker).size() != 1) {
+        LOGGER.error("Validate WRONG: wrong worker assignment for worker: {}, route: {}", worker, workerMap.get(worker));
+      }
+    }
+    if (_helixManager.isLeader()) {
+      updateMetrics(instanceToTopicPartitionsMap, instanceMap);
+    }
+  }
+
+  private void updateMetrics(Map<String, Set<TopicPartition>> instanceToTopicPartitionsMap,
+      Map<String, InstanceTopicPartitionHolder> instanceMap) {
+    // int[3]: 0: #topic, 1: #controller, 2: #worker
+    Map<String, int[]> currRouteInfo = new ConcurrentHashMap<>();
+    //LOGGER.info("instanceToTopicPartitionsMap: {}", instanceToTopicPartitionsMap);
+    for (String instanceName : instanceToTopicPartitionsMap.keySet()) {
+      Set<TopicPartition> topicPartitions = instanceToTopicPartitionsMap.get(instanceName);
+      for (TopicPartition tp : topicPartitions) {
+        String topicName = tp.getTopic();
+        if (topicName.startsWith(SEPARATOR)) {
+          // route
+          String route = topicName + SEPARATOR + tp.getPartition();
+          String routeString = convert(route);
+          currRouteInfo.putIfAbsent(routeString, new int[3]);
+          currRouteInfo.get(routeString)[1]++;
+          currRouteInfo.get(routeString)[2] += instanceMap.get(instanceName).getWorkerSet().size();
+
+          // register metrics if needed
+          maybeRegisterMetrics(routeString);
+        } else {
+          // topic
+          String route = tp.getPipeline();
+          String routeString = convert(route);
+          currRouteInfo.putIfAbsent(routeString, new int[3]);
+          currRouteInfo.get(routeString)[0]++;
+        }
+      }
+    }
+    //LOGGER.info("currRouteInfo: {}", currRouteInfo);
+    //LOGGER.info("_routeToCounterMap: {}", _routeToCounterMap);
+
+    for (String routeString : _routeToCounterMap.keySet()) {
+      int topicTotalNumber = 0;
+      int controllerTotalNumber = 0;
+      int workerTotalNumber = 0;
+      if (currRouteInfo.containsKey(routeString)) {
+        topicTotalNumber = currRouteInfo.get(routeString)[0];
+        controllerTotalNumber = currRouteInfo.get(routeString)[1];
+        workerTotalNumber = currRouteInfo.get(routeString)[2];
+      }
+      Counter topicTotalNumberCounter = _routeToCounterMap.get(routeString).get(TOPIC_TOTAL_NUMBER);
+      topicTotalNumberCounter.inc(topicTotalNumber - topicTotalNumberCounter.getCount());
+
+      Counter controllerTotalNumberCounter = _routeToCounterMap.get(routeString).get(CONTROLLER_TOTAL_NUMBER);
+      controllerTotalNumberCounter.inc(controllerTotalNumber - controllerTotalNumberCounter.getCount());
+
+      Counter workerTotalNumberCounter = _routeToCounterMap.get(routeString).get(WORKER_TOTAL_NUMBER);
+      workerTotalNumberCounter.inc(workerTotalNumber - workerTotalNumberCounter.getCount());
+      // LOGGER.info("update metrics for {}", routeString);
+    }
   }
 
   public synchronized void updateCurrentStatus() {
@@ -169,7 +438,7 @@ public class ControllerHelixManager implements IHelixManager {
       // Map<Instance, Set<Pipeline>> from IdealState
       Map<String, Set<TopicPartition>> instanceToTopicPartitionsMap = HelixUtils
           .getInstanceToTopicPartitionsMap(_helixManager, _srcKafkaValidationManager.getClusterToObserverMap());
-      LOGGER.info("\n\nfor controller instanceToTopicPartitionsMap: {}\n\n", instanceToTopicPartitionsMap);
+
       List<String> liveInstances = HelixUtils.liveInstances(_helixManager);
       currAvailableControllerList.addAll(liveInstances);
 
@@ -194,7 +463,6 @@ public class ControllerHelixManager implements IHelixManager {
         for (TopicPartition tp : topicPartitions) {
           String topicName = tp.getTopic();
           if (!topicName.startsWith(SEPARATOR)) {
-            // LOGGER.info("dealing: {}", instanceName)
             if (instanceMap.containsKey(instanceName)) {
               instanceMap.get(instanceName).addTopicPartition(tp);
               currTopicToPipelineInstanceMap.putIfAbsent(topicName, new ConcurrentHashMap<>());
@@ -209,10 +477,17 @@ public class ControllerHelixManager implements IHelixManager {
       _topicToPipelineInstanceMap = currTopicToPipelineInstanceMap;
       _availableControllerList = currAvailableControllerList;
 
-      LOGGER.info("For controller _pipelineToInstanceMap: {}", _pipelineToInstanceMap);
-      LOGGER.info("For controller _topicToPipelineInstanceMap: {}", _topicToPipelineInstanceMap);
-      LOGGER.info("For controller {} available, _availableControllerList: {}",
-          _availableControllerList.size(), _availableControllerList);
+      if (_helixManager.isLeader()) {
+        _availableController.inc(_availableControllerList.size() - _availableController.getCount());
+        _availableWorker.inc(_workerHelixManager.getAvailableWorkerList().size() - _availableWorker.getCount());
+      }
+
+      // Validation
+      validateInstanceToTopicPartitionsMap(instanceToTopicPartitionsMap, instanceMap);
+
+      //LOGGER.info("For controller _pipelineToInstanceMap: {}", _pipelineToInstanceMap);
+      //LOGGER.info("For controller _topicToPipelineInstanceMap: {}", _topicToPipelineInstanceMap);
+      LOGGER.info("For controller {} available", _availableControllerList.size());
     } catch (Exception e) {
       LOGGER.error("Got exception in updateCurrentStatus", e);
     } finally {
@@ -473,6 +748,7 @@ public class ControllerHelixManager implements IHelixManager {
           workerPipelineToRouteIdToReplace.putIfAbsent(route.getTopic(), new ArrayList<>());
           workerPipelineToRouteIdToReplace.get(route.getTopic()).add(String.valueOf(route.getPartition()));
           workerToReplace.add(instanceName);
+          LOGGER.info("Worker changed: {} for {}", instanceName, route);
         }
       }
       if (!routeWorkerDown) {
@@ -592,7 +868,7 @@ public class ControllerHelixManager implements IHelixManager {
                   + "is smaller than initMaxNumWorkersPerRoute {}", itph.getRouteString(), itph.getInstanceName(),
               itph.getServingTopicPartitionSet(), itph.getWorkerSet().size(), _initMaxNumWorkersPerRoute);
           int expectedNumWorkers = _initMaxNumWorkersPerRoute;
-          LOGGER.info("current {}, expected {}", itph.getWorkerSet().size(), expectedNumWorkers);
+          LOGGER.info("Current {}, expected {}", itph.getWorkerSet().size(), expectedNumWorkers);
           if (itph.getWorkerSet().size() < expectedNumWorkers) {
             LOGGER.info("Current {} workers in route {}, expect {} workers",
                 itph.getWorkerSet().size(), itph.getRouteString(), expectedNumWorkers);
@@ -678,7 +954,7 @@ public class ControllerHelixManager implements IHelixManager {
         // Do nothing
       }
 
-      if (System.currentTimeMillis() - ts1 > 5000) {
+      if (System.currentTimeMillis() - ts1 > 60000) {
         throw new Exception(String.format("Controller %s failed to set up new route cluster %s!",
             instanceName, controllerWokerHelixClusterName));
       }
@@ -690,6 +966,10 @@ public class ControllerHelixManager implements IHelixManager {
         InstanceTopicPartitionHolder.getTotalWorkloadComparator(null, null)));
     _pipelineToInstanceMap.get(pipeline).add(instance);
     _workerHelixManager.addTopicToMirrorMaker(instance, pipeline, routeId);
+
+    // register metrics
+    String routeString = srcDst[1] + "-" + srcDst[2] + "-" + routeId;
+    maybeRegisterMetrics(routeString);
 
     spectator.disconnect();
     return instance;

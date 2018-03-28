@@ -16,6 +16,7 @@
 package com.uber.stream.kafka.mirrormaker.manager;
 
 import com.uber.stream.kafka.mirrormaker.manager.core.ControllerHelixManager;
+import com.uber.stream.kafka.mirrormaker.manager.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import com.uber.stream.kafka.mirrormaker.manager.rest.ManagerRestApplication;
 import com.uber.stream.kafka.mirrormaker.manager.validation.SourceKafkaClusterValidationManager;
 import org.apache.commons.cli.CommandLine;
@@ -44,6 +45,7 @@ public class ManagerStarter {
   public ManagerStarter(ManagerConf conf) {
     LOGGER.info("Trying to init ManagerStarter with config: {}", conf);
     _config = conf;
+    HelixKafkaMirrorMakerMetricsReporter.init(conf);
     _component = new Component();
     _srcKafkaValidationManager = new SourceKafkaClusterValidationManager(_config);
     _controllerHelixManager = new ControllerHelixManager(_srcKafkaValidationManager, _config);
