@@ -178,9 +178,11 @@ public class OffsetMonitor {
 
         for (TopicMetadata tmd : metaData) {
           for (PartitionMetadata pmd : tmd.partitionsMetadata()) {
+            TopicAndPartition topicAndPartition = new TopicAndPartition(tmd.topic(), pmd.partitionId());
             if (topicSet.contains(tmd.topic())) {
-              TopicAndPartition topicAndPartition = new TopicAndPartition(tmd.topic(), pmd.partitionId());
               partitionLeader.put(topicAndPartition, pmd.leader());
+            } else {
+              noProgressMap.remove(topicAndPartition);
             }
           }
         }
@@ -351,10 +353,14 @@ public class OffsetMonitor {
       }
     }
 
-    List<TopicAndPartition> noProgressPartitions = getNoProgessTopicPartitions();
-    numNoProgressTopicPartitions.set(noProgressPartitions.size());
-    if (!noProgressPartitions.isEmpty()) {
-      logger.info("Topic partitions with no progress: " + noProgressPartitions);
+    try {
+      List<TopicAndPartition> noProgressPartitions = getNoProgessTopicPartitions();
+      numNoProgressTopicPartitions.set(noProgressPartitions.size());
+      if (!noProgressPartitions.isEmpty()) {
+        logger.info("Topic partitions with no progress: " + noProgressPartitions);
+      }
+    } catch (Exception e) {
+      logger.warn("Got exception when getNoProgessTopicPartitions", e);
     }
   }
 

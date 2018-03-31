@@ -280,17 +280,15 @@ public class ControllerHelixManager implements IHelixManager {
             }
 
             if (topicOnlyInManager.size() > 1 || (topicOnlyInManager.size() == 1 && !topicOnlyInManager.iterator().next().startsWith(SEPARATOR))) {
-              LOGGER.info("Validate Wrong: InstanceName: {}, route: {}, topic only in manager: {}", instanceName, routeSet, topicOnlyInManager);
+              LOGGER.info("Validate WRONG: InstanceName: {}, route: {}, topic only in manager: {}", instanceName, routeSet, topicOnlyInManager);
             }
 
             if (!controllerTopics.isEmpty() ) {
-              LOGGER.info("Validate Wrong: InstanceName: {}, route: {}, topic only in controller: {}", instanceName, routeSet, controllerTopics);
+              LOGGER.info("Validate WRONG: InstanceName: {}, route: {}, topic only in controller: {}", instanceName, routeSet, controllerTopics);
             }
 
-          } catch (IOException e) {
-            e.printStackTrace();
-          } catch (URISyntaxException e) {
-            e.printStackTrace();
+          } catch (Exception e) {
+            LOGGER.warn("Got error when connecting to {} for route {}", instanceName, routeSet, e);
           }
 
         } else {
