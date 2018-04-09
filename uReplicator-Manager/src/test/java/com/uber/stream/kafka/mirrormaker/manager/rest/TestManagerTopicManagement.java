@@ -142,6 +142,7 @@ public class TestManagerTopicManagement {
   public ManagerStarter startManager(String deplymentName, String port)
       throws ParseException {
     String[] args = new String[]{
+        "-env", "testing1",
         "-srcClusters", "cluster1",
         "-destClusters", "cluster3",
         "-zookeeper", ZkStarter.DEFAULT_ZK_STR,
@@ -225,6 +226,8 @@ public class TestManagerTopicManagement {
               "--cluster.config", "src/test/resources/clusters.properties"
           };
 
+          MirrorMakerWorker mirrorMakerWorker = new MirrorMakerWorker();
+
           updateConsumerConfigFile(zkServer, instanceId, id);
           updateProducerConfigFile(instanceId, id);
           updateHelixConfigFile(zkServer, instanceId, id);
@@ -234,7 +237,7 @@ public class TestManagerTopicManagement {
           ZKHelixManager managerWorkerHelix = new ZKHelixManager(managerWorkerHelixName, instanceId,
               InstanceType.PARTICIPANT, zkServer);
           StateMachineEngine stateMachineEngine = managerWorkerHelix.getStateMachineEngine();
-          ManagerWorkerHelixHandler managerWorkerHandler = new ManagerWorkerHelixHandler(workerConf, options);
+          ManagerWorkerHelixHandler managerWorkerHandler = new ManagerWorkerHelixHandler(mirrorMakerWorker, workerConf, options);
           // register the MirrorMaker worker to Manager-Worker cluster
           ManagerWorkerOnlineOfflineStateModelFactory stateModelFactory = new ManagerWorkerOnlineOfflineStateModelFactory(
               managerWorkerHandler);

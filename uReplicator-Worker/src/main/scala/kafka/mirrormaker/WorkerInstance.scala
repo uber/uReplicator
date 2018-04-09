@@ -215,6 +215,9 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
       consumerConfig.groupId + "_" + consumerUuid
     }
     connector = new KafkaConnector(consumerIdString, consumerConfig)
+
+    additionalConfigs(srcCluster, dstCluster)
+
     addToHelixController()
 
     // If a message send failed after retries are exhausted. The offset of the messages will also be removed from
@@ -477,6 +480,8 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
   }
 
   def onCompletionWithoutException(metadata: RecordMetadata, srcPartition: Int, srcOffset: Long) {}
+
+  def additionalConfigs(srcCluster: Option[String], dstCluster: Option[String]) {}
 
   class MirrorMakerProducerCallback(topic: String, key: Array[Byte], value: Array[Byte],
                                     srcPartition: Int, srcOffset: Long)

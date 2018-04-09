@@ -81,7 +81,7 @@ class MirrorMakerWorker extends Logging with KafkaMetricsGroup {
 
       val managerWorkerHelix = new ZKHelixManager(managerWorkerHelixName, instanceId, InstanceType.PARTICIPANT, zkServer)
       val stateMachineEngine: StateMachineEngine = managerWorkerHelix.getStateMachineEngine()
-      val managerWorkerHandler = new ManagerWorkerHelixHandler(mirrorMakerWorkerConf, options)
+      val managerWorkerHandler = new ManagerWorkerHelixHandler(this, mirrorMakerWorkerConf, options)
       // register the MirrorMaker worker to Manager-Worker cluster
       val stateModelFactory = new ManagerWorkerOnlineOfflineStateModelFactory(managerWorkerHandler)
       stateMachineEngine.registerStateModelFactory("OnlineOffline", stateModelFactory)

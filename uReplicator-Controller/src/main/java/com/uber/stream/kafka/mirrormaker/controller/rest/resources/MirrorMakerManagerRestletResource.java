@@ -7,6 +7,7 @@ import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager
 import com.uber.stream.kafka.mirrormaker.controller.core.InstanceTopicPartitionHolder;
 import com.uber.stream.kafka.mirrormaker.controller.core.TopicPartition;
 import com.uber.stream.kafka.mirrormaker.controller.core.WorkloadInfoRetriever;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.PriorityQueue;
 import org.restlet.data.Status;
@@ -65,6 +66,10 @@ public class MirrorMakerManagerRestletResource extends ServerResource {
       JSONArray blacklistedArray = new JSONArray();
       blacklistedArray.addAll(_helixMirrorMakerManager.getBlacklistedInstances());
       responseJson.put("blacklisted", blacklistedArray);
+
+      JSONArray allInstances = new JSONArray();
+      allInstances.addAll(_helixMirrorMakerManager.getCurrentLiveInstanceNames());
+      responseJson.put("allInstances", allInstances);
 
       return new StringRepresentation(responseJson.toJSONString());
     } catch (Exception e) {

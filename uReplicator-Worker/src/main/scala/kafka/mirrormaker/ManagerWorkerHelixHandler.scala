@@ -21,10 +21,13 @@ import kafka.utils.Logging
 /**
  * This class handles the online-offline events for workers in Manager-Worker Helix cluster.
  *
+ * @param mirrorMakerWorker
  * @param workerConfig
  * @param options
  */
-class ManagerWorkerHelixHandler(private val workerConfig: MirrorMakerWorkerConf, private val options: OptionSet) extends Logging {
+class ManagerWorkerHelixHandler(private val mirrorMakerWorker: MirrorMakerWorker,
+                                private val workerConfig: MirrorMakerWorkerConf,
+                                private val options: OptionSet) extends Logging {
   private val HexliClusterPrefix = "controller-worker-"
 
   private var currentWorkerInstance: WorkerInstance = null
@@ -52,7 +55,7 @@ class ManagerWorkerHelixHandler(private val workerConfig: MirrorMakerWorkerConf,
       } else {
         val route = srcCluster + "-" + dstCluster + "-" + routeId
         val helixClusterName = HexliClusterPrefix + route
-        currentWorkerInstance = new WorkerInstance(workerConfig, options, Some(srcCluster), Some(dstCluster), helixClusterName, route)
+        currentWorkerInstance = mirrorMakerWorker.getWorkerInstance(workerConfig, options, Some(srcCluster), Some(dstCluster), helixClusterName)
         currentSrcCluster = srcCluster
         currentDstCluster = dstCluster
         currentRouteId = routeId

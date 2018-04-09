@@ -148,8 +148,7 @@ public class ManagerControllerHelix {
     String clusterName = CONTROLLER_WORKER_HELIX_PREFIX + srcCluster + "-" + dstCluster + "-" + routePartition;
     _controllerConf.setHelixClusterName(clusterName);
     _controllerConf.setEnableSrcKafkaValidation("true");
-    _controllerConf.setConsumerCommitZkPath(_controllerConf.getZkStr());
-    _controllerConf.setGroupId(srcCluster + "-" + dstCluster);
+    _controllerConf.setGroupId("ureplicator-" + srcCluster + "-" + dstCluster);
 
     _currentControllerInstance = new ControllerInstance(this, _controllerConf);
     LOGGER.info("Starting controller instance for route {}", clusterName);
@@ -206,16 +205,26 @@ public class ManagerControllerHelix {
   public boolean handleTopicAssignmentEvent(String topic, String srcCluster, String dstCluster, String routePartition, String toState) {
     synchronized (_handlerLock) {
       if (_currentControllerInstance == null) {
+        if (toState.equals("OFFLINE") || toState.equals("DROPPED")) {
+          LOGGER.error(
+              "Controller is not started yet. Failed to action={} topic={} for srcCluster={}, dstCluster={}, routePartition={}",
+              toState, topic, srcCluster, dstCluster, routePartition);
+          return false;
+        }
         LOGGER.info(
             "Controller is not started yet. Start a new instance: srcCluster={}, dstCluster={}, routePartition={}",
             srcCluster, dstCluster, routePartition);
         handleRouteAssignmentOnline(srcCluster, dstCluster, routePartition);
       }
       if (!(srcCluster.equals(_currentSrcCluster) && dstCluster.equals(_currentDstCluster))) {
-        String msg = String.format("Inconsistent route assignment: expected src=%s, dst=%s, but given src=%s, dst=%s",
-            _currentSrcCluster, _currentDstCluster, srcCluster, dstCluster);
+        String msg = String.format("Inconsistent route assignment: expected src=%s, dst=%s, but given src=%s, dst=%s, toState=%s",
+            _currentSrcCluster, _currentDstCluster, srcCluster, dstCluster, toState);
         LOGGER.error(msg);
-        throw new IllegalArgumentException(msg);
+        if (!toState.equals("OFFLINE") && !toState.equals("DROPPED")) {
+          throw new IllegalArgumentException(msg);
+        } else {
+          return false;
+        }
       }
       if (toState.equals("ONLINE")) {
         return handleTopicAssignmentOnline(topic, srcCluster, dstCluster);

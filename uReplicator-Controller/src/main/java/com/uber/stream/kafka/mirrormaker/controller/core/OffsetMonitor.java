@@ -22,9 +22,13 @@ import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -164,6 +168,7 @@ public class OffsetMonitor {
     // update topicList
     topicList = helixMirrorMakerManager.getTopicLists();
     logger.debug("TopicList: {}", topicList);
+    Set<String> topicSet = new HashSet<>(topicList);
 
     // update partitionLeader
     for (String broker : srcBrokerList) {
@@ -176,7 +181,17 @@ public class OffsetMonitor {
         for (TopicMetadata tmd : metaData) {
           for (PartitionMetadata pmd : tmd.partitionsMetadata()) {
             TopicAndPartition topicAndPartition = new TopicAndPartition(tmd.topic(), pmd.partitionId());
-            partitionLeader.put(topicAndPartition, pmd.leader());
+            if (topicSet.contains(tmd.topic())) {
+              partitionLeader.put(topicAndPartition, pmd.leader());
+            }
+          }
+        }
+        Iterator<Entry<TopicAndPartition, TopicPartitionLag>> iter = noProgressMap.entrySet().iterator();
+        while (iter.hasNext()) {
+          TopicAndPartition tp = iter.next().getKey();
+          if (!topicSet.contains(tp.topic())) {
+            iter.remove();
+            logger.info("Remove non exist topic {} from noProgressMap", tp);
           }
         }
         break;
@@ -184,6 +199,7 @@ public class OffsetMonitor {
         logger.warn("Got exception to get metadata from broker=" + broker, e);
       }
     }
+    logger.debug("partitionLeader: {}", partitionLeader);
   }
 
   protected void updateOffset() {
@@ -345,10 +361,14 @@ public class OffsetMonitor {
       }
     }
 
-    List<TopicAndPartition> noProgressPartitions = getNoProgessTopicPartitions();
-    numNoProgressTopicPartitions.set(noProgressPartitions.size());
-    if (!noProgressPartitions.isEmpty()) {
-      logger.info("Topic partitions with no progress: " + noProgressPartitions);
+    try {
+      List<TopicAndPartition> noProgressPartitions = getNoProgessTopicPartitions();
+      numNoProgressTopicPartitions.set(noProgressPartitions.size());
+      if (!noProgressPartitions.isEmpty()) {
+        logger.info("Topic partitions with no progress: " + noProgressPartitions);
+      }
+    } catch (Exception e) {
+      logger.warn("Got exception when getNoProgessTopicPartitions", e);
     }
   }
 
