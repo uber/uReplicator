@@ -68,7 +68,7 @@ public class MirrorMakerManagerRestletResource extends ServerResource {
       responseJson.put("blacklisted", blacklistedArray);
 
       JSONArray allInstances = new JSONArray();
-      allInstances.addAll(_helixMirrorMakerManager.getCurrentLiveInstances());
+      allInstances.addAll(_helixMirrorMakerManager.getCurrentLiveInstanceNames());
       responseJson.put("allInstances", allInstances);
 
       return new StringRepresentation(responseJson.toJSONString());

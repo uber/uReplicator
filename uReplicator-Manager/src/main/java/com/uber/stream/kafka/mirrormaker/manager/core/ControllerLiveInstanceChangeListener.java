@@ -100,7 +100,6 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
     try {
       _controllerHelixManager.handleLiveInstanceChange(onlyCheckOffline);
     } catch (Exception e) {
-      e.printStackTrace();
       LOGGER.error("Failed to handle live instance change!", e);
     }
 

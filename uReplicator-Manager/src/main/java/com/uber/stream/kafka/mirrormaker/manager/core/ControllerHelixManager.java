@@ -30,7 +30,6 @@ import com.uber.stream.kafka.mirrormaker.manager.ManagerConf;
 import com.uber.stream.kafka.mirrormaker.manager.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import com.uber.stream.kafka.mirrormaker.manager.validation.SourceKafkaClusterValidationManager;
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -136,9 +135,9 @@ public class ControllerHelixManager implements IHelixManager {
     // 2. establishing connection with server;
     // 3. getting next data snippet from server.
     _requestConfig = RequestConfig.custom()
-        .setConnectionRequestTimeout(1000)
-        .setConnectTimeout(1000)
-        .setSocketTimeout(1000)
+        .setConnectionRequestTimeout(3000)
+        .setConnectTimeout(3000)
+        .setSocketTimeout(3000)
         .build();
   }
 
@@ -258,10 +257,11 @@ public class ControllerHelixManager implements IHelixManager {
               topicPartitions.size() - 1, partitionCount, instanceMap.get(instanceName).getWorkerSet().size(), instanceMap.get(instanceName).getWorkerSet());
 
           try {
-            String result = HttpClientUtils.getData(_httpClient, _requestConfig,
+            // try find topic mismatch between manager and controller
+            String topicResult = HttpClientUtils.getData(_httpClient, _requestConfig,
                 instanceName, _controllerPort, "/topics");
-            LOGGER.debug("Get topic from {}: {}", instanceName, result);
-            String rawTopicNames = result.substring(25, result.length()-1);
+            LOGGER.debug("Get topics from {}: {}", instanceName, topicResult);
+            String rawTopicNames = topicResult.substring(25, topicResult.length()-1);
             Set<String> controllerTopics = new HashSet<>();
             if (!rawTopicNames.equals("No topic is added in MirrorMaker Controller!")) {
               String[] topicNames = rawTopicNames.split(", ");
@@ -286,9 +286,41 @@ public class ControllerHelixManager implements IHelixManager {
             if (!controllerTopics.isEmpty() ) {
               LOGGER.info("Validate WRONG: InstanceName: {}, route: {}, topic only in controller: {}", instanceName, routeSet, controllerTopics);
             }
-
           } catch (Exception e) {
-            LOGGER.warn("Got error when connecting to {} for route {}", instanceName, routeSet, e);
+            LOGGER.warn("Get topics error when connecting to {} for route {}", instanceName, routeSet, e);
+          }
+
+          try {
+            // try find worker mismatch between manager and controller
+            String instanceResult = HttpClientUtils.getData(_httpClient, _requestConfig,
+                instanceName, _controllerPort, "/instances");
+            LOGGER.debug("Get workers from {}: {}", instanceName, instanceResult);
+            JSONObject instanceResultJson = JSON.parseObject(instanceResult);
+            JSONArray allInstances = instanceResultJson.getJSONArray("allInstances");
+            Set<String> controllerWorkers = new HashSet<>();
+            for (Object instance : allInstances) {
+              controllerWorkers.add(String.valueOf(instance));
+            }
+
+            Set<String> managerWorkers = instanceMap.get(instanceName).getWorkerSet();
+            Set<String> workerOnlyInManager = new HashSet<>();
+            for (String worker : managerWorkers) {
+              if (!controllerWorkers.contains(worker)) {
+                workerOnlyInManager.add(worker);
+              } else {
+                controllerWorkers.remove(worker);
+              }
+            }
+
+            if (!workerOnlyInManager.isEmpty()) {
+              LOGGER.info("Validate WRONG: InstanceName: {}, route: {}, worker only in manager: {}", instanceName, routeSet, workerOnlyInManager);
+            }
+
+            if (!controllerWorkers.isEmpty() ) {
+              LOGGER.info("Validate WRONG: InstanceName: {}, route: {}, worker only in controller: {}", instanceName, routeSet, controllerWorkers);
+            }
+          } catch (Exception e) {
+            LOGGER.warn("Get workers error when connecting to {} for route {}", instanceName, routeSet, e);
           }
 
         } else {

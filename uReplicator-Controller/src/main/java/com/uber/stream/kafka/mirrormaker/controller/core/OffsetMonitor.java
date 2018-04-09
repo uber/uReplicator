@@ -23,8 +23,10 @@ import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMak
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -181,9 +183,15 @@ public class OffsetMonitor {
             TopicAndPartition topicAndPartition = new TopicAndPartition(tmd.topic(), pmd.partitionId());
             if (topicSet.contains(tmd.topic())) {
               partitionLeader.put(topicAndPartition, pmd.leader());
-            } else {
-              noProgressMap.remove(topicAndPartition);
             }
+          }
+        }
+        Iterator<Entry<TopicAndPartition, TopicPartitionLag>> iter = noProgressMap.entrySet().iterator();
+        while (iter.hasNext()) {
+          TopicAndPartition tp = iter.next().getKey();
+          if (!topicSet.contains(tp.topic())) {
+            iter.remove();
+            logger.info("Remove non exist topic {} from noProgressMap", tp);
           }
         }
         break;

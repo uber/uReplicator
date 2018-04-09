@@ -242,6 +242,10 @@ public class HelixMirrorMakerManager {
     return liveInstances;
   }
 
+  public List<String> getCurrentLiveInstanceNames() {
+    return HelixUtils.liveInstances(_helixZkManager);
+  }
+
   public void blacklistInstance(String instanceName) {
     _helixAdmin.addInstanceTag(_helixClusterName, instanceName, BLACKLIST_TAG);
   }
