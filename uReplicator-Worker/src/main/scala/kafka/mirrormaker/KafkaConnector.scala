@@ -107,7 +107,7 @@ class KafkaConnector(private val consumerIdString: String,
       consumedOffset,
       fetchedOffset,
       new AtomicInteger(config.fetchMessageMaxBytes),
-      consumerIdString)
+      config.clientId)
 
     fetcherManager.addTopicPartition(partTopicInfo)
     topicRegistry.put(TopicAndPartition(topic, partition), partTopicInfo)

@@ -67,6 +67,12 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
   private static final String MAX_NUM_PARTITIONS_PER_ROUTE = "manager.max.num.partitions.per.route";
   private static final int DEFAULT_MAX_NUM_PARTITIONS_PER_ROUTE = 20;
 
+  private static final String INIT_MAX_WORKLOAD_PER_ROUTE_BYTE_DC = "manager.init.max.workload.per.route.byte.dc";
+  private static final int DEFAULT_INIT_MAX_WORKLOAD_PER_ROUTE_BYTE_DC = 15*1024*1024;
+
+  private static final String INIT_MAX_WORKLOAD_PER_ROUTE_BYTE_XDC = "manager.init.max.workload.per.route.byte.xdc";
+  private static final int DEFAULT_INIT_MAX_WORKLOAD_PER_ROUTE_BYTE_XDC = 8*1024*1024;
+
   private static final String INIT_MAX_NUM_WORKERS_PER_ROUTE = "manager.init.max.num.workers.per.route";
   private static final int DEFAULT_INIT_MAX_NUM_WORKERS_PER_ROUTE = 3;
 
@@ -144,6 +150,14 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
 
   public void setMaxNumPartitionsPerRoute(String maxNumPartitionsPerRoute) {
     setProperty(MAX_NUM_PARTITIONS_PER_ROUTE, Integer.parseInt(maxNumPartitionsPerRoute));
+  }
+
+  public void setInitMaxWorkloadPerRouteByteDc(String initMaxWorkloadPerRouteByteDc) {
+    setProperty(INIT_MAX_WORKLOAD_PER_ROUTE_BYTE_DC, Integer.parseInt(initMaxWorkloadPerRouteByteDc));
+  }
+
+  public void setInitMaxWorkloadPerRouteByteXDc(String initMaxWorkloadPerRouteByteXdc) {
+    setProperty(INIT_MAX_WORKLOAD_PER_ROUTE_BYTE_XDC, Integer.parseInt(initMaxWorkloadPerRouteByteXdc));
   }
 
   public void setInitMaxNumWorkersPerRoute(String initMaxNumWorkersPerRoute) {
@@ -253,6 +267,22 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
     }
   }
 
+  public Integer getInitMaxWorkloadPerRouteByteDc() {
+    if (containsKey(INIT_MAX_WORKLOAD_PER_ROUTE_BYTE_DC)) {
+      return (Integer) getProperty(INIT_MAX_WORKLOAD_PER_ROUTE_BYTE_DC);
+    } else {
+      return DEFAULT_INIT_MAX_WORKLOAD_PER_ROUTE_BYTE_DC;
+    }
+  }
+
+  public Integer getInitMaxWorkloadPerRouteByteXdc() {
+    if (containsKey(INIT_MAX_WORKLOAD_PER_ROUTE_BYTE_XDC)) {
+      return (Integer) getProperty(INIT_MAX_WORKLOAD_PER_ROUTE_BYTE_XDC);
+    } else {
+      return DEFAULT_INIT_MAX_WORKLOAD_PER_ROUTE_BYTE_XDC;
+    }
+  }
+
   public Integer getInitMaxNumWorkersPerRoute() {
     if (containsKey(INIT_MAX_NUM_WORKERS_PER_ROUTE)) {
       return (Integer) getProperty(INIT_MAX_NUM_WORKERS_PER_ROUTE);
@@ -318,6 +348,8 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
         .addOption("workloadRefreshPeriodInSeconds", true, "The period to refresh workload information in seconds")
         .addOption("initMaxNumPartitionsPerRoute", true, "The max number of partitions when init a route")
         .addOption("maxNumPartitionsPerRoute", true, "The max number of partitions a route can have")
+        .addOption("initMaxWorkloadPerRouteByteDc", true, "The max workload when init a route in dc")
+        .addOption("initMaxWorkloadPerRouteByteXdc", true, "The max workload when init a route across dc")
         .addOption("initMaxNumWorkersPerRoute", true, "The max number of workers when init a route")
         .addOption("maxNumWorkersPerRoute", true, "The max number of workers a route can have");
     return managerOptions;
@@ -411,6 +443,16 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
       managerConf.setMaxNumPartitionsPerRoute(cmd.getOptionValue("maxNumPartitionsPerRoute"));
     } else {
       managerConf.setMaxNumPartitionsPerRoute(Integer.toString(DEFAULT_MAX_NUM_PARTITIONS_PER_ROUTE));
+    }
+    if (cmd.hasOption("initMaxWorkloadPerRouteByteDc")) {
+      managerConf.setInitMaxWorkloadPerRouteByteDc(cmd.getOptionValue("initMaxWorkloadPerRouteByteDc"));
+    } else {
+      managerConf.setInitMaxWorkloadPerRouteByteDc(Integer.toString(DEFAULT_INIT_MAX_WORKLOAD_PER_ROUTE_BYTE_DC));
+    }
+    if (cmd.hasOption("initMaxWorkloadPerRouteByteXdc")) {
+      managerConf.setInitMaxWorkloadPerRouteByteXDc(cmd.getOptionValue("initMaxWorkloadPerRouteByteXdc"));
+    } else {
+      managerConf.setInitMaxWorkloadPerRouteByteXDc(Integer.toString(DEFAULT_INIT_MAX_WORKLOAD_PER_ROUTE_BYTE_XDC));
     }
     if (cmd.hasOption("initMaxNumWorkersPerRoute")) {
       managerConf.setInitMaxNumWorkersPerRoute(cmd.getOptionValue("initMaxNumWorkersPerRoute"));

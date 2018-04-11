@@ -484,9 +484,8 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
 
     // dedicated instances serve only lagging partitions
     int maxDedicated = (int) (instances.size() * _maxDedicatedInstancesRatio);
-    TreeSet<InstanceTopicPartitionHolder> orderedInstances =
-        new TreeSet<>(InstanceTopicPartitionHolder
-            .getTotalWorkloadComparator(_helixMirrorMakerManager.getWorkloadInfoRetriever(), null));
+    TreeSet<InstanceTopicPartitionHolder> orderedInstances = new TreeSet<>(InstanceTopicPartitionHolder
+        .getTotalWorkloadComparator(_helixMirrorMakerManager.getWorkloadInfoRetriever(), null));
     // instancesSortedByLag are sorted by lags, so the instances with lags appear after the instances with non-lags only
     List<InstanceTopicPartitionHolder> dedicatedInstances = new ArrayList<>();
     for (InstanceTopicPartitionHolder instance : instancesSortedByLag) {
