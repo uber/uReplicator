@@ -61,9 +61,13 @@ public class WorkloadInfoRetriever {
   private long _maxValidTimeMillis = TimeUnit.HOURS.toMillis(25);
 
   public WorkloadInfoRetriever(IHelixManager helixMirrorMakerManager) {
+    this(helixMirrorMakerManager, helixMirrorMakerManager.getConf().getSrcKafkaZkPath());
+  }
+
+  public WorkloadInfoRetriever(IHelixManager helixMirrorMakerManager, String srcKafkaZkPath) {
     this._helixMirrorMakerManager = helixMirrorMakerManager;
     this._refreshPeriodInSeconds = helixMirrorMakerManager.getConf().getWorkloadRefreshPeriodInSeconds();
-    String srcKafkaZkPath = helixMirrorMakerManager.getConf().getSrcKafkaZkPath();
+    //String srcKafkaZkPath = helixMirrorMakerManager.getConf().getSrcKafkaZkPath();
     this._c3Host = helixMirrorMakerManager.getConf().getC3Host();
     this._c3Port = helixMirrorMakerManager.getConf().getC3Port();
     if (srcKafkaZkPath == null) {
@@ -81,7 +85,7 @@ public class WorkloadInfoRetriever {
       LOGGER.error("Source kafka Zookeeper path is not configured. Skip to use workload retriever.");
       return;
     }
-    LOGGER.info("Start workload retriever");
+    LOGGER.info("Start workload retriever for {}", _srcKafkaCluster);
 
     if (_refreshPeriodInSeconds > 0) {
       // delay initialization for 0-5 minutes
@@ -120,6 +124,9 @@ public class WorkloadInfoRetriever {
 
   public TopicWorkload topicWorkload(String topic) {
     LinkedList<TopicWorkload> tws = _topicWorkloadMap.get(topic);
+    if (topic.equals("hp-cn-gpslog")) {
+      LOGGER.info("tws: {}", tws);
+    }
     if (tws == null || tws.isEmpty()) {
       return _defaultTopicWorkload;
     }

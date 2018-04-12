@@ -26,6 +26,8 @@ import java.util.Set;
  */
 public class InstanceTopicPartitionHolder {
 
+  private static final String SEPARATOR = "@";
+
   private final String _instanceName;
   private final Set<TopicPartition> _topicPartitionSet = new HashSet<>();
   private final TopicPartition _route;
@@ -92,7 +94,7 @@ public class InstanceTopicPartitionHolder {
     _workerSet.addAll(workers);
   }
 
-  public TopicWorkload totalWorkload(WorkloadInfoRetriever infoRetriever, ITopicWorkloadWeighter weighter) {
+  /*public TopicWorkload totalWorkload(WorkloadInfoRetriever infoRetriever, ITopicWorkloadWeighter weighter) {
     TopicWorkload total = new TopicWorkload(0, 0, 0);
     for (TopicPartition part : _topicPartitionSet) {
       TopicWorkload tw = infoRetriever.topicWorkload(part.getTopic());
@@ -100,16 +102,34 @@ public class InstanceTopicPartitionHolder {
       total.add(tw.getBytesPerSecondPerPartition() * weight, tw.getMsgsPerSecondPerPartition() * weight);
     }
     return total;
+  }*/
+
+  public TopicWorkload totalWorkload(WorkloadInfoRetriever infoRetriever, ITopicWorkloadWeighter weighter) {
+    return totalWorkload(infoRetriever, weighter, true);
+  }
+
+  public TopicWorkload totalWorkload(WorkloadInfoRetriever infoRetriever, ITopicWorkloadWeighter weighter, boolean perPartition) {
+    TopicWorkload total = new TopicWorkload(0, 0, 0);
+    for (TopicPartition part : _topicPartitionSet) {
+      TopicWorkload tw = infoRetriever.topicWorkload(part.getTopic());
+      double weight = (weighter == null) ? 1.0 : weighter.partitionWeight(part);
+      if (perPartition) {
+        total.add(tw.getBytesPerSecondPerPartition() * weight, tw.getMsgsPerSecondPerPartition() * weight);
+      } else {
+        total.add(tw.getBytesPerSecond() * weight, tw.getMsgsPerSecond() * weight);
+      }
+    }
+    return total;
   }
 
   public static Comparator<InstanceTopicPartitionHolder> getTotalWorkloadComparator(
-      final WorkloadInfoRetriever infoRetriever, final ITopicWorkloadWeighter weighter) {
+      final WorkloadInfoRetriever infoRetriever, final ITopicWorkloadWeighter weighter, final boolean perPartition) {
     return new Comparator<InstanceTopicPartitionHolder>() {
       @Override
       public int compare(InstanceTopicPartitionHolder o1, InstanceTopicPartitionHolder o2) {
         if (infoRetriever != null) {
-          TopicWorkload workload1 = (o1 == null) ? new TopicWorkload(0, 0) : o1.totalWorkload(infoRetriever, weighter);
-          TopicWorkload workload2 = (o2 == null) ? new TopicWorkload(0, 0) : o2.totalWorkload(infoRetriever, weighter);
+          TopicWorkload workload1 = (o1 == null) ? new TopicWorkload(0, 0) : o1.totalWorkload(infoRetriever, weighter, perPartition);
+          TopicWorkload workload2 = (o2 == null) ? new TopicWorkload(0, 0) : o2.totalWorkload(infoRetriever, weighter, perPartition);
           int cmp = workload1.compareTotal(workload2);
           if (cmp != 0) {
             return cmp;
@@ -145,4 +165,15 @@ public class InstanceTopicPartitionHolder {
     return _instanceName.hashCode() + (_route == null ? 0 : _route.hashCode());
   }
 
+  public boolean isSameDc() {
+    String[] srcDst = _route.getTopic().split(SEPARATOR);
+    String src = srcDst[1];
+    String dst = srcDst[2];
+    return src.substring(0, 3).equals(dst.substring(0, 3));
+  }
+
+  public String getSrc() {
+    String[] srcDst = _route.getTopic().split(SEPARATOR);
+    return srcDst[1];
+  }
 }
