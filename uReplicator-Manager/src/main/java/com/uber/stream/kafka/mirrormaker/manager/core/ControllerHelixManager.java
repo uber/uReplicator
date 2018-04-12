@@ -1038,9 +1038,7 @@ public class ControllerHelixManager implements IHelixManager {
     double workload = isSameDc ? _initMaxWorkloadPerWorkerByteDc : _initMaxWorkloadPerWorkerByteXdc;
     Set<Integer> routeIdSet = new HashSet<>();
     for (InstanceTopicPartitionHolder instance : instanceList) {
-      if (instance.getTotalNumPartitions() + numPartitions < _initMaxNumPartitionsPerRoute /*&&
-          instance.totalWorkload(_workloadInfoRetriever, null).getBytesPerSecond()
-              < workload * instance.getWorkerSet().size()*/) {
+      if (instance.getTotalNumPartitions() + numPartitions < _initMaxNumPartitionsPerRoute) {
         return instance;
       }
       routeIdSet.add(instance.getRoute().getPartition());

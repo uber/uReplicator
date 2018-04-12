@@ -124,9 +124,6 @@ public class WorkloadInfoRetriever {
 
   public TopicWorkload topicWorkload(String topic) {
     LinkedList<TopicWorkload> tws = _topicWorkloadMap.get(topic);
-    if (topic.equals("hp-cn-gpslog")) {
-      LOGGER.info("tws: {}", tws);
-    }
     if (tws == null || tws.isEmpty()) {
       return _defaultTopicWorkload;
     }
