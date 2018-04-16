@@ -28,4 +28,8 @@ public interface IuReplicatorConf {
 
   public Integer getWorkloadRefreshPeriodInSeconds();
 
+  public Double getBytesPerSecondDefault();
+
+  public Double getMsgsPerSecondDefault();
+
 }

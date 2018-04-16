@@ -79,6 +79,12 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
   private static final String MAX_NUM_WORKERS_PER_ROUTE = "manager.max.num.workers.per.route";
   private static final int DEFAULT_MAX_NUM_WORKERS_PER_ROUTE = 5;
 
+  private static final String BYTES_PER_SECOND_DEFAULT = "manager.bytes.per.second.default";
+  private static final double DEFAULT_BYTES_PER_SECOND_DEFAULT = 1000.0;
+
+  private static final String MSGS_PER_SECOND_DEFAULT = "manager.msgs.per.second.default";
+  private static final double DEFAULT_MSGS_PER_SECOND_DEFAULT = 1;
+
   public ManagerConf() {
     super();
     this.setDelimiterParsingDisabled(true);
@@ -166,6 +172,14 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
 
   public void setMaxNumWorkersPerRoute(String maxNumWorkersPerRoute) {
     setProperty(MAX_NUM_WORKERS_PER_ROUTE, Integer.parseInt(maxNumWorkersPerRoute));
+  }
+
+  public void setBytesPerSecondDefault(String bytesPerSecondDefault) {
+    setProperty(BYTES_PER_SECOND_DEFAULT, Double.parseDouble(bytesPerSecondDefault));
+  }
+
+  public void setMsgsPerSecondDefault(String msgsPerSecondDefault) {
+    setProperty(MSGS_PER_SECOND_DEFAULT, Double.parseDouble(msgsPerSecondDefault));
   }
 
   public String getConfigFile() {
@@ -299,6 +313,22 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
     }
   }
 
+  public Double getBytesPerSecondDefault() {
+    if (containsKey(BYTES_PER_SECOND_DEFAULT)) {
+      return (Double) getProperty(BYTES_PER_SECOND_DEFAULT);
+    } else {
+      return DEFAULT_BYTES_PER_SECOND_DEFAULT;
+    }
+  }
+
+  public Double getMsgsPerSecondDefault() {
+    if (containsKey(MSGS_PER_SECOND_DEFAULT)) {
+      return (Double) getProperty(MSGS_PER_SECOND_DEFAULT);
+    } else {
+      return DEFAULT_MSGS_PER_SECOND_DEFAULT;
+    }
+  }
+
   private Set<String> parseList(String key, String delim) {
     Set<String> clusters = new HashSet<>();
     if (containsKey(key)) {
@@ -351,7 +381,9 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
         .addOption("initMaxWorkloadPerWorkerByteDc", true, "The max workload per worker when init a route in dc")
         .addOption("initMaxWorkloadPerWorkerByteXdc", true, "The max workload per worker when init a route across dc")
         .addOption("initMaxNumWorkersPerRoute", true, "The max number of workers when init a route")
-        .addOption("maxNumWorkersPerRoute", true, "The max number of workers a route can have");
+        .addOption("maxNumWorkersPerRoute", true, "The max number of workers a route can have")
+        .addOption("bytesPerSecondDefault", true, "The default value for bytes per second")
+        .addOption("msgsPerSecondDefault", true, "The default value for msgs per second");
     return managerOptions;
   }
 
@@ -463,6 +495,16 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
       managerConf.setMaxNumWorkersPerRoute(cmd.getOptionValue("maxNumWorkersPerRoute"));
     } else {
       managerConf.setMaxNumWorkersPerRoute(Integer.toString(DEFAULT_MAX_NUM_WORKERS_PER_ROUTE));
+    }
+    if (cmd.hasOption("bytesPerSecondDefault")) {
+      managerConf.setBytesPerSecondDefault(cmd.getOptionValue("bytesPerSecondDefault"));
+    } else {
+      managerConf.setBytesPerSecondDefault(Double.toString(DEFAULT_BYTES_PER_SECOND_DEFAULT));
+    }
+    if (cmd.hasOption("msgsPerSecondDefault")) {
+      managerConf.setMsgsPerSecondDefault(cmd.getOptionValue("msgsPerSecondDefault"));
+    } else {
+      managerConf.setMsgsPerSecondDefault(Double.toString(DEFAULT_MSGS_PER_SECOND_DEFAULT));
     }
 
     if (cmd.hasOption("config")) {

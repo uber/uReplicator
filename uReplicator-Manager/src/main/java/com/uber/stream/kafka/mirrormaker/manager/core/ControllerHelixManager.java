@@ -935,9 +935,20 @@ public class ControllerHelixManager implements IHelixManager {
 
       // After moving topics, scale workers based on workload
       for (InstanceTopicPartitionHolder itph : newItphQueue) {
+        String cluster = itph.getSrc();
+        WorkloadInfoRetriever retriever = _workloadInfoRetrieverMap.get(cluster);
+        if (retriever == null) {
+          String srcKafkaZkPath = (String) _conf.getProperty(CONFIG_KAFKA_CLUSTER_KEY_PREFIX + cluster);
+          _workloadInfoRetrieverMap.put(cluster, new WorkloadInfoRetriever(this, srcKafkaZkPath));
+          _workloadInfoRetrieverMap.get(cluster).start();
+        }
+        if (!retriever.isInitialized()) {
+          LOGGER.info("Retriever for itph: {} not initialized, wait for next rebalance", itph.getInstanceName());
+          continue;
+        }
         TopicWorkload totalWorkload = itph.totalWorkload(_workloadInfoRetrieverMap.get(itph.getSrc()), null, false);
         double workloadPerWorker = itph.isSameDc() ? _initMaxWorkloadPerWorkerByteDc : _initMaxWorkloadPerWorkerByteXdc;
-        LOGGER.info("itph: {}, topics: {}, totalWorkload: {}", itph.getInstanceName(), itph.getServingTopicPartitionSet(), totalWorkload.getBytesPerSecond());
+        LOGGER.info("itph: {}, #topics: {}, totalWorkload: {}", itph.getInstanceName(), itph.getServingTopicPartitionSet().size(), totalWorkload.getBytesPerSecond());
         int expectedNumWorkers = (int) Math.ceil(totalWorkload.getBytesPerSecond() / workloadPerWorker);
         if (itph.getWorkerSet().size() < expectedNumWorkers) {
           LOGGER.info("Current {} workers in route {}, expect {} workers",

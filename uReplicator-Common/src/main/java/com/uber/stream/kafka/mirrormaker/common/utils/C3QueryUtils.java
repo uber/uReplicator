@@ -50,7 +50,7 @@ public class C3QueryUtils {
     }
     long endSec = (timeInMs / 1000 - DEFAULT_QUERY_MINIMUM_END_TO_CURRENT_SEC) / 600 * 600;
     long startSec = endSec - windowInMs / 1000L;
-    LOGGER.info("Retrieve workload for [{}, {}]", startSec, endSec);
+    LOGGER.debug("Retrieve workload for [{}, {}]", startSec, endSec);
     for (int i = 0; i < topics.size(); i += DEFAULT_BATCH_TOPICS) {
       StringBuilder query = new StringBuilder();
       query.append("startSec=");

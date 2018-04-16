@@ -35,11 +35,8 @@ public class WorkloadInfoRetriever {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WorkloadInfoRetriever.class);
 
-  public static final TopicWorkload DEFAULT_WORKLOAD = new TopicWorkload(TopicWorkload.DEFAULT_BYTES_PER_SECOND,
-      TopicWorkload.DEFAULT_MSGS_PER_SECOND);
-
   private final Map<String, LinkedList<TopicWorkload>> _topicWorkloadMap = new ConcurrentHashMap<>();
-  private TopicWorkload _defaultTopicWorkload = DEFAULT_WORKLOAD;
+  private TopicWorkload _defaultTopicWorkload;
 
   private final IHelixManager _helixMirrorMakerManager;
   private final String _srcKafkaCluster;
@@ -67,9 +64,10 @@ public class WorkloadInfoRetriever {
   public WorkloadInfoRetriever(IHelixManager helixMirrorMakerManager, String srcKafkaZkPath) {
     this._helixMirrorMakerManager = helixMirrorMakerManager;
     this._refreshPeriodInSeconds = helixMirrorMakerManager.getConf().getWorkloadRefreshPeriodInSeconds();
-    //String srcKafkaZkPath = helixMirrorMakerManager.getConf().getSrcKafkaZkPath();
     this._c3Host = helixMirrorMakerManager.getConf().getC3Host();
     this._c3Port = helixMirrorMakerManager.getConf().getC3Port();
+    this._defaultTopicWorkload = new TopicWorkload(helixMirrorMakerManager.getConf().getBytesPerSecondDefault(),
+        helixMirrorMakerManager.getConf().getMsgsPerSecondDefault());
     if (srcKafkaZkPath == null) {
       LOGGER.error("Source kafka Zookeeper path is not configured");
       _srcKafkaCluster = "";
@@ -225,5 +223,4 @@ public class WorkloadInfoRetriever {
       }
     }
   }
-
 }
