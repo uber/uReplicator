@@ -58,6 +58,9 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
   private static final String C3_PORT = "manager.c3.port";
   private static final int DEFAULT_C3_PORT = 0;
 
+  private static final String CLUSTER_PREFIX_LENGTH = "manager.cluster.prefix.length";
+  private static final int DEFAULT_CLUSTER_PREFIX_LENGTH = 0;
+
   private static final String WORKLOAD_REFRESH_PERIOD_IN_SECONDS = "manager.workload.refresh.period.in.seconds";
   private static final int DEFAULT_WORKLOAD_REFRESH_PERIOD_IN_SECONDS = 600;
 
@@ -144,6 +147,10 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
 
   public void setC3Port(String C3Port) {
     setProperty(C3_PORT, Integer.valueOf(C3Port));
+  }
+
+  public void setClusterPrefixLength(String clusterPrefixLength) {
+    setProperty(CLUSTER_PREFIX_LENGTH, Integer.valueOf(clusterPrefixLength));
   }
 
   public void setWorkloadRefreshPeriodInSeconds(String workloadRefreshPeriodInSeconds) {
@@ -255,6 +262,14 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
 
   public String getSrcKafkaZkPath() {
     return null;
+  }
+
+  public Integer getClusterPrefixLength() {
+    if (containsKey(CLUSTER_PREFIX_LENGTH)) {
+      return (Integer) getProperty(CLUSTER_PREFIX_LENGTH);
+    } else {
+      return DEFAULT_CLUSTER_PREFIX_LENGTH;
+    }
   }
 
   public Integer getWorkloadRefreshPeriodInSeconds() {
@@ -375,6 +390,7 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
         .addOption("metricsPrefix", true, "MetricsPrefix")
         .addOption("c3Host", true, "Chaperone3 Host")
         .addOption("c3Port", true, "Chaperone3 Port")
+        .addOption("clusterPrefixLength", true, "Cluster prefix length to extract route name from cluster name")
         .addOption("workloadRefreshPeriodInSeconds", true, "The period to refresh workload information in seconds")
         .addOption("initMaxNumPartitionsPerRoute", true, "The max number of partitions when init a route")
         .addOption("maxNumPartitionsPerRoute", true, "The max number of partitions a route can have")
@@ -460,6 +476,11 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
       managerConf.setC3Port(cmd.getOptionValue("c3Port"));
     } else {
       managerConf.setC3Port(Integer.toString(DEFAULT_C3_PORT));
+    }
+    if (cmd.hasOption("clusterPrefixLength")) {
+      managerConf.setClusterPrefixLength(cmd.getOptionValue("clusterPrefixLength"));
+    } else {
+      managerConf.setClusterPrefixLength(Integer.toString(DEFAULT_CLUSTER_PREFIX_LENGTH));
     }
     if (cmd.hasOption("workloadRefreshPeriodInSeconds")) {
       managerConf.setWorkloadRefreshPeriodInSeconds(cmd.getOptionValue("workloadRefreshPeriodInSeconds"));

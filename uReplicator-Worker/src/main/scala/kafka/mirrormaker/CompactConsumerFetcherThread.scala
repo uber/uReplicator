@@ -184,7 +184,9 @@ class CompactConsumerFetcherThread(name: String,
               partitionMap.remove(tpToDelete.getKey)
             }
             val lagMetricToRemove = new ClientIdTopicPartition(clientId, tpToDelete.getKey.topic, tpToDelete.getKey.partition)
+            info("Trying to remove lag metrics for %s, %s, %s".format(clientId, tpToDelete.getKey.topic, tpToDelete.getKey.partition))
             if (fetcherLagStats.stats.contains(lagMetricToRemove)) {
+              info("Removed lag metrics for %s, %s, %s".format(clientId, tpToDelete.getKey.topic, tpToDelete.getKey.partition))
               fetcherLagStats.stats.remove(lagMetricToRemove)
             }
           }

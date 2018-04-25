@@ -26,6 +26,8 @@ public interface IuReplicatorConf {
 
   public String getSrcKafkaZkPath();
 
+  public Integer getClusterPrefixLength();
+
   public Integer getWorkloadRefreshPeriodInSeconds();
 
   public Double getBytesPerSecondDefault();

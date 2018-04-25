@@ -220,6 +220,34 @@ public class IdealStateBuilder {
     return customModeIdealStateBuilder.build();
   }
 
+  public static IdealState shrinkInstanceCustomIdealStateFor(IdealState oldIdealState,
+      String topicName, String partition, List<String> instancesToRemove, int maxNumReplica) {
+    final CustomModeISBuilder customModeIdealStateBuilder = new CustomModeISBuilder(topicName);
+
+    int oldNumPartitions = oldIdealState.getNumPartitions();
+
+    customModeIdealStateBuilder
+        .setStateModel(OnlineOfflineStateModel.name)
+        .setNumPartitions(oldNumPartitions).setNumReplica(maxNumReplica)
+        .setMaxPartitionsPerNode(oldNumPartitions);
+
+    for (String partitionName : oldIdealState.getPartitionSet()) {
+      if (partitionName.equals(partition)) {
+        for (String instanceName : oldIdealState.getInstanceStateMap(partitionName).keySet()) {
+          if (!instancesToRemove.contains(instanceName)) {
+            customModeIdealStateBuilder.assignInstanceAndState(partitionName, instanceName, "ONLINE");
+          }
+        }
+      } else {
+        for (String instanceName : oldIdealState.getInstanceStateMap(partitionName).keySet()) {
+          customModeIdealStateBuilder.assignInstanceAndState(partitionName, instanceName, "ONLINE");
+        }
+      }
+    }
+
+    return customModeIdealStateBuilder.build();
+  }
+
   public static IdealState shrinkCustomIdealStateFor(IdealState oldIdealState,
       String topicName, String partitionToDelete) {
     final CustomModeISBuilder customModeIdealStateBuilder = new CustomModeISBuilder(topicName);

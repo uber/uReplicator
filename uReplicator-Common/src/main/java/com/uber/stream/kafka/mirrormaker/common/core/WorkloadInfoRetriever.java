@@ -19,10 +19,12 @@ import com.uber.stream.kafka.mirrormaker.common.utils.C3QueryUtils;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -40,6 +42,7 @@ public class WorkloadInfoRetriever {
 
   private final IHelixManager _helixMirrorMakerManager;
   private final String _srcKafkaCluster;
+  private final String _simpleSrcKafkaCluster;
 
   private boolean _initialized = false;
 
@@ -71,10 +74,14 @@ public class WorkloadInfoRetriever {
     if (srcKafkaZkPath == null) {
       LOGGER.error("Source kafka Zookeeper path is not configured");
       _srcKafkaCluster = "";
+      _simpleSrcKafkaCluster = "";
     } else {
       srcKafkaZkPath = srcKafkaZkPath.trim();
       int idx = srcKafkaZkPath.lastIndexOf('/');
       _srcKafkaCluster = idx < 0 ? "" : srcKafkaZkPath.substring(idx + 1);
+      // if your route name is different from cluster name and route name is a postfix of cluster name
+      _simpleSrcKafkaCluster = helixMirrorMakerManager.getConf().getClusterPrefixLength() == 0 ? _srcKafkaCluster :
+          _srcKafkaCluster.substring(helixMirrorMakerManager.getConf().getClusterPrefixLength());
     }
   }
 
@@ -156,10 +163,21 @@ public class WorkloadInfoRetriever {
     Map<String, Integer> topicsPartitions = new HashMap<>();
     for (String topic : topics) {
       IdealState idealState = _helixMirrorMakerManager.getIdealStateForTopic(topic);
-      if (idealState != null) {
+      /*if (idealState != null) {
         int partitions = idealState.getNumPartitions();
         if (partitions > 0) {
           topicsPartitions.put(topic, partitions);
+        }
+      }*/
+      // TODO: make it compatible with controller
+      if (idealState != null) {
+        Iterator<String> iter = idealState.getPartitionSet().iterator();
+        while (iter.hasNext()) {
+          String route = iter.next();
+          if (route.substring(1).startsWith(_simpleSrcKafkaCluster)) {
+            topicsPartitions.put(topic, idealState.getNumPartitions());
+            break;
+          }
         }
       }
     }
@@ -171,10 +189,21 @@ public class WorkloadInfoRetriever {
     Map<String, Integer> topicsPartitions = new HashMap<>();
     for (String topic : topics) {
       IdealState idealState = _helixMirrorMakerManager.getIdealStateForTopic(topic);
-      if (idealState != null) {
+      /*if (idealState != null) {
         int partitions = idealState.getNumPartitions();
         if (partitions > 0) {
           topicsPartitions.put(topic, partitions);
+        }
+      }*/
+      // TODO: make it compatible with controller
+      if (idealState != null) {
+        Iterator<String> iter = idealState.getPartitionSet().iterator();
+        while (iter.hasNext()) {
+          String route = iter.next();
+          if (route.substring(1).startsWith(_simpleSrcKafkaCluster)) {
+            topicsPartitions.put(topic, idealState.getNumPartitions());
+            break;
+          }
         }
       }
     }
@@ -200,6 +229,7 @@ public class WorkloadInfoRetriever {
     long current = System.currentTimeMillis();
     Map<String, TopicWorkload> topicWorkloads = C3QueryUtils.retrieveTopicInRate(timeInMs, windowInMs,
         _c3Host, _c3Port, _srcKafkaCluster, new ArrayList<>(topicsPartitions.keySet()));
+    LOGGER.info("Retrieved workload for ts: {} for srcKafkaCluster: {} and {} topics", timeInMs, _srcKafkaCluster, topicsPartitions.size());
     synchronized (_topicWorkloadMap) {
       for (Map.Entry<String, TopicWorkload> entry : topicWorkloads.entrySet()) {
         String topic = entry.getKey();

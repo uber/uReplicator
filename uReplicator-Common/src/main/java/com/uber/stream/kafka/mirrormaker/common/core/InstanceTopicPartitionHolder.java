@@ -94,6 +94,10 @@ public class InstanceTopicPartitionHolder {
     _workerSet.addAll(workers);
   }
 
+  public void removeWorkers(Collection<String> workers) {
+    _workerSet.removeAll(workers);
+  }
+
   /*public TopicWorkload totalWorkload(WorkloadInfoRetriever infoRetriever, ITopicWorkloadWeighter weighter) {
     TopicWorkload total = new TopicWorkload(0, 0, 0);
     for (TopicPartition part : _topicPartitionSet) {

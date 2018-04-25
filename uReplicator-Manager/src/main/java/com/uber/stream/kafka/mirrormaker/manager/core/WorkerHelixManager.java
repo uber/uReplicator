@@ -15,7 +15,6 @@
  */
 package com.uber.stream.kafka.mirrormaker.manager.core;
 
-import com.codahale.metrics.Counter;
 import com.uber.stream.kafka.mirrormaker.common.configuration.IuReplicatorConf;
 import com.uber.stream.kafka.mirrormaker.common.core.IHelixManager;
 import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
@@ -23,11 +22,9 @@ import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixSetupUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
 import com.uber.stream.kafka.mirrormaker.manager.ManagerConf;
-import com.uber.stream.kafka.mirrormaker.manager.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -240,6 +237,36 @@ public class WorkerHelixManager implements IHelixManager {
       _routeToInstanceMap.get(route).addAll(instances);
       _availableWorkerList.removeAll(instances);
       controller.addWorkers(instances);
+    } finally {
+      _lock.unlock();
+    }
+  }
+
+  public synchronized void removeWorkersToMirrorMaker(InstanceTopicPartitionHolder controller, String pipeline,
+      int routeId, int numWorkersToRemove) throws Exception {
+    LOGGER.info("Trying to remove {} workers in route: {}@{}", numWorkersToRemove, pipeline, routeId);
+    _lock.lock();
+    try {
+
+      List<String> instancesToRemove = new ArrayList<>();
+      Iterator<String> currWorkerIter = controller.getWorkerSet().iterator();
+      int count = 0;
+      while (count < numWorkersToRemove && currWorkerIter.hasNext()) {
+        instancesToRemove.add(currWorkerIter.next());
+        count++;
+      }
+
+      LOGGER.info("Remove {} instance int route {}: {}", instancesToRemove.size(), pipeline + SEPARATOR + routeId,
+          instancesToRemove);
+      _helixAdmin.setResourceIdealState(_helixClusterName, pipeline,
+          IdealStateBuilder.shrinkInstanceCustomIdealStateFor(_helixAdmin.getResourceIdealState(_helixClusterName, pipeline),
+                  pipeline, String.valueOf(routeId), instancesToRemove, _conf.getMaxNumWorkersPerRoute()));
+
+      TopicPartition route = new TopicPartition(pipeline, routeId);
+      _routeToInstanceMap.putIfAbsent(route, new ArrayList<>());
+      _routeToInstanceMap.get(route).removeAll(instancesToRemove);
+      _availableWorkerList.addAll(instancesToRemove);
+      controller.removeWorkers(instancesToRemove);
     } finally {
       _lock.unlock();
     }
