@@ -13,11 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.uber.stream.kafka.mirrormaker.manager.core;
+package com.uber.stream.kafka.mirrormaker.common.core;
 
-import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
-import com.uber.stream.kafka.mirrormaker.manager.utils.KafkaStarterUtils;
-import com.uber.stream.kafka.mirrormaker.manager.utils.ZkStarter;
+import com.uber.stream.kafka.mirrormaker.common.utils.KafkaStarterUtils;
+import com.uber.stream.kafka.mirrormaker.common.utils.ZkStarter;
 import kafka.server.KafkaServerStartable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +31,7 @@ public class TestKafkaBrokerTopicObserver {
   private static KafkaBrokerTopicObserver kafkaBrokerTopicObserver;
   private KafkaServerStartable kafkaStarter;
 
-  /*@BeforeTest
+  @BeforeTest
   public void setup() {
     LOGGER.info("Trying to setup");
     ZkStarter.startLocalZkServer();
@@ -81,5 +80,5 @@ public class TestKafkaBrokerTopicObserver {
         Assert.assertEquals(kafkaBrokerTopicObserver.getTopicPartition("testTopic" + j).getPartition(), 1);
       }
     }
-  }*/
+  }
 }

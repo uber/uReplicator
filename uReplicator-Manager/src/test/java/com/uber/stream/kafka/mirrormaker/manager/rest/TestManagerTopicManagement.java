@@ -388,23 +388,19 @@ public class TestManagerTopicManagement {
   }
 
   @Test
-  public void testGet() {
-    // Get call
-    Request request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
-        .getTopicExternalViewRequestUrl("");
+  public void test1Get() {
+    // Get whole picture of the deployment
+    Request request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL).getTopicExternalViewRequestUrl("");
     Response response = HTTP_CLIENT.handle(request);
     JSONObject json = JSONObject.parseObject(response.getEntityAsText());
     Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
     Assert.assertEquals(json.getString("message"), "No topic is added in uReplicator!");
-    Assert.assertEquals(json.getString("status"), "404");
+    Assert.assertEquals(json.getString("status"), "200");
 
     // Create topic but expect failure with no controller
     request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
         .getTopicCreationRequestUrl("testTopic0", "cluster1", "cluster3");
-
     response = HTTP_CLIENT.handle(request);
-    System.out.println("request:" + request);
-    System.out.println("response:" + response.getEntityAsText());
     Assert.assertEquals(response.getStatus(), Status.SERVER_ERROR_INTERNAL);
     Assert.assertFalse(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testTopic0"));
 
@@ -418,8 +414,6 @@ public class TestManagerTopicManagement {
     }
 
     response = HTTP_CLIENT.handle(request);
-    System.out.println("request:" + request);
-    System.out.println("response:" + response.getEntityAsText());
     Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
     Assert.assertTrue(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testTopic0"));
 
@@ -429,36 +423,240 @@ public class TestManagerTopicManagement {
       e.printStackTrace();
     }
 
-    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
-        .getTopicExternalViewRequestUrl("");
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL).getTopicExternalViewRequestUrl("");
     response = HTTP_CLIENT.handle(request);
     json = JSONObject.parseObject(response.getEntityAsText());
-    System.out.println("request:" + request);
-    System.out.println("response:" + response.getEntityAsText());
     Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
     Assert.assertEquals(json.getJSONObject("message").getString("topics"), "[\"testTopic0\"]");
     Assert.assertEquals(json.getString("status"), "200");
 
-    // Get call
-    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
-        .getTopicExternalViewRequestUrl("testTopic0");
+    // Get existing topic information
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL).getTopicExternalViewRequestUrl("testTopic0");
     response = HTTP_CLIENT.handle(request);
-    System.out.println("request:" + request);
-    System.out.println("response:" + response.getEntityAsText());
     json = JSONObject.parseObject(response.getEntityAsText());
     Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
     Assert.assertEquals(json.getJSONObject("message").getJSONObject("managerView").getString("topic"), "testTopic0");
     Assert.assertEquals(json.getString("status"), "200");
 
+    // Get non-existing topic information
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL).getTopicExternalViewRequestUrl("testTopic1");
+    response = HTTP_CLIENT.handle(request);
+    json = JSONObject.parseObject(response.getEntityAsText());
+    Assert.assertEquals(response.getStatus(), Status.CLIENT_ERROR_NOT_FOUND);
+    Assert.assertEquals(json.getString("message"), "Failed to find topic: testTopic1");
+    Assert.assertEquals(json.getString("status"), "404");
+
+    // Get existing route information
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL).getTopicExternalViewRequestUrl("@cluster1@cluster3");
+    response = HTTP_CLIENT.handle(request);
+    json = JSONObject.parseObject(response.getEntityAsText());
+    Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
+    Assert.assertEquals(json.getJSONObject("message").getString("topic"), "@cluster1@cluster3");
+    Assert.assertEquals(json.getString("status"), "200");
+
+    // Get non-existing route information
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL).getTopicExternalViewRequestUrl("@cluster1@cluster4");
+    response = HTTP_CLIENT.handle(request);
+    json = JSONObject.parseObject(response.getEntityAsText());
+    Assert.assertEquals(response.getStatus(), Status.CLIENT_ERROR_NOT_FOUND);
+    Assert.assertEquals(json.getString("message"), "Failed to get view for route: @cluster1@cluster4, it is not existed!");
+    Assert.assertEquals(json.getString("status"), "404");
+
     // Delete topic
     request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
         .getTopicDeleteRequestUrl("testTopic0", "cluster1", "cluster3");
     response = HTTP_CLIENT.handle(request);
-
     json = JSONObject.parseObject(response.getEntityAsText());
     Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
     Assert.assertEquals(json.getString("message"), "Successfully delete topic: testTopic0 from cluster1 to cluster3");
     Assert.assertEquals(json.getString("status"), "200");
+  }
+
+  @Test
+  public void test2Post() {
+    // Get whole picture of the deployment
+    Request request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL).getTopicExternalViewRequestUrl("");
+    Response response = HTTP_CLIENT.handle(request);
+    JSONObject json = JSONObject.parseObject(response.getEntityAsText());
+    Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
+    Assert.assertEquals(json.getString("message"), "No topic is added in uReplicator!");
+    Assert.assertEquals(json.getString("status"), "200");
+    Assert.assertFalse(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testTopic0"));
+
+    // Create topic
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
+        .getTopicCreationRequestUrl("testTopic0", "cluster1", "cluster3");
+    response = HTTP_CLIENT.handle(request);
+    Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
+    Assert.assertTrue(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testTopic0"));
+
+    // Create topic but expect failure due to invalid route
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
+        .getTopicCreationRequestUrl("testTopic0", "cluster2", "cluster3");
+    response = HTTP_CLIENT.handle(request);
+    json = JSONObject.parseObject(response.getEntityAsText());
+    Assert.assertEquals(response.getStatus(), Status.CLIENT_ERROR_NOT_FOUND);
+    Assert.assertEquals(json.getString("message"), "Failed to whitelist topic testTopic0 on uReplicator because of not valid pipeline from cluster2 to cluster3");
+
+    // Create topic but expect failure due to not existing in src cluster
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
+        .getTopicCreationRequestUrl("testTopic1", "cluster1", "cluster3");
+    response = HTTP_CLIENT.handle(request);
+    json = JSONObject.parseObject(response.getEntityAsText());
+    Assert.assertEquals(response.getStatus(), Status.CLIENT_ERROR_NOT_FOUND);
+    Assert.assertEquals(json.getString("message"), "Failed to whitelist new topic: testTopic1, it's not existed in source Kafka cluster!");
+
+    try {
+      Thread.sleep(5000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
+    // Create topic but expect failure due to already existed
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
+        .getTopicCreationRequestUrl("testTopic0", "cluster1", "cluster3");
+    response = HTTP_CLIENT.handle(request);
+    json = JSONObject.parseObject(response.getEntityAsText());
+    Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
+    Assert.assertEquals(json.getString("message"), "Failed to add new topic: testTopic0 from: cluster1 to: cluster3, it is already existed!");
+
+    try {
+      Thread.sleep(5000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
+    // Delete topic
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
+        .getTopicDeleteRequestUrl("testTopic0", "cluster1", "cluster3");
+    response = HTTP_CLIENT.handle(request);
+    json = JSONObject.parseObject(response.getEntityAsText());
+    Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
+    Assert.assertEquals(json.getString("message"), "Successfully delete topic: testTopic0 from cluster1 to cluster3");
+    Assert.assertEquals(json.getString("status"), "200");
+  }
+
+  @Test
+  public void test3Put() {
+    // Get whole picture of the deployment
+    Request request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL).getTopicExternalViewRequestUrl("");
+    Response response = HTTP_CLIENT.handle(request);
+    JSONObject json = JSONObject.parseObject(response.getEntityAsText());
+    Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
+    Assert.assertEquals(json.getString("message"), "No topic is added in uReplicator!");
+    Assert.assertEquals(json.getString("status"), "200");
+    Assert.assertFalse(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testTopic0"));
+
+    // Create topic
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
+        .getTopicCreationRequestUrl("testTopic0", "cluster1", "cluster3");
+    response = HTTP_CLIENT.handle(request);
+    Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
+    Assert.assertTrue(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testTopic0"));
+
+    // Expand topic but expect failure due to new partitions not bigger than existing partitions
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
+        .getTopicExpansionRequestUrl("testTopic0", "cluster1", "cluster3", 1);
+    response = HTTP_CLIENT.handle(request);
+    json = JSONObject.parseObject(response.getEntityAsText());
+    Assert.assertEquals(response.getStatus(), Status.CLIENT_ERROR_NOT_FOUND);
+    Assert.assertEquals(json.getString("message"), "Failed to expand the topic testTopic0 in pipeline @cluster1@cluster3 to 1 partitions due to exception: java.lang.Exception: New partition 1 is not bigger than current partition 1 of topic testTopic0, abandon expanding topic!");
+
+    // Expand topic but expect failure due to non-existing route
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
+        .getTopicExpansionRequestUrl("testTopic0", "cluster2", "cluster3", 2);
+    response = HTTP_CLIENT.handle(request);
+    json = JSONObject.parseObject(response.getEntityAsText());
+    Assert.assertEquals(response.getStatus(), Status.CLIENT_ERROR_NOT_FOUND);
+    Assert.assertEquals(json.getString("message"), "Topic testTopic0 doesn't exist in pipeline @cluster2@cluster3, abandon expanding topic!");
+
+    // Expand topic but expect failure due to non-whitelisted topic
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
+        .getTopicExpansionRequestUrl("testTopic1", "cluster1", "cluster3", 2);
+    response = HTTP_CLIENT.handle(request);
+    json = JSONObject.parseObject(response.getEntityAsText());
+    Assert.assertEquals(response.getStatus(), Status.CLIENT_ERROR_NOT_FOUND);
+    Assert.assertEquals(json.getString("message"), "Topic testTopic1 doesn't exist in pipeline @cluster1@cluster3, abandon expanding topic!");
+
+    // Expand topic
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
+        .getTopicExpansionRequestUrl("testTopic0", "cluster1", "cluster3", 2);
+    response = HTTP_CLIENT.handle(request);
+    json = JSONObject.parseObject(response.getEntityAsText());
+    Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
+    Assert.assertEquals(json.getString("message"), "Successfully expand the topic testTopic0 in pipeline @cluster1@cluster3 to 2 partitions");
+
+    // Delete topic
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
+        .getTopicDeleteRequestUrl("testTopic0", "cluster1", "cluster3");
+    response = HTTP_CLIENT.handle(request);
+    json = JSONObject.parseObject(response.getEntityAsText());
+    Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
+    Assert.assertEquals(json.getString("message"), "Successfully delete topic: testTopic0 from cluster1 to cluster3");
+    Assert.assertEquals(json.getString("status"), "200");
+  }
+
+  @Test
+  public void test4Delete() {
+    // Get whole picture of the deployment
+    Request request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL).getTopicExternalViewRequestUrl("");
+    Response response = HTTP_CLIENT.handle(request);
+    JSONObject json = JSONObject.parseObject(response.getEntityAsText());
+    Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
+    Assert.assertEquals(json.getString("message"), "No topic is added in uReplicator!");
+    Assert.assertEquals(json.getString("status"), "200");
+    Assert.assertFalse(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testTopic0"));
+
+    // Create topic
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
+        .getTopicCreationRequestUrl("testTopic0", "cluster1", "cluster3");
+    response = HTTP_CLIENT.handle(request);
+    Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
+    Assert.assertTrue(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testTopic0"));
+
+    // Delete topic but expect failure due to non-existing topic
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
+        .getTopicDeleteRequestUrl("testTopic0", "cluster2", "cluster3");
+    response = HTTP_CLIENT.handle(request);
+    json = JSONObject.parseObject(response.getEntityAsText());
+    Assert.assertEquals(response.getStatus(), Status.CLIENT_ERROR_NOT_FOUND);
+    Assert.assertEquals(json.getString("message"), "Failed to delete not existed topic: testTopic0 in pipeline: @cluster2@cluster3");
+
+    // Delete topic but expect failure due to non-whitelisted topic
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
+        .getTopicDeleteRequestUrl("testTopic1", "cluster1", "cluster3");
+    response = HTTP_CLIENT.handle(request);
+    json = JSONObject.parseObject(response.getEntityAsText());
+    Assert.assertEquals(response.getStatus(), Status.CLIENT_ERROR_NOT_FOUND);
+    Assert.assertEquals(json.getString("message"), "Failed to delete not existed topic: testTopic1 in pipeline: @cluster1@cluster3");
+
+    // Delete topic
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
+        .getTopicDeleteRequestUrl("testTopic0", "cluster1", "cluster3");
+    response = HTTP_CLIENT.handle(request);
+    json = JSONObject.parseObject(response.getEntityAsText());
+    Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
+    Assert.assertEquals(json.getString("message"), "Successfully delete topic: testTopic0 from cluster1 to cluster3");
+    Assert.assertEquals(json.getString("status"), "200");
+
+    // Delete pipeline but expect failure due to non-existing pipeline
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
+        .getTopicDeleteRequestUrl("@cluster2@cluster3", "cluster2", "cluster3");
+    response = HTTP_CLIENT.handle(request);
+    json = JSONObject.parseObject(response.getEntityAsText());
+    Assert.assertEquals(response.getStatus(), Status.CLIENT_ERROR_NOT_FOUND);
+    Assert.assertEquals(json.getString("message"), "Failed to delete not existed pipeline: @cluster2@cluster3");
+
+    // Delete pipeline
+    Assert.assertTrue(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/@cluster1@cluster3"));
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
+        .getTopicDeleteRequestUrl("@cluster1@cluster3", "cluster1", "cluster3");
+    response = HTTP_CLIENT.handle(request);
+    json = JSONObject.parseObject(response.getEntityAsText());
+    Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
+    Assert.assertEquals(json.getString("message"), "Successfully delete pipeline: @cluster1@cluster3");
+    Assert.assertEquals(json.getString("status"), "200");
+    Assert.assertFalse(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/@cluster1@cluster3"));
   }
 
 }

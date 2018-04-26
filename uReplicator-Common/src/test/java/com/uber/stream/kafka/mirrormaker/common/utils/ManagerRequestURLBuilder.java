@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.uber.stream.kafka.mirrormaker.manager.utils;
+package com.uber.stream.kafka.mirrormaker.common.utils;
 
-import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import org.apache.commons.lang.StringUtils;
 import org.restlet.Request;
 import org.restlet.data.Method;
@@ -69,13 +68,10 @@ public class ManagerRequestURLBuilder {
     return request;
   }
 
-  public Request getTopicExpansionRequestUrl(String topic, String src, String dst, int numPartitions) {
-    String requestUrl = StringUtils.join(new String[]{
-        _baseUrl, "/topics/", topic, "?src=", src, "&dst=", dst, "&partitions=", String.valueOf(numPartitions)
-    });
-
-    Request request = new Request(Method.PUT, requestUrl);
-
+  /*public Request getTopicExpansionRequestUrl(String topic, int numPartitions) {
+    Request request = new Request(Method.PUT, _baseUrl + "/topics/");
+    TopicPartition topicPartitionInfo = new TopicPartition(topic, numPartitions);
+    request.setEntity(topicPartitionInfo.toJSON().toJSONString(), MediaType.APPLICATION_JSON);
     return request;
-  }
+  }*/
 }

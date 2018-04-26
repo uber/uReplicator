@@ -109,18 +109,18 @@ public class TopicManagementRestletResource extends ServerResource {
           JSONObject responseJson = new JSONObject();
           responseJson.put("status", Status.CLIENT_ERROR_NOT_FOUND.getCode());
           responseJson.put("message",
-              String.format("Failed to get view for topic: %s, it is not existed!", topicName));
+              String.format("Failed to get view for route: %s, it is not existed!", topicName));
 
           getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
           return new StringRepresentation(responseJson.toJSONString());
         }
       } catch (Exception e) {
-        LOGGER.error("Failed to get view for topic: {} due to exception: {}", topicName, e);
+        LOGGER.error("Failed to get view for topic: {} due to exception: {}", topicName, e, e);
 
         JSONObject responseJson = new JSONObject();
         responseJson.put("status", Status.SERVER_ERROR_INTERNAL.getCode());
         responseJson.put("message",
-            String.format("Failed to get view for topic: %s due to exception: %s", topicName, e));
+            String.format("Failed to get view for route: %s due to exception: %s", topicName, e));
 
         getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
         return new StringRepresentation(responseJson.toJSONString());
@@ -272,12 +272,12 @@ public class TopicManagementRestletResource extends ServerResource {
             topicName, pipeline, newNumPartitions, e);
 
         JSONObject responseJson = new JSONObject();
-        responseJson.put("status", Status.SERVER_ERROR_INTERNAL.getCode());
+        responseJson.put("status", Status.CLIENT_ERROR_NOT_FOUND.getCode());
         responseJson.put("message",
             String.format("Failed to expand the topic %s in pipeline %s to %s partitions due to exception: %s",
                 topicName, pipeline, newNumPartitions, e.toString()));
 
-        getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
+        getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
         return new StringRepresentation(responseJson.toJSONString());
       }
     }
@@ -354,7 +354,7 @@ public class TopicManagementRestletResource extends ServerResource {
           JSONObject responseJson = new JSONObject();
           responseJson.put("status", Status.SERVER_ERROR_INTERNAL.getCode());
           responseJson.put("message",
-              String.format("Failed to delete new topic: %s from: %s to: %s due to exception: %s",
+              String.format("Failed to delete topic: %s from: %s to: %s due to exception: %s",
                   topicName, srcCluster, dstCluster, e.toString()));
 
           getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
@@ -435,15 +435,19 @@ public class TopicManagementRestletResource extends ServerResource {
       }
     }
 
+    helixInfoJson.put("serverToPartitionMapping", serverToPartitionMappingJson);
+    helixInfoJson.put("serverToNumPartitionsMapping", serverToNumPartitionsMappingJson);
+
+    if (topicName.startsWith(SEPARATOR)) {
+      return helixInfoJson;
+    }
+
     JSONObject workerMappingJson = new JSONObject();
     for (InstanceTopicPartitionHolder itph : _helixMirrorMakerManager.getTopicToPipelineInstanceMap()
         .get(topicName).values()) {
       workerMappingJson.put(itph.getRouteString(), itph.getWorkerSet());
     }
     helixInfoJson.put("workers", workerMappingJson);
-
-    helixInfoJson.put("serverToPartitionMapping", serverToPartitionMappingJson);
-    helixInfoJson.put("serverToNumPartitionsMapping", serverToNumPartitionsMappingJson);
 
     return helixInfoJson;
   }
