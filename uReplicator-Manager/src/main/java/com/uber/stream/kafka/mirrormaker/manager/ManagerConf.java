@@ -58,6 +58,9 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
   private static final String C3_PORT = "manager.c3.port";
   private static final int DEFAULT_C3_PORT = 0;
 
+  private static final String CLUSTER_PREFIX_LENGTH = "manager.cluster.prefix.length";
+  private static final int DEFAULT_CLUSTER_PREFIX_LENGTH = 0;
+
   private static final String WORKLOAD_REFRESH_PERIOD_IN_SECONDS = "manager.workload.refresh.period.in.seconds";
   private static final int DEFAULT_WORKLOAD_REFRESH_PERIOD_IN_SECONDS = 600;
 
@@ -67,11 +70,23 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
   private static final String MAX_NUM_PARTITIONS_PER_ROUTE = "manager.max.num.partitions.per.route";
   private static final int DEFAULT_MAX_NUM_PARTITIONS_PER_ROUTE = 20;
 
+  private static final String INIT_MAX_WORKLOAD_PER_WORKER_BYTE_DC = "manager.init.max.workload.per.worker.byte.dc";
+  private static final double DEFAULT_INIT_MAX_WORKLOAD_PER_WORKER_BYTE_DC = 15*1024*1024;
+
+  private static final String INIT_MAX_WORKLOAD_PER_WORKER_BYTE_XDC = "manager.init.max.workload.per.worker.byte.xdc";
+  private static final double DEFAULT_INIT_MAX_WORKLOAD_PER_WORKER_BYTE_XDC = 8*1024*1024;
+
   private static final String INIT_MAX_NUM_WORKERS_PER_ROUTE = "manager.init.max.num.workers.per.route";
   private static final int DEFAULT_INIT_MAX_NUM_WORKERS_PER_ROUTE = 3;
 
   private static final String MAX_NUM_WORKERS_PER_ROUTE = "manager.max.num.workers.per.route";
   private static final int DEFAULT_MAX_NUM_WORKERS_PER_ROUTE = 5;
+
+  private static final String BYTES_PER_SECOND_DEFAULT = "manager.bytes.per.second.default";
+  private static final double DEFAULT_BYTES_PER_SECOND_DEFAULT = 1000.0;
+
+  private static final String MSGS_PER_SECOND_DEFAULT = "manager.msgs.per.second.default";
+  private static final double DEFAULT_MSGS_PER_SECOND_DEFAULT = 1;
 
   public ManagerConf() {
     super();
@@ -134,6 +149,10 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
     setProperty(C3_PORT, Integer.valueOf(C3Port));
   }
 
+  public void setClusterPrefixLength(String clusterPrefixLength) {
+    setProperty(CLUSTER_PREFIX_LENGTH, Integer.valueOf(clusterPrefixLength));
+  }
+
   public void setWorkloadRefreshPeriodInSeconds(String workloadRefreshPeriodInSeconds) {
     setProperty(WORKLOAD_REFRESH_PERIOD_IN_SECONDS, Integer.parseInt(workloadRefreshPeriodInSeconds));
   }
@@ -146,12 +165,28 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
     setProperty(MAX_NUM_PARTITIONS_PER_ROUTE, Integer.parseInt(maxNumPartitionsPerRoute));
   }
 
+  public void setInitMaxWorkloadPerWorkerByteDc(String initMaxWorkloadPerWorkerByteDc) {
+    setProperty(INIT_MAX_WORKLOAD_PER_WORKER_BYTE_DC, Double.parseDouble(initMaxWorkloadPerWorkerByteDc));
+  }
+
+  public void setInitMaxWorkloadPerWorkerByteXDc(String initMaxWorkloadPerWorkerByteXdc) {
+    setProperty(INIT_MAX_WORKLOAD_PER_WORKER_BYTE_XDC, Double.parseDouble(initMaxWorkloadPerWorkerByteXdc));
+  }
+
   public void setInitMaxNumWorkersPerRoute(String initMaxNumWorkersPerRoute) {
     setProperty(INIT_MAX_NUM_WORKERS_PER_ROUTE, Integer.parseInt(initMaxNumWorkersPerRoute));
   }
 
   public void setMaxNumWorkersPerRoute(String maxNumWorkersPerRoute) {
     setProperty(MAX_NUM_WORKERS_PER_ROUTE, Integer.parseInt(maxNumWorkersPerRoute));
+  }
+
+  public void setBytesPerSecondDefault(String bytesPerSecondDefault) {
+    setProperty(BYTES_PER_SECOND_DEFAULT, Double.parseDouble(bytesPerSecondDefault));
+  }
+
+  public void setMsgsPerSecondDefault(String msgsPerSecondDefault) {
+    setProperty(MSGS_PER_SECOND_DEFAULT, Double.parseDouble(msgsPerSecondDefault));
   }
 
   public String getConfigFile() {
@@ -229,6 +264,14 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
     return null;
   }
 
+  public Integer getClusterPrefixLength() {
+    if (containsKey(CLUSTER_PREFIX_LENGTH)) {
+      return (Integer) getProperty(CLUSTER_PREFIX_LENGTH);
+    } else {
+      return DEFAULT_CLUSTER_PREFIX_LENGTH;
+    }
+  }
+
   public Integer getWorkloadRefreshPeriodInSeconds() {
     if (containsKey(WORKLOAD_REFRESH_PERIOD_IN_SECONDS)) {
       return (Integer) getProperty(WORKLOAD_REFRESH_PERIOD_IN_SECONDS);
@@ -253,6 +296,22 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
     }
   }
 
+  public Double getInitMaxWorkloadPerWorkerByteDc() {
+    if (containsKey(INIT_MAX_WORKLOAD_PER_WORKER_BYTE_DC)) {
+      return (Double) getProperty(INIT_MAX_WORKLOAD_PER_WORKER_BYTE_DC);
+    } else {
+      return DEFAULT_INIT_MAX_WORKLOAD_PER_WORKER_BYTE_DC;
+    }
+  }
+
+  public Double getInitMaxWorkloadPerWorkerByteXdc() {
+    if (containsKey(INIT_MAX_WORKLOAD_PER_WORKER_BYTE_XDC)) {
+      return (Double) getProperty(INIT_MAX_WORKLOAD_PER_WORKER_BYTE_XDC);
+    } else {
+      return DEFAULT_INIT_MAX_WORKLOAD_PER_WORKER_BYTE_XDC;
+    }
+  }
+
   public Integer getInitMaxNumWorkersPerRoute() {
     if (containsKey(INIT_MAX_NUM_WORKERS_PER_ROUTE)) {
       return (Integer) getProperty(INIT_MAX_NUM_WORKERS_PER_ROUTE);
@@ -266,6 +325,22 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
       return (Integer) getProperty(MAX_NUM_WORKERS_PER_ROUTE);
     } else {
       return DEFAULT_MAX_NUM_WORKERS_PER_ROUTE;
+    }
+  }
+
+  public Double getBytesPerSecondDefault() {
+    if (containsKey(BYTES_PER_SECOND_DEFAULT)) {
+      return (Double) getProperty(BYTES_PER_SECOND_DEFAULT);
+    } else {
+      return DEFAULT_BYTES_PER_SECOND_DEFAULT;
+    }
+  }
+
+  public Double getMsgsPerSecondDefault() {
+    if (containsKey(MSGS_PER_SECOND_DEFAULT)) {
+      return (Double) getProperty(MSGS_PER_SECOND_DEFAULT);
+    } else {
+      return DEFAULT_MSGS_PER_SECOND_DEFAULT;
     }
   }
 
@@ -315,11 +390,16 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
         .addOption("metricsPrefix", true, "MetricsPrefix")
         .addOption("c3Host", true, "Chaperone3 Host")
         .addOption("c3Port", true, "Chaperone3 Port")
+        .addOption("clusterPrefixLength", true, "Cluster prefix length to extract route name from cluster name")
         .addOption("workloadRefreshPeriodInSeconds", true, "The period to refresh workload information in seconds")
         .addOption("initMaxNumPartitionsPerRoute", true, "The max number of partitions when init a route")
         .addOption("maxNumPartitionsPerRoute", true, "The max number of partitions a route can have")
+        .addOption("initMaxWorkloadPerWorkerByteDc", true, "The max workload per worker when init a route in dc")
+        .addOption("initMaxWorkloadPerWorkerByteXdc", true, "The max workload per worker when init a route across dc")
         .addOption("initMaxNumWorkersPerRoute", true, "The max number of workers when init a route")
-        .addOption("maxNumWorkersPerRoute", true, "The max number of workers a route can have");
+        .addOption("maxNumWorkersPerRoute", true, "The max number of workers a route can have")
+        .addOption("bytesPerSecondDefault", true, "The default value for bytes per second")
+        .addOption("msgsPerSecondDefault", true, "The default value for msgs per second");
     return managerOptions;
   }
 
@@ -397,6 +477,11 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
     } else {
       managerConf.setC3Port(Integer.toString(DEFAULT_C3_PORT));
     }
+    if (cmd.hasOption("clusterPrefixLength")) {
+      managerConf.setClusterPrefixLength(cmd.getOptionValue("clusterPrefixLength"));
+    } else {
+      managerConf.setClusterPrefixLength(Integer.toString(DEFAULT_CLUSTER_PREFIX_LENGTH));
+    }
     if (cmd.hasOption("workloadRefreshPeriodInSeconds")) {
       managerConf.setWorkloadRefreshPeriodInSeconds(cmd.getOptionValue("workloadRefreshPeriodInSeconds"));
     } else {
@@ -412,6 +497,16 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
     } else {
       managerConf.setMaxNumPartitionsPerRoute(Integer.toString(DEFAULT_MAX_NUM_PARTITIONS_PER_ROUTE));
     }
+    if (cmd.hasOption("initMaxWorkloadPerWorkerByteDc")) {
+      managerConf.setInitMaxWorkloadPerWorkerByteDc(cmd.getOptionValue("initMaxWorkloadPerWorkerByteDc"));
+    } else {
+      managerConf.setInitMaxWorkloadPerWorkerByteDc(Double.toString(DEFAULT_INIT_MAX_WORKLOAD_PER_WORKER_BYTE_DC));
+    }
+    if (cmd.hasOption("initMaxWorkloadPerWorkerByteXdc")) {
+      managerConf.setInitMaxWorkloadPerWorkerByteXDc(cmd.getOptionValue("initMaxWorkloadPerWorkerByteXdc"));
+    } else {
+      managerConf.setInitMaxWorkloadPerWorkerByteXDc(Double.toString(DEFAULT_INIT_MAX_WORKLOAD_PER_WORKER_BYTE_XDC));
+    }
     if (cmd.hasOption("initMaxNumWorkersPerRoute")) {
       managerConf.setInitMaxNumWorkersPerRoute(cmd.getOptionValue("initMaxNumWorkersPerRoute"));
     } else {
@@ -421,6 +516,16 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
       managerConf.setMaxNumWorkersPerRoute(cmd.getOptionValue("maxNumWorkersPerRoute"));
     } else {
       managerConf.setMaxNumWorkersPerRoute(Integer.toString(DEFAULT_MAX_NUM_WORKERS_PER_ROUTE));
+    }
+    if (cmd.hasOption("bytesPerSecondDefault")) {
+      managerConf.setBytesPerSecondDefault(cmd.getOptionValue("bytesPerSecondDefault"));
+    } else {
+      managerConf.setBytesPerSecondDefault(Double.toString(DEFAULT_BYTES_PER_SECOND_DEFAULT));
+    }
+    if (cmd.hasOption("msgsPerSecondDefault")) {
+      managerConf.setMsgsPerSecondDefault(cmd.getOptionValue("msgsPerSecondDefault"));
+    } else {
+      managerConf.setMsgsPerSecondDefault(Double.toString(DEFAULT_MSGS_PER_SECOND_DEFAULT));
     }
 
     if (cmd.hasOption("config")) {

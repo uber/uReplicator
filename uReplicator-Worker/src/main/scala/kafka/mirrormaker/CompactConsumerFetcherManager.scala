@@ -121,6 +121,7 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
   private def removeCustomizedMetrics() {
     removeMetric("OwnedPartitionsCount", Map("clientId" -> clientId))
     removeMetric("MaxLag", Map("clientId" -> clientId))
+    removeMetric("TotalLag", Map("clientId" -> clientId))
     removeMetric("MinFetchRate", Map("clientId" -> clientId))
     trace("Removed metrics: OwnedPartitionsCount, MaxLag, MinFetchRate for clientId=" + clientId)
   }

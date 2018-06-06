@@ -187,12 +187,13 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
           throw new Exception("No cluster configuration provided")
         }
         val srcClusterZk = clusterProps.getProperty("kafka.cluster.zkStr." + srcCluster, "")
+        val commitZkConnection = clusterProps.getProperty("commit.zookeeper.connect", srcClusterZk)
         if (srcClusterZk.isEmpty()) {
           error("Cannot find zkStr for source cluster: " + srcCluster)
           throw new Exception("Cannot find zkStr for source cluster: " + srcCluster)
         } else {
           consumerConfigProps.setProperty("zookeeper.connect", srcClusterZk)
-          consumerConfigProps.setProperty("commit.zookeeper.connect", srcClusterZk)
+          consumerConfigProps.setProperty("commit.zookeeper.connect", commitZkConnection)
           consumerConfigProps.setProperty("group.id", "ureplicator-" + srcCluster + "-" + dstCluster.getOrElse("none"))
           consumerConfigProps.setProperty("client.id", route)
         }
@@ -268,7 +269,17 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
 
   private def removeCustomizedMetrics() {
     removeMetric("MirrorMaker-numDroppedMessages", Map("clientId" -> clientId))
+    removeMetric("MirrorMaker-flushLatencyMs", Map("clientId" -> clientId))
+    removeMetric("MirrorMaker-commitLatencyMs", Map("clientId" -> clientId))
+    removeMetric("MirrorMaker-callbackLatency", Map("clientId" -> clientId))
+    removeMetric("MirrorMaker-startPerSec", Map("clientId" -> clientId))
+    removeMetric("MirrorMaker-mapFailurePerSec", Map("clientId" -> clientId))
     trace("Removed metrics: MirrorMaker-numDroppedMessages for clientId=" + clientId)
+    trace("Removed metrics: MirrorMaker-flushLatencyMs for clientId=" + clientId)
+    trace("Removed metrics: MirrorMaker-commitLatencyMs for clientId=" + clientId)
+    trace("Removed metrics: MirrorMaker-callbackLatency for clientId=" + clientId)
+    trace("Removed metrics: MirrorMaker-startPerSec for clientId=" + clientId)
+    trace("Removed metrics: MirrorMaker-mapFailurePerSec for clientId=" + clientId)
   }
 
   class WorkerZKHelixManager(clusterName: String,

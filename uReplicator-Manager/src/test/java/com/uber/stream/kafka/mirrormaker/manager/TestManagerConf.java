@@ -79,6 +79,22 @@ public class TestManagerConf {
       ManagerConf conf = ManagerConf.getManagerConf(cmd);
       Assert.fail("Expected exception to be thrown");
     } catch (RuntimeException e) {
+      Assert.assertTrue(e.getMessage().equals("Missing option: --env"));
+    }
+
+    try {
+      String[] args = new String[]{
+          "-zookeeper", "localhost:2181/test",
+          "-managerPort", "9090",
+          "-deployment", "testing",
+          "-env", "dc.testing"
+      };
+
+      CommandLineParser parser = new DefaultParser();
+      CommandLine cmd = parser.parse(ManagerConf.constructManagerOptions(), args);
+      ManagerConf conf = ManagerConf.getManagerConf(cmd);
+      Assert.fail("Expected exception to be thrown");
+    } catch (RuntimeException e) {
       Assert.assertTrue(e.getMessage().equals("Missing option: --controllerPort"));
     }
 
@@ -87,7 +103,8 @@ public class TestManagerConf {
           "-zookeeper", "localhost:2181/test",
           "-managerPort", "9090",
           "-deployment", "testing",
-          "-controllerPort", "8080"
+          "-controllerPort", "8080",
+          "-env", "dc.testing"
       };
 
       CommandLineParser parser = new DefaultParser();
@@ -120,6 +137,7 @@ public class TestManagerConf {
         "-zookeeper", "localhost:2181/test",
         "-managerPort", "9090",
         "-deployment", "testing",
+        "-env", "dc1.testing",
         "-instanceId", "instance0",
         "-controllerPort", "8080",
         "-c3Host", "testhost",
