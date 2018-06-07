@@ -78,6 +78,13 @@ class MirrorMakerWorkerConf {
       .describedAs("Path to mappings file")
       .ofType(classOf[String])
 
+  private val filterConfigOpt: ArgumentAcceptingOptionSpec[String] =
+    parser.accepts("filter.config",
+      "Filter message to send to dst cluster.")
+      .withRequiredArg()
+      .describedAs("Path to filter config file")
+      .ofType(classOf[String])
+
   private val helpOpt: OptionSpecBuilder = parser.accepts("help", "Print this message.")
 
   def getParser: OptionParser = {
@@ -114,6 +121,10 @@ class MirrorMakerWorkerConf {
 
   def getTopicMappingsOpt: ArgumentAcceptingOptionSpec[String] = {
     topicMappingsOpt
+  }
+
+  def getFilterConfigOpt: ArgumentAcceptingOptionSpec[String] = {
+    filterConfigOpt
   }
 
   def getHelpOpt: OptionSpecBuilder = {
