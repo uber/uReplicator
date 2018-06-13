@@ -287,7 +287,7 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
     mirrorMakerThread.start()
   }
 
-  private def removeCustomizedMetrics() {
+  def removeCustomizedMetrics() {
     removeMetric("MirrorMaker-numDroppedMessages", Map("clientId" -> clientId))
     removeMetric("MirrorMaker-flushLatencyMs", Map("clientId" -> clientId))
     removeMetric("MirrorMaker-commitLatencyMs", Map("clientId" -> clientId))
@@ -434,7 +434,7 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
               val iterRecords = records.iterator()
               while (iterRecords.hasNext) {
                 val record = iterRecords.next()
-                if (!filterEnabled || needToSend(record, srcCluster, dstCluster)) {
+                if (!filterEnabled || needToSend(record, srcCluster, dstCluster, data.offset)) {
                   producer.send(record, data.partition, data.offset)
                 }
               }
@@ -487,7 +487,8 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
   // Override needToSend to implement your own producer filter
   def needToSend(record: ProducerRecord[Array[Byte], Array[Byte]],
                  srcCluster: Option[String],
-                 dstCluster: Option[String]): Boolean = {
+                 dstCluster: Option[String],
+                 srcOffset: Long): Boolean = {
     true
   }
 
