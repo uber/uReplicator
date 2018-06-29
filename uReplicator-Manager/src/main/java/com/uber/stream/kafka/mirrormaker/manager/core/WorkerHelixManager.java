@@ -220,7 +220,18 @@ public class WorkerHelixManager implements IHelixManager {
       }
 
       LOGGER.info("Add {} instance to route {}: {}", instances.size(), pipeline + SEPARATOR + routeId, instances);
-      if (_helixAdmin.getResourceIdealState(_helixClusterName, pipeline).getPartitionSet().contains(String.valueOf(routeId))) {
+      if (_helixAdmin.getResourceIdealState(_helixClusterName, pipeline) == null) {
+        // this can happen when manager-controller idealstate is finished but manager-worker idealstate not exist
+        if (!isPipelineExisted(pipeline)) {
+          setEmptyResourceConfig(pipeline);
+          _helixAdmin.addResource(_helixClusterName, pipeline,
+              IdealStateBuilder.buildCustomIdealStateFor(pipeline, String.valueOf(routeId), instances));
+        } else {
+          _helixAdmin.setResourceIdealState(_helixClusterName, pipeline,
+              IdealStateBuilder.expandCustomIdealStateFor(_helixAdmin.getResourceIdealState(_helixClusterName, pipeline),
+                  pipeline, String.valueOf(routeId), instances, _conf.getMaxNumWorkersPerRoute()));
+        }
+      } else if (_helixAdmin.getResourceIdealState(_helixClusterName, pipeline).getPartitionSet().contains(String.valueOf(routeId))) {
         LOGGER.info("Topic {} Partition {} exists", pipeline, routeId);
         _helixAdmin.setResourceIdealState(_helixClusterName, pipeline,
             IdealStateBuilder.expandInstanceCustomIdealStateFor(_helixAdmin.getResourceIdealState(_helixClusterName, pipeline),
