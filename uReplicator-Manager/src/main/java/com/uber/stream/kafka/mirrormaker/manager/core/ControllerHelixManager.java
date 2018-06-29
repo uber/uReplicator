@@ -112,6 +112,8 @@ public class ControllerHelixManager implements IHelixManager {
   private Map<String, PriorityQueue<InstanceTopicPartitionHolder>> _pipelineToInstanceMap;
   private List<String> _availableControllerList;
 
+  private long lastUpdateTimeMs = 0L;
+
   public ControllerHelixManager(SourceKafkaClusterValidationManager srcKafkaValidationManager,
       ManagerConf managerConf) {
     _conf = managerConf;
@@ -474,6 +476,11 @@ public class ControllerHelixManager implements IHelixManager {
   public synchronized void updateCurrentStatus() {
     _lock.lock();
     try {
+      long currTimeMs = System.currentTimeMillis();
+      if (currTimeMs - lastUpdateTimeMs < 60000) {
+        LOGGER.info("Only {} ms since last updateCurrentStatus, wait for next one", currTimeMs - lastUpdateTimeMs);
+        return;
+      }
       LOGGER.info("Trying to run controller updateCurrentStatus");
 
       _workerHelixManager.updateCurrentStatus();
@@ -541,6 +548,8 @@ public class ControllerHelixManager implements IHelixManager {
       //LOGGER.info("For controller _pipelineToInstanceMap: {}", _pipelineToInstanceMap);
       //LOGGER.info("For controller _topicToPipelineInstanceMap: {}", _topicToPipelineInstanceMap);
       LOGGER.info("For controller {} available", _availableControllerList.size());
+
+      lastUpdateTimeMs = System.currentTimeMillis();
     } catch (Exception e) {
       LOGGER.error("Got exception in updateCurrentStatus", e);
     } finally {
