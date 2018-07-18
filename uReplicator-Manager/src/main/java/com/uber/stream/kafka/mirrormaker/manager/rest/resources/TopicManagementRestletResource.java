@@ -362,13 +362,13 @@ public class TopicManagementRestletResource extends ServerResource {
         }
       } else {
         LOGGER.info("Failed to delete not existed topic {} in pipeline {}", topicName, pipeline);
-
+        // return 200 for deleting non-exist topic so caller won't try to delete again
         JSONObject responseJson = new JSONObject();
-        responseJson.put("status", Status.CLIENT_ERROR_NOT_FOUND.getCode());
+        responseJson.put("status", Status.SUCCESS_OK.getCode());
         responseJson.put("message",
             String.format("Failed to delete not existed topic: %s in pipeline: %s", topicName, pipeline));
 
-        getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
+        getResponse().setStatus(Status.SUCCESS_OK);
         return new StringRepresentation(responseJson.toJSONString());
       }
     }
