@@ -106,6 +106,7 @@ public class ControllerHelixManager implements IHelixManager {
   private static final Counter _availableController = new Counter();
   private static final Counter _availableWorker = new Counter();
   private static final Counter _nonParityTopic = new Counter();
+  private static final Counter _validateWrongCount = new Counter();
 
   private ReentrantLock _lock = new ReentrantLock();
   private Map<String, Map<String, InstanceTopicPartitionHolder>> _topicToPipelineInstanceMap;
@@ -200,6 +201,8 @@ public class ControllerHelixManager implements IHelixManager {
           _availableWorker);
       HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("topic.non-parity.counter",
           _nonParityTopic);
+      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("validate.wrong.counter",
+          _validateWrongCount);
     } catch (Exception e) {
       LOGGER.error("Error registering metrics!", e);
     }
@@ -240,6 +243,7 @@ public class ControllerHelixManager implements IHelixManager {
   private void validateInstanceToTopicPartitionsMap(Map<String, Set<TopicPartition>> instanceToTopicPartitionsMap,
       Map<String, InstanceTopicPartitionHolder> instanceMap) {
     LOGGER.info("\n\nFor controller instanceToTopicPartitionsMap:");
+    int validateWrongCount = 0;
     for (String instanceName : instanceToTopicPartitionsMap.keySet()) {
       Set<TopicPartition> topicPartitions = instanceToTopicPartitionsMap.get(instanceName);
       Set<TopicPartition> routeSet = new HashSet<>();
@@ -259,6 +263,7 @@ public class ControllerHelixManager implements IHelixManager {
             topicRouteSet.add(tp.getPipeline());
           }
         }
+        validateWrongCount++;
         LOGGER.error("Validate WRONG: Incorrect route found for InstanceName: {}, route: {}, pipelines: {}, #workers: {}, worker: {}",
             instanceName, routeSet, topicRouteSet, instanceMap.get(instanceName).getWorkerSet().size(), instanceMap.get(instanceName).getWorkerSet());
       } else {
@@ -303,10 +308,12 @@ public class ControllerHelixManager implements IHelixManager {
             }
 
             if (topicOnlyInManager.size() > 1 || (topicOnlyInManager.size() == 1 && !topicOnlyInManager.iterator().next().startsWith(SEPARATOR))) {
+              validateWrongCount++;
               LOGGER.info("Validate WRONG: InstanceName: {}, route: {}, topic only in manager: {}", instanceName, routeSet, topicOnlyInManager);
             }
 
             if (!controllerTopics.isEmpty() ) {
+              validateWrongCount++;
               LOGGER.info("Validate WRONG: InstanceName: {}, route: {}, topic only in controller: {}", instanceName, routeSet, controllerTopics);
             }
           } catch (Exception e) {
@@ -336,17 +343,21 @@ public class ControllerHelixManager implements IHelixManager {
             }
 
             if (!workerOnlyInManager.isEmpty()) {
+              validateWrongCount++;
               LOGGER.info("Validate WRONG: InstanceName: {}, route: {}, worker only in manager: {}", instanceName, routeSet, workerOnlyInManager);
             }
 
             if (!controllerWorkers.isEmpty() ) {
+              validateWrongCount++;
               LOGGER.info("Validate WRONG: InstanceName: {}, route: {}, worker only in controller: {}", instanceName, routeSet, controllerWorkers);
             }
           } catch (Exception e) {
+            validateWrongCount++;
             LOGGER.warn("Get workers error when connecting to {} for route {}", instanceName, routeSet, e);
           }
 
         } else {
+          validateWrongCount++;
           LOGGER.error("Validate WRONG: mismatch route found for InstanceName: {}, route: {}, mismatch: {}, #workers: {}, worker: {}",
               instanceName, routeSet, mismatchTopicPartition, instanceMap.get(instanceName).getWorkerSet().size(), instanceMap.get(instanceName).getWorkerSet());
         }
@@ -413,10 +424,12 @@ public class ControllerHelixManager implements IHelixManager {
     }
     for (String worker : workerMap.keySet()) {
       if (workerMap.get(worker).size() != 1) {
+        validateWrongCount++;
         LOGGER.error("Validate WRONG: wrong worker assignment for worker: {}, route: {}", worker, workerMap.get(worker));
       }
     }
     if (_helixManager.isLeader()) {
+      _validateWrongCount.inc(validateWrongCount - _validateWrongCount.getCount());
       updateMetrics(instanceToTopicPartitionsMap, instanceMap);
     }
   }
