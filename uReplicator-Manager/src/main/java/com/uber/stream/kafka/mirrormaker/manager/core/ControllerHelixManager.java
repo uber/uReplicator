@@ -289,7 +289,10 @@ public class ControllerHelixManager implements IHelixManager {
             String topicResult = HttpClientUtils.getData(_httpClient, _requestConfig,
                 instanceName, _controllerPort, "/topics");
             LOGGER.debug("Get topics from {}: {}", instanceName, topicResult);
-            String rawTopicNames = topicResult.substring(25, topicResult.length()-1);
+            String rawTopicNames = topicResult;
+            if (!rawTopicNames.equals("No topic is added in MirrorMaker Controller!")) {
+              rawTopicNames = topicResult.substring(25, topicResult.length() - 1);
+            }
             Set<String> controllerTopics = new HashSet<>();
             if (!rawTopicNames.equals("No topic is added in MirrorMaker Controller!")) {
               String[] topicNames = rawTopicNames.split(", ");
@@ -317,6 +320,7 @@ public class ControllerHelixManager implements IHelixManager {
               LOGGER.info("Validate WRONG: InstanceName: {}, route: {}, topic only in controller: {}", instanceName, routeSet, controllerTopics);
             }
           } catch (Exception e) {
+            validateWrongCount++;
             LOGGER.warn("Get topics error when connecting to {} for route {}", instanceName, routeSet, e);
           }
 
