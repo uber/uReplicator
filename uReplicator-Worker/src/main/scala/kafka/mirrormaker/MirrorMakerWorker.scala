@@ -72,6 +72,8 @@ class MirrorMakerWorker extends Logging with KafkaMetricsGroup {
   @volatile private var exitingOnSendFailure: Boolean = false
   private var topicMappings = Map.empty[String, String]
 
+  private var filterEnabled: Boolean = false
+
   private var lastOffsetCommitMs = System.currentTimeMillis()
   private val recordCount: AtomicInteger = new AtomicInteger(0)
   private val flushCommitLock: ReentrantLock = new ReentrantLock
@@ -105,6 +107,23 @@ class MirrorMakerWorker extends Logging with KafkaMetricsGroup {
         cleanShutdown()
       }
     })
+
+    val filterProps = {
+      try {
+        Utils.loadProps(options.valueOf(mirrorMakerWorkerConf.getFilterConfigOpt))
+      } catch {
+        case e: Exception
+        => null
+      }
+    }
+    if (filterProps != null) {
+      filterEnabled = filterProps.getProperty("enable", "false").toBoolean
+      if (filterEnabled) {
+        info("Message filter is enabled")
+      } else {
+        info("Message filter is disabled, send all the msg to dst cluster")
+      }
+    }
 
     // create producer
     val producerProps = Utils.loadProps(options.valueOf(mirrorMakerWorkerConf.getProducerConfigOpt))
@@ -291,7 +310,10 @@ class MirrorMakerWorker extends Logging with KafkaMetricsGroup {
               val records = messageHandler.handle(data)
               val iterRecords = records.iterator()
               while (iterRecords.hasNext) {
-                producer.send(iterRecords.next(), data.partition, data.offset)
+                val record = iterRecords.next()
+                if (!filterEnabled || needToSend(record)) {
+                  producer.send(record, data.partition, data.offset)
+                }
               }
               maybeFlushAndCommitOffsets(false)
             }
@@ -316,6 +338,11 @@ class MirrorMakerWorker extends Logging with KafkaMetricsGroup {
           System.exit(-1)
         }
       }
+    }
+
+    // Override needToSend to implement your own producer filter
+    def needToSend(record: ProducerRecord[Array[Byte], Array[Byte]]): Boolean = {
+      true
     }
 
     def shutdown() {
