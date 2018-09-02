@@ -707,10 +707,28 @@ public class ControllerHelixManager implements IHelixManager {
                 break;
               }
             }
+
+            // Helix doesn't guarantee the order of execution, so we have to wait for new controller to be online
+            // before reassigning topics
+            // But this might cause long rebalance time
             _helixAdmin.setResourceIdealState(_helixClusterName, pipeline,
                 IdealStateBuilder
                     .resetCustomIdealStateFor(_helixAdmin.getResourceIdealState(_helixClusterName, pipeline),
                         pipeline, String.valueOf(routeId), newInstanceName));
+
+            _helixAdmin.getResourceExternalView(_helixClusterName, pipeline).getStateMap(String.valueOf(routeId));
+
+            long ts1 = System.currentTimeMillis();
+            while (!isOnline(pipeline, String.valueOf(routeId))) {
+              if (System.currentTimeMillis() - ts1 > 30000) {
+                break;
+              }
+              try {
+                Thread.sleep(10);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+            }
 
             for (TopicPartition tp : tpToReassign) {
               _helixAdmin.setResourceIdealState(_helixClusterName, tp.getTopic(),
@@ -816,6 +834,23 @@ public class ControllerHelixManager implements IHelixManager {
     } finally {
       _lock.unlock();
     }
+  }
+
+  private boolean isOnline(String topicName, String partition) {
+    LOGGER.info("isOnline for {}, {}?", topicName, partition);
+    ExternalView externalView = getExternalViewForTopic(topicName);
+    if (externalView == null || !externalView.getPartitionSet().contains(partition)) {
+      return false;
+    }
+    Map<String, String> stateMap = externalView.getStateMap(partition);
+    for (String server : stateMap.keySet()) {
+      LOGGER.info(stateMap.get(server));
+      if (stateMap.get(server).equals("ONLINE")) {
+        LOGGER.info("Found online for {}, {}?", topicName, partition);
+        return true;
+      }
+    }
+    return false;
   }
 
   public void rebalanceCurrentCluster() throws Exception {
