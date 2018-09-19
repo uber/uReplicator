@@ -716,10 +716,8 @@ public class ControllerHelixManager implements IHelixManager {
                     .resetCustomIdealStateFor(_helixAdmin.getResourceIdealState(_helixClusterName, pipeline),
                         pipeline, String.valueOf(routeId), newInstanceName));
 
-            _helixAdmin.getResourceExternalView(_helixClusterName, pipeline).getStateMap(String.valueOf(routeId));
-
             long ts1 = System.currentTimeMillis();
-            while (!isOnline(pipeline, String.valueOf(routeId))) {
+            while (!isControllerOnline(newInstanceName, pipeline, String.valueOf(routeId))) {
               if (System.currentTimeMillis() - ts1 > 30000) {
                 break;
               }
@@ -836,17 +834,16 @@ public class ControllerHelixManager implements IHelixManager {
     }
   }
 
-  private boolean isOnline(String topicName, String partition) {
-    LOGGER.info("isOnline for {}, {}?", topicName, partition);
-    ExternalView externalView = getExternalViewForTopic(topicName);
-    if (externalView == null || !externalView.getPartitionSet().contains(partition)) {
+  private boolean isControllerOnline(String instance, String routeName, String routeId) {
+    LOGGER.info("Check if {} is online for {}, {}", instance, routeName, routeId);
+    ExternalView externalView = getExternalViewForTopic(routeName);
+    if (externalView == null || !externalView.getPartitionSet().contains(routeId)) {
       return false;
     }
-    Map<String, String> stateMap = externalView.getStateMap(partition);
+    Map<String, String> stateMap = externalView.getStateMap(routeId);
     for (String server : stateMap.keySet()) {
-      LOGGER.info(stateMap.get(server));
       if (stateMap.get(server).equals("ONLINE")) {
-        LOGGER.info("Found online for {}, {}?", topicName, partition);
+        LOGGER.info("Found {} is online for {}, {}", instance, routeName, routeId);
         return true;
       }
     }
