@@ -148,9 +148,9 @@ public class ControllerHelixManager implements IHelixManager {
     // 2. establishing connection with server;
     // 3. getting next data snippet from server.
     _requestConfig = RequestConfig.custom()
-        .setConnectionRequestTimeout(3000)
-        .setConnectTimeout(3000)
-        .setSocketTimeout(3000)
+        .setConnectionRequestTimeout(30000)
+        .setConnectTimeout(30000)
+        .setSocketTimeout(30000)
         .build();
   }
 
