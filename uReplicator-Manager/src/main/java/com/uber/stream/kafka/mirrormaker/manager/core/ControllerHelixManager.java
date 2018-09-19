@@ -148,9 +148,9 @@ public class ControllerHelixManager implements IHelixManager {
     // 2. establishing connection with server;
     // 3. getting next data snippet from server.
     _requestConfig = RequestConfig.custom()
-        .setConnectionRequestTimeout(3000)
-        .setConnectTimeout(3000)
-        .setSocketTimeout(3000)
+        .setConnectionRequestTimeout(30000)
+        .setConnectTimeout(30000)
+        .setSocketTimeout(30000)
         .build();
   }
 
@@ -707,10 +707,26 @@ public class ControllerHelixManager implements IHelixManager {
                 break;
               }
             }
+
+            // Helix doesn't guarantee the order of execution, so we have to wait for new controller to be online
+            // before reassigning topics
+            // But this might cause long rebalance time
             _helixAdmin.setResourceIdealState(_helixClusterName, pipeline,
                 IdealStateBuilder
                     .resetCustomIdealStateFor(_helixAdmin.getResourceIdealState(_helixClusterName, pipeline),
                         pipeline, String.valueOf(routeId), newInstanceName));
+
+            long ts1 = System.currentTimeMillis();
+            while (!isControllerOnline(newInstanceName, pipeline, String.valueOf(routeId))) {
+              if (System.currentTimeMillis() - ts1 > 30000) {
+                break;
+              }
+              try {
+                Thread.sleep(10);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+            }
 
             for (TopicPartition tp : tpToReassign) {
               _helixAdmin.setResourceIdealState(_helixClusterName, tp.getTopic(),
@@ -816,6 +832,22 @@ public class ControllerHelixManager implements IHelixManager {
     } finally {
       _lock.unlock();
     }
+  }
+
+  private boolean isControllerOnline(String instance, String routeName, String routeId) {
+    LOGGER.info("Check if {} is online for {}, {}", instance, routeName, routeId);
+    ExternalView externalView = getExternalViewForTopic(routeName);
+    if (externalView == null || !externalView.getPartitionSet().contains(routeId)) {
+      return false;
+    }
+    Map<String, String> stateMap = externalView.getStateMap(routeId);
+    for (String server : stateMap.keySet()) {
+      if (stateMap.get(server).equals("ONLINE")) {
+        LOGGER.info("Found {} is online for {}, {}", instance, routeName, routeId);
+        return true;
+      }
+    }
+    return false;
   }
 
   public void rebalanceCurrentCluster() throws Exception {
