@@ -267,12 +267,14 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
       Map("clientId" -> consumerConfig.clientId))
 
     // initialize topic mappings for rewriting topic names between consuming side and producing side
+    // TODO: add checking in uReplicator-Controller/Manager
     topicMappings = if (options.has(workerConfig.getTopicMappingsOpt)) {
       val topicMappingsFile = options.valueOf(workerConfig.getTopicMappingsOpt)
       val topicMappingPattern = """\s*(\S+)\s+(\S+)\s*""".r
       Source.fromFile(topicMappingsFile).getLines().flatMap(_ match {
         case topicMappingPattern(consumerTopic, producerTopic) => {
           info("Topic mapping: '" + consumerTopic + "' -> '" + producerTopic + "'")
+          topicPartitionCountObserver.addTopic(producerTopic)
           Some(consumerTopic -> producerTopic)
         }
         case line => {
@@ -565,7 +567,7 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
   private object defaultMirrorMakerMessageHandler extends MirrorMakerMessageHandler {
     override def handle(record: MessageAndMetadata[Array[Byte], Array[Byte]]): util.List[ProducerRecord[Array[Byte], Array[Byte]]] = {
       // rewrite topic between consuming side and producing side
-      val topic = topicMappings.get(record.topic).getOrElse(record.topic)
+      val topic = topicMappings.getOrElse(record.topic, record.topic)
       var partitionCount = 0
       if (topicPartitionCountObserver != null) {
         partitionCount = topicPartitionCountObserver.getPartitionCount(topic)
