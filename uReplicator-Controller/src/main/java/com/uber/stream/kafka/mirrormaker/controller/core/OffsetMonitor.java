@@ -15,6 +15,7 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
+import com.codahale.metrics.Counter;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -119,6 +120,9 @@ public class OffsetMonitor {
       logger.info("OffsetMonitor starts updating offsets every {} seconds with delay {} seconds", refreshIntervalInSec,
           delaySec);
 
+      MetricRegistry metricRegistry = HelixKafkaMirrorMakerMetricsReporter.get().getRegistry();
+      Counter counter = metricRegistry.counter("offsetMonitor.executed");
+
       refreshExecutor.scheduleAtFixedRate(new Runnable() {
         @Override
         public void run() {
@@ -153,6 +157,7 @@ public class OffsetMonitor {
           updateTopicList();
           updateOffset();
           updateOffsetMetrics();
+          counter.inc();
         }
       }, delaySec, refreshIntervalInSec, TimeUnit.SECONDS);
       registerNoProgressMetric();
