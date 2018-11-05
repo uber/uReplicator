@@ -145,9 +145,6 @@ public class OffsetMonitor {
               try {
                 JSONObject json = (JSONObject) parser.parse(zkClient.readData("/brokers/ids/" + id).toString());
                 srcBrokerList.add(String.valueOf(json.get("host")) + ":" + String.valueOf(json.get("port")));
-                if (count++ >= 20) {
-                  break;
-                }
               } catch (ParseException e) {
                 logger.warn("Failed to get broker", e);
               }
