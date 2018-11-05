@@ -139,8 +139,6 @@ public class OffsetMonitor {
             List<String> brokerIdList = zkClient.getChildren("/brokers/ids");
             JSONParser parser = new JSONParser();
 
-            // Hacky solution for now to reduce init time
-            int count = 0;
             for (String id : brokerIdList) {
               try {
                 JSONObject json = (JSONObject) parser.parse(zkClient.readData("/brokers/ids/" + id).toString());
