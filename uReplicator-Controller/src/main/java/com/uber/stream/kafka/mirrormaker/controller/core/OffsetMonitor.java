@@ -118,7 +118,6 @@ public class OffsetMonitor {
       int delaySec = 60 + new Random().nextInt(240);
       logger.info("OffsetMonitor starts updating offsets every {} seconds with delay {} seconds", refreshIntervalInSec,
           delaySec);
-      logger.info("OffsetMonitor starts with brokerList=" + srcBrokerList);
 
       refreshExecutor.scheduleAtFixedRate(new Runnable() {
         @Override
@@ -149,6 +148,7 @@ public class OffsetMonitor {
                 logger.warn("Failed to get broker", e);
               }
             }
+            logger.info("OffsetMonitor starts with brokerList=" + srcBrokerList);
           }
           updateTopicList();
           updateOffset();
