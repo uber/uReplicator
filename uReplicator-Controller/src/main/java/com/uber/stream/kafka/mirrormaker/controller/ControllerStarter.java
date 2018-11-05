@@ -81,6 +81,11 @@ public class ControllerStarter {
     }
 
     if (_config.isFederatedEnabled()) {
+      if (_managerControllerHelix.getControllerInstance() != null) {
+        LOGGER.info("stopping federated controller instance");
+        _managerControllerHelix.getControllerInstance().stop();
+      }
+
       LOGGER.info("stopping Manager-Controller Helix");
       _managerControllerHelix.stop();
       shutdownLatch.countDown();
