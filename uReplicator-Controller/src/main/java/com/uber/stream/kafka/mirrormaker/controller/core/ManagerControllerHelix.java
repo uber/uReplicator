@@ -281,4 +281,8 @@ public class ManagerControllerHelix {
     return handleTopicAssignmentOffline(topic, srcCluster, dstCluster);
   }
 
+  public ControllerInstance getControllerInstance() {
+    return _currentControllerInstance;
+  }
+
 }

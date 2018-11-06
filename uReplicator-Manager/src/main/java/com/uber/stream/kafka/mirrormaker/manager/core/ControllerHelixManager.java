@@ -42,6 +42,8 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
+import kafka.utils.ZKStringSerializer$;
+import org.I0Itec.zkclient.ZkClient;
 import org.apache.helix.HelixAdmin;
 import org.apache.helix.HelixManager;
 import org.apache.helix.HelixManagerFactory;
@@ -115,6 +117,8 @@ public class ControllerHelixManager implements IHelixManager {
 
   private long lastUpdateTimeMs = 0L;
 
+  private ZkClient _zkClient;
+
   public ControllerHelixManager(SourceKafkaClusterValidationManager srcKafkaValidationManager,
       ManagerConf managerConf) {
     _conf = managerConf;
@@ -135,6 +139,7 @@ public class ControllerHelixManager implements IHelixManager {
     _pipelineToInstanceMap = new ConcurrentHashMap<>();
     _availableControllerList = new ArrayList<>();
     _routeToCounterMap = new ConcurrentHashMap<>();
+    _zkClient = new ZkClient(_helixZkURL, 30000, 30000, ZKStringSerializer$.MODULE$);
     registerMetrics();
 
     PoolingHttpClientConnectionManager limitedConnMgr = new PoolingHttpClientConnectionManager();
@@ -188,6 +193,7 @@ public class ControllerHelixManager implements IHelixManager {
     for (WorkloadInfoRetriever retriever : _workloadInfoRetrieverMap.values()) {
       retriever.stop();
     }
+    _zkClient.close();
     _workerHelixManager.stop();
     _helixManager.disconnect();
     _httpClient.close();
@@ -321,7 +327,7 @@ public class ControllerHelixManager implements IHelixManager {
             }
           } catch (Exception e) {
             validateWrongCount++;
-            LOGGER.warn("Get topics error when connecting to {} for route {}", instanceName, routeSet, e);
+            LOGGER.warn("Validate WRONG: Get topics error when connecting to {} for route {}", instanceName, routeSet, e);
           }
 
           try {
@@ -357,7 +363,7 @@ public class ControllerHelixManager implements IHelixManager {
             }
           } catch (Exception e) {
             validateWrongCount++;
-            LOGGER.warn("Get workers error when connecting to {} for route {}", instanceName, routeSet, e);
+            LOGGER.warn("Validate WRONG: Get workers error when connecting to {} for route {}", instanceName, routeSet, e);
           }
 
         } else {
@@ -722,11 +728,16 @@ public class ControllerHelixManager implements IHelixManager {
                 break;
               }
               try {
-                Thread.sleep(10);
+                // Based on testing, the wait time is usually in the order of 100 ms
+                Thread.sleep(100);
               } catch (InterruptedException e) {
                 e.printStackTrace();
               }
             }
+
+            long ts2 = System.currentTimeMillis();
+            LOGGER.info("Controller {} in route {}@{} is replaced by {}, it took {} ms",
+                instance, pipeline, routeId, newInstanceName, ts2 - ts1);
 
             for (TopicPartition tp : tpToReassign) {
               _helixAdmin.setResourceIdealState(_helixClusterName, tp.getTopic(),
@@ -735,8 +746,8 @@ public class ControllerHelixManager implements IHelixManager {
                           tp.getTopic(), pipeline + SEPARATOR + routeId, newInstanceName));
             }
 
-            LOGGER.info("Controller {} in route {}@{} is replaced by {}",
-                instance, pipeline, routeId, newInstanceName);
+            LOGGER.info("Controller {} in route {}@{} is replaced by {}, topics are reassigned, it took {} ms",
+                instance, pipeline, routeId, newInstanceName, System.currentTimeMillis() - ts2);
             break;
           }
         }
@@ -836,18 +847,17 @@ public class ControllerHelixManager implements IHelixManager {
 
   private boolean isControllerOnline(String instance, String routeName, String routeId) {
     LOGGER.info("Check if {} is online for {}, {}", instance, routeName, routeId);
-    ExternalView externalView = getExternalViewForTopic(routeName);
-    if (externalView == null || !externalView.getPartitionSet().contains(routeId)) {
+    try {
+      String[] srcDst = routeName.split(SEPARATOR);
+      String controllerWokerHelixClusterName = "/controller-worker-" + srcDst[1] + "-" + srcDst[2] + "-" + routeId;
+      JSONObject json = JSON.parseObject(_zkClient.readData(controllerWokerHelixClusterName + "/CONTROLLER/LEADER").toString());
+      String currLeader = String.valueOf(json.get("id"));
+      LOGGER.info("current leader is {}, expect {}", currLeader, instance);
+      return currLeader.equals(instance);
+    } catch (Exception e) {
+      LOGGER.info("Got error when checking current leader", e);
       return false;
     }
-    Map<String, String> stateMap = externalView.getStateMap(routeId);
-    for (String server : stateMap.keySet()) {
-      if (stateMap.get(server).equals("ONLINE")) {
-        LOGGER.info("Found {} is online for {}, {}", instance, routeName, routeId);
-        return true;
-      }
-    }
-    return false;
   }
 
   public void rebalanceCurrentCluster() throws Exception {
@@ -1185,7 +1195,7 @@ public class ControllerHelixManager implements IHelixManager {
             LOGGER.info("New partition {} is not bigger than current partition {} of topic {}, abandon expanding topic",
                 newNumPartitions, oldNumPartitions, topicName);
             throw new Exception(String.format("New partition %s is not bigger than current partition %s of topic %s, "
-                    + "abandon expanding topic!", newNumPartitions, oldNumPartitions, topicName));
+                + "abandon expanding topic!", newNumPartitions, oldNumPartitions, topicName));
           }
         }
       }

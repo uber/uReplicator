@@ -79,6 +79,7 @@ public class ControllerInstance {
 
   private SourceKafkaClusterValidationManager getSourceKafkaClusterValidationManager() {
     if (_config.getEnableSrcKafkaValidation()) {
+      LOGGER.info("Try to init SourceKafkaClusterValidationManager!");
       if (!_kafkaBrokerTopicObserverMap.containsKey(SRC_KAFKA_CLUSTER)) {
         _kafkaBrokerTopicObserverMap.put(SRC_KAFKA_CLUSTER,
             new KafkaBrokerTopicObserver(SRC_KAFKA_CLUSTER, _config.getSrcKafkaZkPath()));
@@ -98,6 +99,7 @@ public class ControllerInstance {
 
   private AutoTopicWhitelistingManager getAutoTopicWhitelistingManager() {
     if (_config.getEnableAutoWhitelist()) {
+      LOGGER.info("Try to init AutoTopicWhitelistingManager!");
       if (!_kafkaBrokerTopicObserverMap.containsKey(SRC_KAFKA_CLUSTER)) {
         _kafkaBrokerTopicObserverMap.put(SRC_KAFKA_CLUSTER,
             new KafkaBrokerTopicObserver(SRC_KAFKA_CLUSTER, _config.getSrcKafkaZkPath()));

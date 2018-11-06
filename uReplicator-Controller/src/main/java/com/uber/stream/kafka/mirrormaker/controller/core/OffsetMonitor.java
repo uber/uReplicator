@@ -15,6 +15,7 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
+import com.codahale.metrics.Counter;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -60,13 +61,16 @@ public class OffsetMonitor {
   private static final Logger logger = LoggerFactory.getLogger(OffsetMonitor.class);
 
   private final HelixMirrorMakerManager helixMirrorMakerManager;
-  private final LinkedBlockingQueue<ZkClient> zkClientQueue;
   private final long refreshIntervalInSec;
   private final String consumerOffsetPath;
+  private final int numOffsetThread;
 
   private final ScheduledExecutorService refreshExecutor;
   private final ExecutorService cronExecutor;
 
+  private LinkedBlockingQueue<ZkClient> zkClientQueue;
+  private String offsetZkString;
+  private String srcZkString;
   private List<String> srcBrokerList;
   private List<String> topicList;
   private final Map<String, SimpleConsumer> brokerConsumer;
@@ -80,37 +84,18 @@ public class OffsetMonitor {
 
   public OffsetMonitor(final HelixMirrorMakerManager helixMirrorMakerManager,
       ControllerConf controllerConf) {
-    int numOffsetThread = controllerConf.getNumOffsetThread();
+    this.numOffsetThread = controllerConf.getNumOffsetThread();
     this.helixMirrorMakerManager = helixMirrorMakerManager;
-    this.zkClientQueue = new LinkedBlockingQueue<>(numOffsetThread);
     this.srcBrokerList = new ArrayList<>();
-
-    String zkString = controllerConf.getConsumerCommitZkPath().isEmpty() ?
+    this.offsetZkString = controllerConf.getConsumerCommitZkPath().isEmpty() ?
         controllerConf.getSrcKafkaZkPath() : controllerConf.getConsumerCommitZkPath();
+    this.srcZkString = controllerConf.getSrcKafkaZkPath();
     // disable monitor if SRC_KAFKA_ZK or GROUP_ID is not set
     if (StringUtils.isEmpty(controllerConf.getSrcKafkaZkPath()) || controllerConf.getGroupId().isEmpty()) {
       logger.info("Consumer GROUP_ID is not set. Offset manager is disabled");
       this.refreshIntervalInSec = 0;
     } else {
       this.refreshIntervalInSec = controllerConf.getOffsetRefreshIntervalInSec();
-
-      for (int i = 0; i < numOffsetThread; i++) {
-        ZkClient zkClient = new ZkClient(zkString, 30000, 30000, ZKStringSerializer$.MODULE$);
-        zkClientQueue.add(zkClient);
-      }
-
-      ZkClient zkClient = new ZkClient(controllerConf.getSrcKafkaZkPath(), 30000, 30000, ZKStringSerializer$.MODULE$);
-      List<String> brokerIdList = zkClient.getChildren("/brokers/ids");
-      JSONParser parser = new JSONParser();
-
-      for (String id : brokerIdList) {
-        try {
-          JSONObject json = (JSONObject) parser.parse(zkClient.readData("/brokers/ids/" + id).toString());
-          srcBrokerList.add(String.valueOf(json.get("host")) + ":" + String.valueOf(json.get("port")));
-        } catch (ParseException e) {
-          logger.warn("Failed to get broker", e);
-        }
-      }
     }
 
     this.consumerOffsetPath = "/consumers/" + controllerConf.getGroupId() + "/offsets/";
@@ -134,15 +119,40 @@ public class OffsetMonitor {
       int delaySec = 60 + new Random().nextInt(240);
       logger.info("OffsetMonitor starts updating offsets every {} seconds with delay {} seconds", refreshIntervalInSec,
           delaySec);
-      logger.info("OffsetMonitor starts with brokerList=" + srcBrokerList);
+
+      MetricRegistry metricRegistry = HelixKafkaMirrorMakerMetricsReporter.get().getRegistry();
+      Counter counter = metricRegistry.counter("offsetMonitor.executed");
 
       refreshExecutor.scheduleAtFixedRate(new Runnable() {
         @Override
         public void run() {
           logger.info("TopicList starts updating");
+          if (zkClientQueue == null) {
+
+            zkClientQueue = new LinkedBlockingQueue<>(numOffsetThread);
+            for (int i = 0; i < numOffsetThread; i++) {
+              ZkClient zkClient = new ZkClient(offsetZkString, 30000, 30000, ZKStringSerializer$.MODULE$);
+              zkClientQueue.add(zkClient);
+            }
+
+            ZkClient zkClient = new ZkClient(srcZkString, 30000, 30000, ZKStringSerializer$.MODULE$);
+            List<String> brokerIdList = zkClient.getChildren("/brokers/ids");
+            JSONParser parser = new JSONParser();
+
+            for (String id : brokerIdList) {
+              try {
+                JSONObject json = (JSONObject) parser.parse(zkClient.readData("/brokers/ids/" + id).toString());
+                srcBrokerList.add(String.valueOf(json.get("host")) + ":" + String.valueOf(json.get("port")));
+              } catch (ParseException e) {
+                logger.warn("Failed to get broker", e);
+              }
+            }
+            logger.info("OffsetMonitor starts with brokerList=" + srcBrokerList);
+          }
           updateTopicList();
           updateOffset();
           updateOffsetMetrics();
+          counter.inc();
         }
       }, delaySec, refreshIntervalInSec, TimeUnit.SECONDS);
       registerNoProgressMetric();
