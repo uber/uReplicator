@@ -728,6 +728,7 @@ public class ControllerHelixManager implements IHelixManager {
                 break;
               }
               try {
+                // Based on testing, the wait time is usually in the order of 100 ms
                 Thread.sleep(100);
               } catch (InterruptedException e) {
                 e.printStackTrace();
