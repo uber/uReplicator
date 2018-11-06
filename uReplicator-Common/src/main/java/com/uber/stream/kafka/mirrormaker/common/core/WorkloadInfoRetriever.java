@@ -15,6 +15,7 @@
  */
 package com.uber.stream.kafka.mirrormaker.common.core;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.uber.stream.kafka.mirrormaker.common.utils.C3QueryUtils;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -24,7 +25,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -37,7 +37,8 @@ public class WorkloadInfoRetriever {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WorkloadInfoRetriever.class);
 
-  private final Map<String, LinkedList<TopicWorkload>> _topicWorkloadMap = new ConcurrentHashMap<>();
+  @VisibleForTesting
+  final Map<String, LinkedList<TopicWorkload>> _topicWorkloadMap = new ConcurrentHashMap<>();
   private TopicWorkload _defaultTopicWorkload;
 
   private final IHelixManager _helixMirrorMakerManager;
@@ -59,8 +60,17 @@ public class WorkloadInfoRetriever {
 
   // valid for a day so that it can be adaptive for traffic with day-pattern
   private long _maxValidTimeMillis = TimeUnit.HOURS.toMillis(25);
-  private long _estimationLookbackWindow = TimeUnit.HOURS.toMillis(2);
+  private long _estimationLookBackWindow = TimeUnit.HOURS.toMillis(2);
 
+  @VisibleForTesting
+  WorkloadInfoRetriever() {
+    _helixMirrorMakerManager = null;
+    _srcKafkaCluster = "";
+    _simpleSrcKafkaCluster = "";
+    _refreshPeriodInSeconds = 300;
+    _c3Host = "";
+    _c3Port = 0;
+  }
   public WorkloadInfoRetriever(IHelixManager helixMirrorMakerManager) {
     this(helixMirrorMakerManager, helixMirrorMakerManager.getConf().getSrcKafkaZkPath());
   }
@@ -136,8 +146,14 @@ public class WorkloadInfoRetriever {
     // return the maximum bytes-in-rate during the valid window
     TopicWorkload maxTw = null;
     long current = System.currentTimeMillis();
+    long lookbackWindow = _maxValidTimeMillis;
+    if (tws.stream().anyMatch( topicWorkload -> {
+      return current - topicWorkload.getLastUpdate() < _estimationLookBackWindow;
+    })) {
+      lookbackWindow = _estimationLookBackWindow;
+    }
     for (TopicWorkload tw : tws) {
-      if (current - tw.getLastUpdate() > _estimationLookbackWindow) {
+      if (current - tw.getLastUpdate() > lookbackWindow) {
         continue;
       }
       if (maxTw == null || maxTw.getBytesPerSecond() < tw.getBytesPerSecond()) {
