@@ -59,6 +59,7 @@ public class WorkloadInfoRetriever {
 
   // valid for a day so that it can be adaptive for traffic with day-pattern
   private long _maxValidTimeMillis = TimeUnit.HOURS.toMillis(25);
+  private long _estimationLookbackWindow = TimeUnit.HOURS.toMillis(2);
 
   public WorkloadInfoRetriever(IHelixManager helixMirrorMakerManager) {
     this(helixMirrorMakerManager, helixMirrorMakerManager.getConf().getSrcKafkaZkPath());
@@ -136,7 +137,7 @@ public class WorkloadInfoRetriever {
     TopicWorkload maxTw = null;
     long current = System.currentTimeMillis();
     for (TopicWorkload tw : tws) {
-      if (current - tw.getLastUpdate() > _maxValidTimeMillis) {
+      if (current - tw.getLastUpdate() > _estimationLookbackWindow) {
         continue;
       }
       if (maxTw == null || maxTw.getBytesPerSecond() < tw.getBytesPerSecond()) {
