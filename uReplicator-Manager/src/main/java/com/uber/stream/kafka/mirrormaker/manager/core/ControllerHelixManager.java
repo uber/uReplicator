@@ -530,7 +530,7 @@ public class ControllerHelixManager implements IHelixManager {
       List<String> liveInstances = HelixUtils.liveInstances(_helixManager);
       currAvailableControllerList.addAll(liveInstances);
 
-      int assignedCount = 0;
+      int assignedControllerCount = 0;
       for (String instanceName : instanceToTopicPartitionsMap.keySet()) {
         Set<TopicPartition> topicPartitions = instanceToTopicPartitionsMap.get(instanceName);
         // TODO: one instance suppose to have only one route
@@ -546,7 +546,7 @@ public class ControllerHelixManager implements IHelixManager {
             currPipelineToInstanceMap.get(topicName).add(itph);
             instanceMap.put(instanceName, itph);
             currAvailableControllerList.remove(instanceName);
-            assignedCount++;
+            assignedControllerCount++;
           }
         }
 
@@ -570,7 +570,7 @@ public class ControllerHelixManager implements IHelixManager {
       if (_helixManager.isLeader()) {
         _availableController.inc(_availableControllerList.size() - _availableController.getCount());
         _availableWorker.inc(_workerHelixManager.getAvailableWorkerList().size() - _availableWorker.getCount());
-        _assignedControllerCount.inc(assignedCount - _assignedControllerCount.getCount());
+        _assignedControllerCount.inc(assignedControllerCount - _assignedControllerCount.getCount());
       }
 
       // Validation
