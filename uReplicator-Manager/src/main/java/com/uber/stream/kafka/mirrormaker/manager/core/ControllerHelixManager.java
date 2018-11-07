@@ -31,6 +31,7 @@ import com.uber.stream.kafka.mirrormaker.common.utils.HttpClientUtils;
 import com.uber.stream.kafka.mirrormaker.manager.ManagerConf;
 import com.uber.stream.kafka.mirrormaker.manager.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import com.uber.stream.kafka.mirrormaker.manager.validation.SourceKafkaClusterValidationManager;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -42,6 +43,7 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
+
 import kafka.utils.ZKStringSerializer$;
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.helix.HelixAdmin;
@@ -109,6 +111,7 @@ public class ControllerHelixManager implements IHelixManager {
   private static final Counter _availableWorker = new Counter();
   private static final Counter _nonParityTopic = new Counter();
   private static final Counter _validateWrongCount = new Counter();
+  private static final Counter _assignedControllerCount = new Counter();
 
   private ReentrantLock _lock = new ReentrantLock();
   private Map<String, Map<String, InstanceTopicPartitionHolder>> _topicToPipelineInstanceMap;
@@ -209,6 +212,8 @@ public class ControllerHelixManager implements IHelixManager {
           _nonParityTopic);
       HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("validate.wrong.counter",
           _validateWrongCount);
+      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("controller.assigned.counter",
+          _assignedControllerCount);
     } catch (Exception e) {
       LOGGER.error("Error registering metrics!", e);
     }
@@ -321,7 +326,7 @@ public class ControllerHelixManager implements IHelixManager {
               LOGGER.info("Validate WRONG: InstanceName: {}, route: {}, topic only in manager: {}", instanceName, routeSet, topicOnlyInManager);
             }
 
-            if (!controllerTopics.isEmpty() ) {
+            if (!controllerTopics.isEmpty()) {
               validateWrongCount++;
               LOGGER.info("Validate WRONG: InstanceName: {}, route: {}, topic only in controller: {}", instanceName, routeSet, controllerTopics);
             }
@@ -357,7 +362,7 @@ public class ControllerHelixManager implements IHelixManager {
               LOGGER.info("Validate WRONG: InstanceName: {}, route: {}, worker only in manager: {}", instanceName, routeSet, workerOnlyInManager);
             }
 
-            if (!controllerWorkers.isEmpty() ) {
+            if (!controllerWorkers.isEmpty()) {
               validateWrongCount++;
               LOGGER.info("Validate WRONG: InstanceName: {}, route: {}, worker only in controller: {}", instanceName, routeSet, controllerWorkers);
             }
@@ -417,7 +422,7 @@ public class ControllerHelixManager implements IHelixManager {
 
     LOGGER.info("\n\nFor controller _pipelineToInstanceMap:");
     Map<String, Set<String>> workerMap = new HashMap<>();
-    for (String pipeline: _pipelineToInstanceMap.keySet()) {
+    for (String pipeline : _pipelineToInstanceMap.keySet()) {
       PriorityQueue<InstanceTopicPartitionHolder> itphSet = _pipelineToInstanceMap.get(pipeline);
       for (InstanceTopicPartitionHolder itph : itphSet) {
         Set<String> workers = itph.getWorkerSet();
@@ -525,6 +530,7 @@ public class ControllerHelixManager implements IHelixManager {
       List<String> liveInstances = HelixUtils.liveInstances(_helixManager);
       currAvailableControllerList.addAll(liveInstances);
 
+      int assignedControllerCount = 0;
       for (String instanceName : instanceToTopicPartitionsMap.keySet()) {
         Set<TopicPartition> topicPartitions = instanceToTopicPartitionsMap.get(instanceName);
         // TODO: one instance suppose to have only one route
@@ -540,6 +546,7 @@ public class ControllerHelixManager implements IHelixManager {
             currPipelineToInstanceMap.get(topicName).add(itph);
             instanceMap.put(instanceName, itph);
             currAvailableControllerList.remove(instanceName);
+            assignedControllerCount++;
           }
         }
 
@@ -563,6 +570,7 @@ public class ControllerHelixManager implements IHelixManager {
       if (_helixManager.isLeader()) {
         _availableController.inc(_availableControllerList.size() - _availableController.getCount());
         _availableWorker.inc(_workerHelixManager.getAvailableWorkerList().size() - _availableWorker.getCount());
+        _assignedControllerCount.inc(assignedControllerCount - _assignedControllerCount.getCount());
       }
 
       // Validation
@@ -976,7 +984,7 @@ public class ControllerHelixManager implements IHelixManager {
           int actualNumWorkers = itph.getWorkerSet().size();
           if (_initMaxNumWorkersPerRoute > itph.getWorkerSet().size()) {
             LOGGER.info("Current {} workers in route {}, expect at least {} workers, add {} workers",
-                itph.getWorkerSet().size(), itph.getRouteString(), _initMaxNumWorkersPerRoute, _initMaxNumWorkersPerRoute-itph.getWorkerSet().size());
+                itph.getWorkerSet().size(), itph.getRouteString(), _initMaxNumWorkersPerRoute, _initMaxNumWorkersPerRoute - itph.getWorkerSet().size());
             // TODO: handle exception
             _workerHelixManager.addWorkersToMirrorMaker(itph, itph.getRoute().getTopic(),
                 itph.getRoute().getPartition(), _initMaxNumWorkersPerRoute - itph.getWorkerSet().size());
@@ -999,7 +1007,7 @@ public class ControllerHelixManager implements IHelixManager {
 
         if (actualExpectedNumWorkers > itph.getWorkerSet().size()) {
           LOGGER.info("Current {} workers in route {}, actual expect {} workers, add {} workers",
-              itph.getWorkerSet().size(), itph.getRouteString(), actualExpectedNumWorkers, actualExpectedNumWorkers-itph.getWorkerSet().size());
+              itph.getWorkerSet().size(), itph.getRouteString(), actualExpectedNumWorkers, actualExpectedNumWorkers - itph.getWorkerSet().size());
           // TODO: handle exception
           _workerHelixManager.addWorkersToMirrorMaker(itph, itph.getRoute().getTopic(),
               itph.getRoute().getPartition(), actualExpectedNumWorkers - itph.getWorkerSet().size());
@@ -1007,10 +1015,10 @@ public class ControllerHelixManager implements IHelixManager {
 
         if (actualExpectedNumWorkers < itph.getWorkerSet().size()) {
           LOGGER.info("Current {} workers in route {}, actual expect {} workers, remove {} workers",
-              itph.getWorkerSet().size(), itph.getRouteString(), actualExpectedNumWorkers, itph.getWorkerSet().size()-actualExpectedNumWorkers);
+              itph.getWorkerSet().size(), itph.getRouteString(), actualExpectedNumWorkers, itph.getWorkerSet().size() - actualExpectedNumWorkers);
           // TODO: handle exception
           _workerHelixManager.removeWorkersToMirrorMaker(itph, itph.getRoute().getTopic(),
-              itph.getRoute().getPartition(), itph.getWorkerSet().size()-actualExpectedNumWorkers);
+              itph.getRoute().getPartition(), itph.getWorkerSet().size() - actualExpectedNumWorkers);
         }
 
         oldTotalNumWorker += itph.getWorkerSet().size();
@@ -1091,6 +1099,7 @@ public class ControllerHelixManager implements IHelixManager {
     _pipelineToInstanceMap.put(pipeline, new PriorityQueue<>(1,
         InstanceTopicPartitionHolder.getTotalWorkloadComparator(_workloadInfoRetrieverMap.get(srcDst[1]), null, false)));
     _pipelineToInstanceMap.get(pipeline).add(instance);
+    _assignedControllerCount.inc();
     _workerHelixManager.addTopicToMirrorMaker(instance, pipeline, routeId);
 
     // register metrics
@@ -1275,6 +1284,7 @@ public class ControllerHelixManager implements IHelixManager {
       _topicToPipelineInstanceMap.get(topicName).remove(pipeline);
       if (instance.getServingTopicPartitionSet().isEmpty()) {
         _availableControllerList.add(instance.getInstanceName());
+        _assignedControllerCount.dec();
       }
     } finally {
       _lock.unlock();
