@@ -566,11 +566,11 @@ public class ControllerHelixManager implements IHelixManager {
       _pipelineToInstanceMap = currPipelineToInstanceMap;
       _topicToPipelineInstanceMap = currTopicToPipelineInstanceMap;
       _availableControllerList = currAvailableControllerList;
-      _assignedControllerCount.inc(assignedCount - _assignedControllerCount.getCount());
 
       if (_helixManager.isLeader()) {
         _availableController.inc(_availableControllerList.size() - _availableController.getCount());
         _availableWorker.inc(_workerHelixManager.getAvailableWorkerList().size() - _availableWorker.getCount());
+        _assignedControllerCount.inc(assignedCount - _assignedControllerCount.getCount());
       }
 
       // Validation
