@@ -325,16 +325,16 @@ public class ControllerHelixManager implements IHelixManager {
 
             if (topicOnlyInManager.size() > 1 || (topicOnlyInManager.size() == 1 && !topicOnlyInManager.iterator().next().startsWith(SEPARATOR))) {
               validateWrongCount++;
-              LOGGER.info("Validate WRONG: InstanceName: {}, route: {}, topic only in manager: {}", instanceName, routeSet, topicOnlyInManager);
+              LOGGER.error("Validate WRONG: InstanceName: {}, route: {}, topic only in manager: {}", instanceName, routeSet, topicOnlyInManager);
             }
 
             if (!controllerTopics.isEmpty()) {
               validateWrongCount++;
-              LOGGER.info("Validate WRONG: InstanceName: {}, route: {}, topic only in controller: {}", instanceName, routeSet, controllerTopics);
+              LOGGER.error("Validate WRONG: InstanceName: {}, route: {}, topic only in controller: {}", instanceName, routeSet, controllerTopics);
             }
           } catch (Exception e) {
             validateWrongCount++;
-            LOGGER.warn("Validate WRONG: Get topics error when connecting to {} for route {}", instanceName, routeSet, e);
+            LOGGER.error("Validate WRONG: Get topics error when connecting to {} for route {}", instanceName, routeSet, e);
           }
 
           try {
@@ -361,16 +361,16 @@ public class ControllerHelixManager implements IHelixManager {
 
             if (!workerOnlyInManager.isEmpty()) {
               validateWrongCount++;
-              LOGGER.info("Validate WRONG: InstanceName: {}, route: {}, worker only in manager: {}", instanceName, routeSet, workerOnlyInManager);
+              LOGGER.error("Validate WRONG: InstanceName: {}, route: {}, worker only in manager: {}", instanceName, routeSet, workerOnlyInManager);
             }
 
             if (!controllerWorkers.isEmpty()) {
               validateWrongCount++;
-              LOGGER.info("Validate WRONG: InstanceName: {}, route: {}, worker only in controller: {}", instanceName, routeSet, controllerWorkers);
+              LOGGER.error("Validate WRONG: InstanceName: {}, route: {}, worker only in controller: {}", instanceName, routeSet, controllerWorkers);
             }
           } catch (Exception e) {
             validateWrongCount++;
-            LOGGER.warn("Validate WRONG: Get workers error when connecting to {} for route {}", instanceName, routeSet, e);
+            LOGGER.error("Validate WRONG: Get workers error when connecting to {} for route {}", instanceName, routeSet, e);
           }
 
         } else {
