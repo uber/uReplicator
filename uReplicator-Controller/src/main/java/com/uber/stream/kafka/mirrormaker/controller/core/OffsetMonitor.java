@@ -375,7 +375,7 @@ public class OffsetMonitor {
       List<TopicAndPartition> noProgressPartitions = getNoProgessTopicPartitions();
       numNoProgressTopicPartitions.set(noProgressPartitions.size());
       if (!noProgressPartitions.isEmpty()) {
-        logger.info("Topic partitions with no progress: " + noProgressPartitions);
+        logger.warn("Topic partitions with no progress: " + noProgressPartitions);
       }
     } catch (Exception e) {
       logger.warn("Got exception when getNoProgessTopicPartitions", e);
