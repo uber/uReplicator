@@ -16,7 +16,7 @@
 package kafka.mirrormaker
 
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import java.util.concurrent.locks.ReentrantLock
 
 import com.yammer.metrics.core.Gauge
@@ -66,6 +66,8 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
   private val lock = new ReentrantLock
   private var leaderFinderThread: ShutdownableThread = null
   private val correlationId = new AtomicInteger(0)
+
+  val systemExisting = new AtomicBoolean(false)
 
   newGauge("OwnedPartitionsCount",
     new Gauge[Int] {
@@ -184,7 +186,11 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
   def closeAllFetchers() {
     mapLock synchronized {
       for ((_, fetcher) <- fetcherThreadMap) {
-        fetcher.shutdown()
+        if (fetcher.isOOM) {
+          info("%s got OOM, skip shutdown".format(fetcher.name))
+        } else {
+          fetcher.shutdown()
+        }
       }
       fetcherThreadMap.clear()
     }

@@ -76,6 +76,9 @@ class CompactConsumerFetcherThread(name: String,
 
   var newMsgSize = 0
 
+  var isOOM = false
+  private final val OUT_OF_MEMORY_ERROR = "java.lang.OutOfMemoryError"
+
   def isValidTopicPartition(tp: TopicAndPartition): Boolean = {
     val pti = partitionInfoMap.get(tp)
     (pti != null) && (!pti.getDeleted())
@@ -217,7 +220,16 @@ class CompactConsumerFetcherThread(name: String,
         throw e
       case e: Throwable =>
         if (isRunning.get()) {
-          error("Error due to ", e)
+          error("In FetcherThread error due to ", e)
+          if (e.toString.contains(OUT_OF_MEMORY_ERROR)) {
+            error("Got OOM, exit")
+            isOOM = true
+            if (!consumerFetcherManager.systemExisting.getAndSet(true)) {
+              error("First OOM, call System.exit(-1);")
+              System.exit(-1);
+            }
+            throw e
+          }
         }
     }
   }
@@ -232,6 +244,9 @@ class CompactConsumerFetcherThread(name: String,
       case t: Throwable =>
         if (isRunning.get) {
           warn("Error in fetch %s. Possible cause: %s".format(fetchRequest, t.toString))
+          if (t.toString.contains(OUT_OF_MEMORY_ERROR)) {
+            throw t
+          }
           inLock(partitionMapLock) {
             partitionsWithError ++= partitionMap.keys
             // there is an error occurred while fetching partitions, sleep a while

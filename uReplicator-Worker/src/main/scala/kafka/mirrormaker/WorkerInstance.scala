@@ -183,7 +183,8 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
     }
     // Defaults to no data loss settings.
     maybeSetDefaultProperty(producerProps, ProducerConfig.RETRIES_CONFIG, Int.MaxValue.toString)
-    maybeSetDefaultProperty(producerProps, ProducerConfig.BLOCK_ON_BUFFER_FULL_CONFIG, "true")
+    // BLOCK_ON_BUFFER_FULL_CONFIG will cause producer stuck
+    maybeSetDefaultProperty(producerProps, ProducerConfig.MAX_BLOCK_MS_CONFIG, "600000")
     maybeSetDefaultProperty(producerProps, ProducerConfig.ACKS_CONFIG, "all")
     maybeSetDefaultProperty(producerProps, ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, "1")
     producer = new MirrorMakerProducer(producerProps)
