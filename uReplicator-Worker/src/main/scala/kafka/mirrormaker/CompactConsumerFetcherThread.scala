@@ -224,7 +224,7 @@ class CompactConsumerFetcherThread(name: String,
           if (e.toString.contains(OUT_OF_MEMORY_ERROR)) {
             error("Got OOM, exit")
             isOOM = true
-            if (!consumerFetcherManager.systemExisting.getAndSet(true)) {
+            if (!consumerFetcherManager.systemExisting.compareAndSet(false, true)) {
               error("First OOM, call System.exit(-1);")
               System.exit(-1);
             }

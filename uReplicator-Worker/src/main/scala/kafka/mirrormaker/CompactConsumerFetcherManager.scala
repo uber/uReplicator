@@ -15,7 +15,7 @@
  */
 package kafka.mirrormaker
 
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import java.util.concurrent.locks.ReentrantLock
 
@@ -68,6 +68,10 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
   private val correlationId = new AtomicInteger(0)
 
   val systemExisting = new AtomicBoolean(false)
+
+  var systemExistMeter = newMeter("MirrorMaker-systemExist", "start", TimeUnit.SECONDS,
+    Map("clientId" -> consumerConfig.clientId))
+  startMeter.mark()
 
   newGauge("OwnedPartitionsCount",
     new Gauge[Int] {
