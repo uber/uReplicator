@@ -38,6 +38,9 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
   private static final String CONFIG_KAFKA_SRC_CLUSTERS_KEY = "kafka.source.clusters";
   private static final String CONFIG_KAFKA_DEST_CLUSTERS_KEY = "kafka.destination.clusters";
 
+  private static final String ENABLE_REBALANCE = "manager.enable.rebalance";
+  private static final boolean DEFAULT_ENABLE_REBALANCE = true;
+
   private static final String MANAGER_ZK_STR = "manager.zk.str";
   private static final String MANAGER_PORT = "manager.port";
   private static final String MANAGER_DEPLOYMENT = "manager.deployment";
@@ -103,6 +106,10 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
 
   public void setDestinationClusters(String clusters) {
     setProperty(CONFIG_KAFKA_DEST_CLUSTERS_KEY, clusters);
+  }
+
+  public void setEnableRebalance(String enableRebalance) {
+    setProperty(ENABLE_REBALANCE, Boolean.valueOf(enableRebalance));
   }
 
   public void setManagerZkStr(String zkStr) {
@@ -202,6 +209,10 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
 
   public Set<String> getDestinationClusters() {
     return parseList(CONFIG_KAFKA_DEST_CLUSTERS_KEY, ",");
+  }
+
+  public Boolean getEnableRebalance() {
+    return (Boolean) getProperty(ENABLE_REBALANCE);
   }
 
   public String getManagerZkStr() {
@@ -379,6 +390,7 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
         .addOption("config", true, "Config file")
         .addOption("srcClusters", true, "Source cluster names for federated uReplicator")
         .addOption("destClusters", true, "Destination cluster names for federated uReplicator")
+        .addOption("enableRebalance", true, "Enable rebalance when there is liveinstance change")
         .addOption("zookeeper", true, "Zookeeper path")
         .addOption("managerPort", true, "Manager port number")
         .addOption("deployment", true, "Manager deployment")
@@ -419,6 +431,11 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
       managerConf.setDestinationClusters(cmd.getOptionValue("destClusters"));
     } else {
       managerConf.setDestinationClusters("");
+    }
+    if (cmd.hasOption("enableRebalance")) {
+      managerConf.setEnableRebalance(cmd.getOptionValue("enableRebalance"));
+    } else {
+      managerConf.setEnableRebalance(Boolean.toString(DEFAULT_ENABLE_REBALANCE));
     }
     if (cmd.hasOption("zookeeper")) {
       managerConf.setManagerZkStr(cmd.getOptionValue("zookeeper"));

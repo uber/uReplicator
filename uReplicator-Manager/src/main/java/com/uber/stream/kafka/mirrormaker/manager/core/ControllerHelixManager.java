@@ -76,6 +76,7 @@ public class ControllerHelixManager implements IHelixManager {
   private static final String SEPARATOR = "@";
 
   private final ManagerConf _conf;
+  private final boolean _enableRebalance;
   private final SourceKafkaClusterValidationManager _srcKafkaValidationManager;
   private final String _helixZkURL;
   private final String _helixClusterName;
@@ -125,6 +126,7 @@ public class ControllerHelixManager implements IHelixManager {
   public ControllerHelixManager(SourceKafkaClusterValidationManager srcKafkaValidationManager,
       ManagerConf managerConf) {
     _conf = managerConf;
+    _enableRebalance = managerConf.getEnableRebalance();
     _srcKafkaValidationManager = srcKafkaValidationManager;
     _initMaxNumPartitionsPerRoute = managerConf.getInitMaxNumPartitionsPerRoute();
     _maxNumPartitionsPerRoute = managerConf.getMaxNumPartitionsPerRoute();
@@ -806,34 +808,37 @@ public class ControllerHelixManager implements IHelixManager {
       }
 
       // Check if any worker in route is down
-      HelixManager workeManager = _workerHelixManager.getHelixManager();
-      Map<String, Set<TopicPartition>> workerInstanceToTopicPartitionsMap = HelixUtils
-          .getInstanceToTopicPartitionsMap(workeManager, null);
-      List<String> workerLiveInstances = HelixUtils.liveInstances(workeManager);
-      Map<String, List<String>> workerPipelineToRouteIdToReplace = new HashMap<>();
-      List<String> workerToReplace = new ArrayList<>();
       boolean routeWorkerDown = false;
-      for (String instanceName : workerInstanceToTopicPartitionsMap.keySet()) {
-        if (!workerLiveInstances.contains(instanceName)) {
-          routeWorkerDown = true;
-          TopicPartition route = workerInstanceToTopicPartitionsMap.get(instanceName).iterator().next();
-          workerPipelineToRouteIdToReplace.putIfAbsent(route.getTopic(), new ArrayList<>());
-          workerPipelineToRouteIdToReplace.get(route.getTopic()).add(String.valueOf(route.getPartition()));
-          workerToReplace.add(instanceName);
-          LOGGER.info("Worker changed: {} for {}", instanceName, route);
+      if (_enableRebalance) {
+        HelixManager workeManager = _workerHelixManager.getHelixManager();
+        Map<String, Set<TopicPartition>> workerInstanceToTopicPartitionsMap = HelixUtils
+            .getInstanceToTopicPartitionsMap(workeManager, null);
+        List<String> workerLiveInstances = HelixUtils.liveInstances(workeManager);
+        Map<String, List<String>> workerPipelineToRouteIdToReplace = new HashMap<>();
+        List<String> workerToReplace = new ArrayList<>();
+
+        for (String instanceName : workerInstanceToTopicPartitionsMap.keySet()) {
+          if (!workerLiveInstances.contains(instanceName)) {
+            routeWorkerDown = true;
+            TopicPartition route = workerInstanceToTopicPartitionsMap.get(instanceName).iterator().next();
+            workerPipelineToRouteIdToReplace.putIfAbsent(route.getTopic(), new ArrayList<>());
+            workerPipelineToRouteIdToReplace.get(route.getTopic()).add(String.valueOf(route.getPartition()));
+            workerToReplace.add(instanceName);
+            LOGGER.info("Worker changed: {} for {}", instanceName, route);
+          }
         }
-      }
-      if (!routeWorkerDown) {
-        LOGGER.info("No worker in route is changed, do nothing!");
-      } else {
-        LOGGER.info("Worker need to replace: {}, {}", workerToReplace, workerPipelineToRouteIdToReplace);
-        // Make sure worker status is up-to-date
-        if (!routeControllerDown) {
+        if (!routeWorkerDown) {
+          LOGGER.info("No worker in route is changed, do nothing!");
+        } else {
+          LOGGER.info("Worker need to replace: {}, {}", workerToReplace, workerPipelineToRouteIdToReplace);
+          // Make sure worker status is up-to-date
+          if (!routeControllerDown) {
+            updateCurrentStatus();
+          }
+          _workerHelixManager.replaceWorkerInMirrorMaker(workerPipelineToRouteIdToReplace, workerToReplace);
+
           updateCurrentStatus();
         }
-        _workerHelixManager.replaceWorkerInMirrorMaker(workerPipelineToRouteIdToReplace, workerToReplace);
-
-        updateCurrentStatus();
       }
 
       if (onlyCheckOffline) {
