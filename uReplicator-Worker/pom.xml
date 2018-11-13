@@ -18,6 +18,7 @@
 
   <properties>
     <scala.version>2.11.8</scala.version>
+    <kafka.version>0.11.0.0</kafka.version>
     <jopt-simple.version>3.2</jopt-simple.version>
     <scalatest.version>2.2.5</scalatest.version>
   </properties>
@@ -28,6 +29,16 @@
       <artifactId>scala-compiler</artifactId>
       <version>${scala.version}</version>
       <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka_${kafka.scala.version}</artifactId>
+      <version>${kafka.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka-clients</artifactId>
+      <version>${kafka.version}</version>
     </dependency>
     <dependency>
       <groupId>net.sf.jopt-simple</groupId>
