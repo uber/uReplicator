@@ -38,6 +38,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import kafka.api.PartitionOffsetRequestInfo;
 import kafka.cluster.BrokerEndPoint;
@@ -78,9 +79,11 @@ public class OffsetMonitor {
   private final Map<TopicAndPartition, TopicPartitionLag> topicPartitionToOffsetMap;
 
   private static final String NO_PROGRESS_METRIC_NAME = "NumNoProgressPartitions";
+  private static final String OFFSET_STATUS_FAILURE_COUNT_METRIC_NAME = "OffsetMonitorFailureCount";
   private static final long MIN_NO_PROGRESS_TIME_MS = TimeUnit.MINUTES.toMillis(10);
   private final Map<TopicAndPartition, TopicPartitionLag> noProgressMap;
   private final AtomicInteger numNoProgressTopicPartitions = new AtomicInteger();
+  private final AtomicInteger offsetMonitorFailureCount = new AtomicInteger();
 
   public OffsetMonitor(final HelixMirrorMakerManager helixMirrorMakerManager,
       ControllerConf controllerConf) {
@@ -156,6 +159,7 @@ public class OffsetMonitor {
         }
       }, delaySec, refreshIntervalInSec, TimeUnit.SECONDS);
       registerNoProgressMetric();
+      registerUpdateOffsetStatusMetric();
     } else {
       logger.info("OffsetMonitor is disabled");
     }
@@ -215,6 +219,7 @@ public class OffsetMonitor {
   protected void updateOffset() {
     logger.debug("OffsetMonitor updates offset with leaders=" + partitionLeader);
 
+    offsetMonitorFailureCount.set(0);
     for (Map.Entry<TopicAndPartition, BrokerEndPoint> entry : partitionLeader.entrySet()) {
       String leaderBroker = getHostPort(entry.getValue());
       TopicAndPartition tp = entry.getKey();
@@ -224,9 +229,12 @@ public class OffsetMonitor {
         try {
           cronExecutor.submit(updateOffsetTask(leaderBroker, tp));
         } catch (RejectedExecutionException re) {
+          offsetMonitorFailureCount.getAndAdd(1);
           logger.warn(String.format("cronExecutor is full! Drop task for topic: %s, partition: %d",
               tp.topic(), tp.partition()), re);
+          throw re;
         } catch (Throwable t) {
+          offsetMonitorFailureCount.getAndAdd(1);
           logger.error(String.format("cronExecutor got throwable! Drop task for topic: %s, partition: %d",
               tp.topic(), tp.partition()), t);
           throw t;
@@ -273,6 +281,7 @@ public class OffsetMonitor {
             }
           }
         } catch (Exception e) {
+          offsetMonitorFailureCount.getAndAdd(1);
           logger.warn("Got exception to get offset for TopicPartition=" + tp, e);
         } finally {
           zkClientQueue.add(zk);
@@ -394,6 +403,21 @@ public class OffsetMonitor {
       metricRegistry.register(NO_PROGRESS_METRIC_NAME, gauge);
     } catch (Exception e) {
       logger.error("Error while registering no progress metric " + NO_PROGRESS_METRIC_NAME, e);
+    }
+  }
+
+  private void registerUpdateOffsetStatusMetric() {
+    MetricRegistry metricRegistry = HelixKafkaMirrorMakerMetricsReporter.get().getRegistry();
+    Gauge<Integer> gauge = new Gauge<Integer>() {
+      @Override
+      public Integer getValue() {
+        return offsetMonitorFailureCount.get();
+      }
+    };
+    try {
+      metricRegistry.register(OFFSET_STATUS_FAILURE_COUNT_METRIC_NAME, gauge);
+    } catch (Exception e) {
+      logger.error("Error while registering no progress metric " + OFFSET_STATUS_FAILURE_COUNT_METRIC_NAME, e);
     }
   }
 
