@@ -224,7 +224,7 @@ class CompactConsumerFetcherThread(name: String,
           if (e.toString.contains(OUT_OF_MEMORY_ERROR) || e.toString.contains("error processing data for partition")) {
             error("Got OOM or processing error, exit")
             isOOM = true
-            if (!consumerFetcherManager.systemExisting.compareAndSet(false, true)) {
+            if (consumerFetcherManager.systemExisting.compareAndSet(false, true)) {
               error("First OOM or processing error, call System.exit(-1);")
               System.exit(-1);
             }
