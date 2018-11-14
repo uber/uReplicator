@@ -144,6 +144,8 @@ public class ControllerConf extends PropertiesConfiguration {
 
   private static final String defaultLocal = "/var/log/kafka-mirror-maker-controller";
 
+  private static final String HOSTNAME = "controller.hostname";
+
   public ControllerConf() {
     super();
     this.setDelimiterParsingDisabled(true);
@@ -243,6 +245,10 @@ public class ControllerConf extends PropertiesConfiguration {
 
   public void setNumOffsetThread(String numOffsetThread) {
     setProperty(NUM_OFFSET_THREAD, Integer.valueOf(numOffsetThread));
+  }
+
+  public void setHostname(String hostname) {
+    setProperty(HOSTNAME, hostname);
   }
 
   public void setBlockingQueueSize(String blockingQueueSize) {
@@ -601,6 +607,18 @@ public class ControllerConf extends PropertiesConfiguration {
     return false;
   }
 
+  public String getHostname() {
+    if (containsKey(HOSTNAME)) {
+      return (String) getProperty(HOSTNAME);
+    } else {
+      try {
+        return InetAddress.getLocalHost().getHostName();
+      } catch (UnknownHostException ex) {
+        return "localhost";
+      }
+    }
+  }
+
   public Integer getNumOffsetThread() {
     if (containsKey(NUM_OFFSET_THREAD)) {
       return (Integer) getProperty(NUM_OFFSET_THREAD);
@@ -723,7 +741,8 @@ public class ControllerConf extends PropertiesConfiguration {
         .addOption("backUpToGit", true, "Backup controller metadata to git (true) or local file (false)")
         .addOption("remoteBackupRepo", true, "Remote Backup Repo to store cluster state")
         .addOption("localGitRepoClonePath", true, "Clone location of the remote git backup repo")
-        .addOption("localBackupFilePath", true, "Local backup file location");
+        .addOption("localBackupFilePath", true, "Local backup file location")
+        .addOption("hostname", true, "hostname for this host");
     return controllerOptions;
   }
 
@@ -929,6 +948,9 @@ public class ControllerConf extends PropertiesConfiguration {
     }
     if (cmd.hasOption("groupId")) {
       controllerConf.setGroupId(cmd.getOptionValue("groupId"));
+    }
+    if (cmd.hasOption("hostname")) {
+      controllerConf.setHostname(cmd.getOptionValue("hostname"));
     }
     if (cmd.hasOption("backUpToGit")) {
       controllerConf.setBackUpToGit(cmd.getOptionValue("backUpToGit"));
