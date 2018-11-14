@@ -222,10 +222,10 @@ class CompactConsumerFetcherThread(name: String,
         if (isRunning.get()) {
           error("In FetcherThread error due to ", e)
           if (e.toString.contains(OUT_OF_MEMORY_ERROR) || e.toString.contains("error processing data for partition")) {
-            error("Got OOM, exit")
+            error("Got OOM or processing error, exit")
             isOOM = true
             if (!consumerFetcherManager.systemExisting.compareAndSet(false, true)) {
-              error("First OOM, call System.exit(-1);")
+              error("First OOM or processing error, call System.exit(-1);")
               System.exit(-1);
             }
             throw e
