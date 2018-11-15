@@ -680,7 +680,7 @@ public class ControllerHelixManager implements IHelixManager {
     return _topicToPipelineInstanceMap.get(topicName);
   }
 
-  public synchronized void handleLiveInstanceChange(boolean onlyCheckOffline) throws Exception {
+  public synchronized void handleLiveInstanceChange(boolean onlyCheckOffline, boolean forceBalance) throws Exception {
     _lock.lock();
     try {
       LOGGER.info("handleLiveInstanceChange() wake up!");
@@ -811,7 +811,7 @@ public class ControllerHelixManager implements IHelixManager {
 
       // Check if any worker in route is down
       boolean routeWorkerDown = false;
-      if (_enableRebalance) {
+      if (_enableRebalance || forceBalance) {
         HelixManager workeManager = _workerHelixManager.getHelixManager();
         Map<String, Set<TopicPartition>> workerInstanceToTopicPartitionsMap = HelixUtils
             .getInstanceToTopicPartitionsMap(workeManager, null);

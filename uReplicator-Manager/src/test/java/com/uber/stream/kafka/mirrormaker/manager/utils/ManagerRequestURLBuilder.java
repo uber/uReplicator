@@ -19,6 +19,7 @@ import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import org.apache.commons.lang.StringUtils;
 import org.restlet.Request;
 import org.restlet.data.Method;
+import org.scalactic.Bool;
 
 public class ManagerRequestURLBuilder {
 
@@ -38,6 +39,15 @@ public class ManagerRequestURLBuilder {
     });
 
     Request request = new Request(Method.GET, requestUrl);
+    return request;
+  }
+
+  public Request postInstanceRebalance(Boolean status) {
+    String requestUrl = StringUtils.join(new String[]{
+        _baseUrl, "/admin?forceRebalance="+ status.toString()
+    });
+
+    Request request = new Request(Method.POST, requestUrl);
     return request;
   }
 

@@ -98,7 +98,7 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
 
     LOGGER.info("onlyCheckOffline={}", onlyCheckOffline);
     try {
-      _controllerHelixManager.handleLiveInstanceChange(onlyCheckOffline);
+      _controllerHelixManager.handleLiveInstanceChange(onlyCheckOffline, false);
     } catch (Exception e) {
       LOGGER.error("Failed to handle live instance change!", e);
     }

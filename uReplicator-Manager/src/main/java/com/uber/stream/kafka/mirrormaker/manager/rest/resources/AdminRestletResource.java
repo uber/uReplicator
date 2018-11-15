@@ -1,29 +1,33 @@
+/*
+ * Copyright (C) 2015-2017 Uber Technologies, Inc. (streaming-data@uber.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.uber.stream.kafka.mirrormaker.manager.rest.resources;
 
-import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
-import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
-import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
-import com.uber.stream.kafka.mirrormaker.manager.ManagerConf;
 import com.uber.stream.kafka.mirrormaker.manager.core.ControllerHelixManager;
-import com.uber.stream.kafka.mirrormaker.manager.validation.SourceKafkaClusterValidationManager;
-import org.apache.helix.model.ExternalView;
-import org.apache.helix.model.IdealState;
 import org.restlet.data.Form;
 import org.restlet.data.MediaType;
 import org.restlet.data.Status;
 import org.restlet.representation.Representation;
 import org.restlet.representation.StringRepresentation;
 import org.restlet.representation.Variant;
-import org.restlet.resource.*;
+import org.restlet.resource.Get;
+import org.restlet.resource.Post;
+import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Rest API for topic management
@@ -80,4 +84,36 @@ public class AdminRestletResource extends ServerResource {
     return new StringRepresentation("No valid input!\n");
   }
 
+
+  @Post
+  public Representation post(Representation entity) {
+    Form queryParams = getRequest().getResourceRef().getQueryAsForm();
+    String forceRebalanceStr = queryParams.getFirstValue("forceRebalance", true);
+    Boolean forceRebalance = Boolean.parseBoolean(forceRebalanceStr);
+    JSONObject responseJson = new JSONObject();
+
+    if (forceRebalance) {
+      try {
+        _helixMirrorMakerManager.handleLiveInstanceChange(false, true);
+        responseJson.put("status", Status.SUCCESS_OK.getCode());
+
+        return new StringRepresentation(responseJson.toJSONString());
+      } catch (Exception e) {
+        LOGGER.error("manual re-balance failed due to exception: {}", e, e);
+
+        responseJson.put("status", Status.SERVER_ERROR_INTERNAL.getCode());
+        responseJson.put("message",
+            String.format("manual re-balance failed due to exception: {}", e));
+
+        getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
+        return new StringRepresentation(responseJson.toJSONString());
+      }
+    } else {
+      getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+      responseJson.put("status", Status.CLIENT_ERROR_BAD_REQUEST.getCode());
+      responseJson.put("message",
+          String.format("invalid operation"));
+      return new StringRepresentation(responseJson.toJSONString());
+    }
+  }
 }
