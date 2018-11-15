@@ -15,8 +15,6 @@
  */
 package com.uber.stream.kafka.mirrormaker.manager;
 
-import com.uber.stream.kafka.mirrormaker.common.utils.HelixSetupUtils;
-import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
 import com.uber.stream.kafka.mirrormaker.manager.core.ControllerHelixManager;
 import com.uber.stream.kafka.mirrormaker.manager.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import com.uber.stream.kafka.mirrormaker.manager.rest.ManagerRestApplication;
@@ -25,23 +23,12 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
-import org.apache.helix.HelixDataAccessor;
-import org.apache.helix.HelixManager;
-import org.apache.helix.HelixProperty;
-import org.apache.helix.PropertyKey;
-import org.apache.helix.model.InstanceConfig;
-import org.apache.helix.store.zk.ZkHelixPropertyStore;
 import org.restlet.Application;
 import org.restlet.Component;
 import org.restlet.Context;
 import org.restlet.data.Protocol;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.List;
-import java.util.Map;
-
-import static java.lang.System.exit;
 
 /**
  * Created by hongliang on 10/18/17.
@@ -118,13 +105,13 @@ public class ManagerStarter {
   }
 
   public static void main(String[] args) throws Exception {
-    
+
     CommandLineParser parser = new DefaultParser();
     CommandLine cmd = parser.parse(ManagerConf.constructManagerOptions(), args);
     if (cmd.getOptions().length == 0 || cmd.hasOption("help")) {
       HelpFormatter f = new HelpFormatter();
       f.printHelp("OptionsTip", ManagerConf.constructManagerOptions());
-      exit(0);
+      System.exit(0);
     }
     final ManagerStarter managerStarter = ManagerStarter.init(cmd);
 
