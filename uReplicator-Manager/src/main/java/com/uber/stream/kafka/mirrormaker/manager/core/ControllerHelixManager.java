@@ -856,7 +856,7 @@ public class ControllerHelixManager implements IHelixManager {
       }
 
       if (_enableAutoScaling) {
-        rebalanceCurrentCluster();
+        scaleCurrentCluster();
       } else {
         LOGGER.info("AutoScaling is disabled, do nothing");
       }
@@ -881,11 +881,11 @@ public class ControllerHelixManager implements IHelixManager {
     }
   }
 
-  public void rebalanceCurrentCluster() throws Exception {
+  public void scaleCurrentCluster() throws Exception {
     int oldTotalNumWorker = 0;
     int newTotalNumWorker = 0;
     for (String pipeline : _pipelineToInstanceMap.keySet()) {
-      LOGGER.info("Start rebalancing pipeline: {}", pipeline);
+      LOGGER.info("Start rescale pipeline: {}", pipeline);
       PriorityQueue<InstanceTopicPartitionHolder> newItphQueue = new PriorityQueue<>(1,
           InstanceTopicPartitionHolder.getTotalWorkloadComparator(_workloadInfoRetrieverMap.get(getSrc(pipeline)), null, false));
       // TODO: what if routeId is not continuous
