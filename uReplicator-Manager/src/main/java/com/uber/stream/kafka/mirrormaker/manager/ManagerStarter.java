@@ -118,22 +118,7 @@ public class ManagerStarter {
   }
 
   public static void main(String[] args) throws Exception {
-
-//    HelixManager mgr = HelixSetupUtils.setup("manager-controller-testing-dca1",
-//        "localhost:2181/ureplicator/testing-dca1", "dxm-test");
-//    InstanceConfig config = mgr.getConfigAccessor()
-//        .getInstanceConfig("manager-controller-testing-dca1", "dxm-test");
-//    String hostname = config.getHostName();
-//    LOGGER.warn("hostname is ", hostname);
-//    List<String> liveInstances = HelixUtils.liveInstances(mgr);
-//    HelixDataAccessor da = mgr.getHelixDataAccessor();
-//    ZkHelixPropertyStore store = mgr.getHelixPropertyStore();
-//    PropertyKey key = da.keyBuilder().instanceConfig("compute1040-dca1");
-//    String path = key.getPath();
-//    HelixProperty p = da.getProperty(key);
-//    String res = p.getRecord().getSimpleField("HELIX_HOST");
-//
-//    exit(0);
+    
     CommandLineParser parser = new DefaultParser();
     CommandLine cmd = parser.parse(ManagerConf.constructManagerOptions(), args);
     if (cmd.getOptions().length == 0 || cmd.hasOption("help")) {
