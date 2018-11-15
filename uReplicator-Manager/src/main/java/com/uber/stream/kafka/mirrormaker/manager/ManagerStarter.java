@@ -132,8 +132,8 @@ public class ManagerStarter {
 //    String path = key.getPath();
 //    HelixProperty p = da.getProperty(key);
 //    String res = p.getRecord().getSimpleField("HELIX_HOST");
-
-    exit(0);
+//
+//    exit(0);
     CommandLineParser parser = new DefaultParser();
     CommandLine cmd = parser.parse(ManagerConf.constructManagerOptions(), args);
     if (cmd.getOptions().length == 0 || cmd.hasOption("help")) {
