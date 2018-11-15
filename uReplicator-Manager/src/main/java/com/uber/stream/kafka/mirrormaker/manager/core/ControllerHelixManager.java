@@ -436,7 +436,7 @@ public class ControllerHelixManager implements IHelixManager {
         try {
           // try find topic mismatch between manager and controller
           String topicResult = HttpClientUtils.getData(_httpClient, _requestConfig,
-              instanceName, _controllerPort, "/topics");
+              hostName.get(), _controllerPort, "/topics");
           LOGGER.debug("Get topics from {}: {}", instanceName, topicResult);
           String rawTopicNames = topicResult;
           if (!rawTopicNames.equals("No topic is added in MirrorMaker Controller!")) {
