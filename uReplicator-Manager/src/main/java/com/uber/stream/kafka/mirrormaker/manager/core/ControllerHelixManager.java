@@ -76,7 +76,6 @@ public class ControllerHelixManager implements IHelixManager {
   private static final String SEPARATOR = "@";
 
   private final ManagerConf _conf;
-  private final boolean _enableRebalance;
   private final SourceKafkaClusterValidationManager _srcKafkaValidationManager;
   private final String _helixZkURL;
   private final String _helixClusterName;
@@ -122,6 +121,9 @@ public class ControllerHelixManager implements IHelixManager {
   private long lastUpdateTimeMs = 0L;
 
   private ZkClient _zkClient;
+
+  private boolean _enableAutoScaling = true;
+  private boolean _enableRebalance;
 
   public ControllerHelixManager(SourceKafkaClusterValidationManager srcKafkaValidationManager,
       ManagerConf managerConf) {
@@ -839,6 +841,8 @@ public class ControllerHelixManager implements IHelixManager {
 
           updateCurrentStatus();
         }
+      } else {
+        LOGGER.info("AutoBalancing is disabled, do nothing");
       }
 
       if (onlyCheckOffline) {
@@ -851,7 +855,11 @@ public class ControllerHelixManager implements IHelixManager {
         updateCurrentStatus();
       }
 
-      rebalanceCurrentCluster();
+      if (_enableAutoScaling) {
+        rebalanceCurrentCluster();
+      } else {
+        LOGGER.info("AutoScaling is disabled, do nothing");
+      }
 
     } finally {
       _lock.unlock();
@@ -1321,6 +1329,30 @@ public class ControllerHelixManager implements IHelixManager {
   private static String getSrc(String pipeline) {
     String[] srcDst = pipeline.split(SEPARATOR);
     return srcDst[1];
+  }
+
+  public void disableAutoScaling() {
+    _enableAutoScaling = false;
+  }
+
+  public void enableAutoScaling() {
+    _enableAutoScaling = true;
+  }
+
+  public boolean isAutoScalingEnabled() {
+    return _enableAutoScaling;
+  }
+
+  public void disableAutoBalancing() {
+    _enableRebalance = false;
+  }
+
+  public void enableAutoBalancing() {
+    _enableRebalance = true;
+  }
+
+  public boolean isAutoBalancingEnabled() {
+    return _enableRebalance;
   }
 
 }

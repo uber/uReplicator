@@ -15,6 +15,7 @@
  */
 package com.uber.stream.kafka.mirrormaker.manager.rest;
 
+import com.uber.stream.kafka.mirrormaker.manager.rest.resources.AdminRestletResource;
 import com.uber.stream.kafka.mirrormaker.manager.rest.resources.HealthCheckRestletResource;
 import com.uber.stream.kafka.mirrormaker.manager.rest.resources.TopicManagementRestletResource;
 import org.restlet.Application;
@@ -42,6 +43,10 @@ public class ManagerRestApplication extends Application {
     router.attach("/topics/", TopicManagementRestletResource.class);
     router.attach("/topics/{topicName}", TopicManagementRestletResource.class);
     router.attach("/topics/{topicName}/", TopicManagementRestletResource.class);
+
+    // Admin Servlet
+    router.attach("/admin", AdminRestletResource.class);
+    router.attach("/admin/{opt}", AdminRestletResource.class);
 
     // Health Check Servlet
     router.attach("/health", HealthCheckRestletResource.class);
