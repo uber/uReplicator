@@ -46,7 +46,7 @@ public class HelixKafkaMirrorMakerMetricsReporter {
   // Exposed for tests. Call Metrics.get() instead.
   HelixKafkaMirrorMakerMetricsReporter(ControllerConf config) {
     final String environment = config.getEnvironment();
-    final String clientId = config.getInstanceId();
+    final String clientId = config.getHostname();
     String[] dcNenv = parse(environment);
     if (dcNenv == null) {
       LOGGER.error("Error parsing environment info");
