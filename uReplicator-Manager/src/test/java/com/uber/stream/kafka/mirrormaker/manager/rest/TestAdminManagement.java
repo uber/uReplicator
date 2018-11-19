@@ -16,19 +16,26 @@
 package com.uber.stream.kafka.mirrormaker.manager.rest;
 
 import com.uber.stream.kafka.mirrormaker.manager.utils.ManagerRequestURLBuilder;
+
+import org.testng.annotations.Test;
 import org.restlet.Request;
 import org.restlet.Response;
 import org.restlet.data.Status;
 import org.testng.Assert;
-import org.testng.annotations.Test;
 
-public class TestHealthCheck extends RestTestBase {
+public class TestAdminManagement extends RestTestBase {
   @Test
-  public void testHealthCheck() {
-    Request request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL).getHealthCheck();
+  public void testPostRebalance() {
+    Request request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL).postInstanceRebalance(true);
     Response response = HTTP_CLIENT.handle(request);
     String responseString = response.getEntityAsText();
     Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
-    Assert.assertEquals(responseString, "OK\n");
+    Assert.assertEquals(responseString, "{\"status\":200}");
+
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL).postInstanceRebalance(false);
+    response = HTTP_CLIENT.handle(request);
+    responseString = response.getEntityAsText();
+    Assert.assertEquals(response.getStatus(), Status.CLIENT_ERROR_BAD_REQUEST);
+    Assert.assertEquals(responseString, "{\"message\":\"invalid operation\",\"status\":400}");
   }
 }
