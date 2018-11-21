@@ -81,7 +81,7 @@ public class TestControllerConf {
     Assert.assertEquals(conf.getDestKafkaZkPath(), "localhost:2181/kafka2");
     Assert.assertEquals(conf.getAutoRebalanceDelayInSeconds().intValue(), 120);
     Assert.assertEquals(conf.getEnableAutoWhitelist(), true);
-    Assert.assertEquals(conf.getPatternToExcludeTopics(), "__*");
+    Assert.assertEquals(conf.getPatternToExcludeTopics(), "__*|__consumer_offsets");
     Assert.assertEquals(conf.getBackUpToGit().booleanValue(), true);
     Assert.assertEquals(conf.getLocalBackupFilePath(), null);
     Assert.assertEquals(conf.getRemoteBackupRepo(), "git://kafka-mm-controller-backup.git");
@@ -125,7 +125,7 @@ public class TestControllerConf {
     Assert.assertEquals(conf.getDestKafkaZkPath(), "localhost:2181/kafka2");
     Assert.assertEquals(conf.getAutoRebalanceDelayInSeconds().intValue(), 120);
     Assert.assertEquals(conf.getEnableAutoWhitelist(), true);
-    Assert.assertEquals(conf.getPatternToExcludeTopics(), "__*");
+    Assert.assertEquals(conf.getPatternToExcludeTopics(), "__*|__consumer_offsets");
     Assert.assertEquals(conf.getBackUpToGit().booleanValue(), false);
     Assert.assertEquals(conf.getLocalBackupFilePath(), "/tmp/localBackup");
     Assert.assertEquals(conf.getRemoteBackupRepo(), null);
@@ -165,7 +165,7 @@ public class TestControllerConf {
     Assert.assertEquals(conf.getDestKafkaZkPath(), "localhost:2181/kafka2");
     Assert.assertEquals(conf.getAutoRebalanceDelayInSeconds().intValue(), 120);
     Assert.assertEquals(conf.getEnableAutoWhitelist(), true);
-    Assert.assertEquals(conf.getPatternToExcludeTopics(), "__*");
+    Assert.assertEquals(conf.getPatternToExcludeTopics(), "__*|__consumer_offsets");
     Assert.assertEquals(conf.getBackUpToGit().booleanValue(), false);
     Assert.assertEquals(conf.getLocalBackupFilePath(), "/var/log/kafka-mirror-maker-controller");
     Assert.assertEquals(conf.getRemoteBackupRepo(), null);

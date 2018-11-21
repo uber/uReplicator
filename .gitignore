@@ -62,5 +62,5 @@ out
 *.ipr
 *.iws
 *.iml
+bin/pkg/**
 
-bin/pkg/*.sh
