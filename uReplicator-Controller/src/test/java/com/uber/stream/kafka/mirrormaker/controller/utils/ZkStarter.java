@@ -17,8 +17,6 @@ package com.uber.stream.kafka.mirrormaker.controller.utils;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.ServerSocket;
-import java.net.Socket;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import org.I0Itec.zkclient.ZkClient;
@@ -30,29 +28,11 @@ import org.slf4j.LoggerFactory;
 public class ZkStarter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ZkStarter.class);
-  public static final int DEFAULT_ZK_TEST_PORT = getAvailablePort();
+  public static final int DEFAULT_ZK_TEST_PORT = new Random().nextInt(10000) + 10000;
   public static final String DEFAULT_ZK_STR = "localhost:" + DEFAULT_ZK_TEST_PORT;
 
   private static PublicZooKeeperServerMain _zookeeperServerMain = null;
   private static String _zkDataDir = null;
-
-  private static int getAvailablePort() {
-    int port = 0;
-
-    while (true) {
-      try {
-        port = new Random().nextInt(10000) + 10000;
-        (new Socket("127.0.0.1", port)).close();
-        new ServerSocket(port).close();
-        // Successful connection means the port is taken.
-      } catch (Exception e) {
-        // Could not connect.
-        break;
-      }
-    }
-
-    return port;
-  }
 
   /**
    * Silly class to make protected methods public.

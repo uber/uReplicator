@@ -84,7 +84,6 @@ public class ControllerConf extends PropertiesConfiguration {
   private static final String LOCAL_FILE_BACKUP = "controller.local.backup.file.path";
 
   private static final String PATTERN_TO_EXCLUDE_TOPICS = "controller.pattern.exclude.topics";
-  private static final String DEFAULT_PATTERN_TO_EXCLUDE_TOPICS = "__consumer_offsets";
 
   private static final String MAX_WORKING_INSTANCES = "controller.max.working.instances";
 
@@ -339,9 +338,7 @@ public class ControllerConf extends PropertiesConfiguration {
   }
 
   public String getPatternToExcludeTopics() {
-    String pattern = (String) getProperty(PATTERN_TO_EXCLUDE_TOPICS);
-    return pattern != null && pattern.contains(DEFAULT_PATTERN_TO_EXCLUDE_TOPICS) ? pattern
-        : pattern + "|" + DEFAULT_PATTERN_TO_EXCLUDE_TOPICS;
+    return (String) getProperty(PATTERN_TO_EXCLUDE_TOPICS);
   }
 
   public String getRemoteBackupRepo() {
@@ -826,8 +823,6 @@ public class ControllerConf extends PropertiesConfiguration {
     }
     if (cmd.hasOption("patternToExcludeTopics")) {
       controllerConf.setPatternToExcludeTopics(cmd.getOptionValue("patternToExcludeTopics"));
-    } else {
-      controllerConf.setPatternToExcludeTopics(DEFAULT_PATTERN_TO_EXCLUDE_TOPICS);
     }
     if (cmd.hasOption("enableSrcKafkaValidation")) {
       controllerConf.setEnableSrcKafkaValidation(cmd.getOptionValue("enableSrcKafkaValidation"));

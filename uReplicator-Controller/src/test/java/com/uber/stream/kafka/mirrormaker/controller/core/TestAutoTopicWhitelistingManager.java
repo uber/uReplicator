@@ -49,7 +49,7 @@ public class TestAutoTopicWhitelistingManager {
     } catch (Exception e) {
     }
     kafkaBrokerTopicObserver =
-        new KafkaBrokerTopicObserver("broker0", KafkaStarterUtils.DEFAULT_ZK_STR, 1);
+        new KafkaBrokerTopicObserver("broker0", KafkaStarterUtils.DEFAULT_ZK_STR);
 
     ControllerConf controllerConf = new ControllerConf();
     controllerConf.setControllerPort("9090");
