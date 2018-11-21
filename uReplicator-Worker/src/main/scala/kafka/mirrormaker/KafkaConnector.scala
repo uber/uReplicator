@@ -36,7 +36,8 @@ import scala.collection.JavaConverters._
  * @param config
  */
 class KafkaConnector(private val consumerIdString: String,
-                     private val config: ConsumerConfig) extends KafkaMetricsGroup {
+                     private val config: ConsumerConfig,
+                     private val brokerListStr: String) extends KafkaMetricsGroup {
 
 
   private val zkClient: ZkClient = ZkUtils.createZkClient(config.zkConnect, config.zkSessionTimeoutMs, config.zkConnectionTimeoutMs)
@@ -45,7 +46,6 @@ class KafkaConnector(private val consumerIdString: String,
   private val fetcherManager: CompactConsumerFetcherManager = new CompactConsumerFetcherManager(consumerIdString, config, zkClient)
 
   private val zkUtils = ZkUtils.apply(zkClient, false)
-  private val cluster = zkUtils.getCluster()
 
   private val commitZkClient: ZkClient = if (config.props.containsKey("commit.zookeeper.connect"))
     ZkUtils.createZkClient(config.props.getString("commit.zookeeper.connect"), config.zkSessionTimeoutMs, config.zkConnectionTimeoutMs)
@@ -72,7 +72,7 @@ class KafkaConnector(private val consumerIdString: String,
   )
 
   // Initialize the fetcher manager
-  fetcherManager.startConnections(Nil, cluster)
+  fetcherManager.startConnections(Nil)
 
   KafkaMetricsReporter.startReporters(config.props)
   AppInfo.registerInfo()

@@ -219,7 +219,7 @@ class CompactConsumerFetcherThread(name: String,
       case e: InterruptedException =>
         throw e
       case e: Throwable =>
-        if (isRunning.get()) {
+        if (isRunning) {
           error("In FetcherThread error due to ", e)
           if (e.toString.contains(OUT_OF_MEMORY_ERROR) || e.toString.contains("error processing data for partition")) {
             error("Got OOM or processing error, exit")
@@ -242,7 +242,7 @@ class CompactConsumerFetcherThread(name: String,
       response = simpleConsumer.fetch(fetchRequest)
     } catch {
       case t: Throwable =>
-        if (isRunning.get) {
+        if (isRunning) {
           warn("Error in fetch %s. Possible cause: %s".format(fetchRequest, t.toString))
           if (t.toString.contains(OUT_OF_MEMORY_ERROR)) {
             throw t
@@ -262,8 +262,9 @@ class CompactConsumerFetcherThread(name: String,
       inLock(partitionMapLock) {
         response.data.foreach {
           case (topicAndPartition, partitionData) =>
-            val (topic, partitionId) = topicAndPartition.asTuple
-            partitionMap.get(topicAndPartition).foreach(currentPartitionFetchState => {
+            val topic = topicAndPartition.topic
+            val partitionId =topicAndPartition.partition
+          partitionMap.get(topicAndPartition).foreach(currentPartitionFetchState => {
               // we append to the log if the current offset is defined and it is the same as the offset requested during fetch
               val requestOffset = fetchRequest.requestInfo.toMap.get(topicAndPartition) match {
                 case Some(info) => info.offset
@@ -310,7 +311,7 @@ class CompactConsumerFetcherThread(name: String,
                         partitionsWithError += topicAndPartition
                     }
                   case _ =>
-                    if (isRunning.get) {
+                    if (isRunning) {
                       error("Error for partition [%s,%d] to broker %d:%s".format(topic, partitionId, sourceBroker.id,
                         ErrorMapping.exceptionFor(partitionData.error.code()).getClass))
                       partitionsWithError += topicAndPartition
