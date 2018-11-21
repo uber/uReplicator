@@ -194,6 +194,7 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
     zkServer = helixProps.getProperty("zkServer", "localhost:2181")
     instanceId = helixProps.getProperty("instanceId", "HelixMirrorMaker-" + System.currentTimeMillis)
 
+    var srcBrokerList = ""
     // Create consumer connector
     val consumerConfigProps = Utils.loadProps(options.valueOf(workerConfig.getConsumerConfigOpt))
     // Disable consumer auto offsets commit to prevent data loss.
@@ -208,12 +209,15 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
           throw new Exception("No cluster configuration provided")
         }
         val srcClusterZk = clusterProps.getProperty("kafka.cluster.zkStr." + srcCluster, "")
+        srcBrokerList = clusterProps.getProperty("kafka.cluster.servers." + srcCluster, "")
         val commitZkConnection = clusterProps.getProperty("commit.zookeeper.connect", srcClusterZk)
         if (srcClusterZk.isEmpty()) {
           error("Cannot find zkStr for source cluster: " + srcCluster)
           throw new Exception("Cannot find zkStr for source cluster: " + srcCluster)
         } else {
           consumerConfigProps.setProperty("zookeeper.connect", srcClusterZk)
+          consumerConfigProps.setProperty("broker.list", srcBrokerList)
+
           consumerConfigProps.setProperty("commit.zookeeper.connect", commitZkConnection)
           consumerConfigProps.setProperty("group.id", "ureplicator-" + srcCluster + "-" + dstCluster.getOrElse("none"))
           consumerConfigProps.setProperty("client.id", route)
@@ -236,7 +240,8 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
       }
       consumerConfig.groupId + "_" + consumerUuid
     }
-    connector = new KafkaConnector(consumerIdString, consumerConfig)
+
+    connector = new KafkaConnector(consumerIdString, consumerConfig, srcBrokerList)
 
     additionalConfigs(srcCluster, dstCluster)
 
