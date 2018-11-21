@@ -36,12 +36,13 @@ import scala.collection.JavaConverters._
  * @param config
  */
 class KafkaConnector(private val consumerIdString: String,
-                     private val config: ConsumerConfig) extends KafkaMetricsGroup {
+                     private val config: ConsumerConfig,
+                     private val brokerListStr: String) extends KafkaMetricsGroup {
   private val commitZkClient: ZkClient = ZkUtils.createZkClient(config.props.getString("commit.zookeeper.connect"), config.zkSessionTimeoutMs, config.zkConnectionTimeoutMs)
   private val zkClient: ZkClient = ZkUtils.createZkClient(config.zkConnect, config.zkSessionTimeoutMs, config.zkConnectionTimeoutMs)
   private val queue: LinkedBlockingQueue[FetchedDataChunk] = new LinkedBlockingQueue[FetchedDataChunk](config.queuedMaxMessages)
   private val decoder: DefaultDecoder = new DefaultDecoder()
-  private val fetcherManager: CompactConsumerFetcherManager = new CompactConsumerFetcherManager(consumerIdString, config, zkClient)
+  private val fetcherManager: CompactConsumerFetcherManager = new CompactConsumerFetcherManager(consumerIdString, config, zkClient, brokerListStr)
   private val commitZkUtils = ZkUtils.apply(commitZkClient, false)
   private val zkUtils = ZkUtils.apply(zkClient, false)
   private val cluster = zkUtils.getCluster()
