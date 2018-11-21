@@ -21,11 +21,9 @@ import kafka.admin.TopicCommand;
 import kafka.server.KafkaConfig;
 import kafka.server.KafkaServerStartable;
 import kafka.utils.ZkUtils;
-import kafka.zk.KafkaZkClient;
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.commons.io.FileUtils;
 import org.apache.kafka.common.errors.TopicExistsException;
-import org.apache.kafka.common.utils.Time;
 
 
 /**
@@ -56,7 +54,6 @@ public class KafkaStarterUtils {
 
     File logDir = new File("/tmp/kafka-" + Double.toHexString(Math.random()));
     logDir.mkdirs();
-    logDir.deleteOnExit();
 
     configureKafkaPort(configuration, port);
     configureZkConnectionString(configuration, zkStr);
@@ -94,6 +91,7 @@ public class KafkaStarterUtils {
 
   public static void stopServer(KafkaServerStartable serverStartable) {
     serverStartable.shutdown();
+    FileUtils.deleteQuietly(new File(serverStartable.serverConfig().logDirs().apply(0)));
   }
 
   public static void createTopic(String kafkaTopic, String zkStr) {
@@ -101,11 +99,9 @@ public class KafkaStarterUtils {
     try {
       String[] args = new String[]{"--create", "--zookeeper", zkStr, "--replication-factor", "1",
           "--partitions", "1", "--topic", kafkaTopic};
-      //ZkClient zkClient = ZkUtils.createZkClient(zkStr, 30000, 30000);
-      KafkaZkClient zkClient = KafkaZkClient.apply(zkStr, false, 30000, 30000, Integer.MAX_VALUE, Time.SYSTEM,"kafka.server",
-          "SessionExpireListener");
+      ZkUtils zkUtils = ZkUtils.apply(zkStr, 30000, 30000, false);
       TopicCommand.TopicCommandOptions opts = new TopicCommand.TopicCommandOptions(args);
-      TopicCommand.createTopic(zkClient, opts);
+      TopicCommand.createTopic(zkUtils, opts);
     } catch (TopicExistsException e) {
       // Catch TopicExistsException otherwise it will break maven-surefire-plugin
       System.out.println("Topic already existed");

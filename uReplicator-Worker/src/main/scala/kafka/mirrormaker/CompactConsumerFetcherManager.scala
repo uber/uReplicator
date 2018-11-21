@@ -15,7 +15,6 @@
  */
 package kafka.mirrormaker
 
-import java.util.Date
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import java.util.concurrent.locks.ReentrantLock
@@ -47,8 +46,7 @@ import scala.collection.{JavaConversions, Map, Set, mutable}
  */
 class CompactConsumerFetcherManager(private val consumerIdString: String,
                                     private val config: ConsumerConfig,
-                                    private val zkClient: ZkClient,
-                                    private val brokerListStr: String)
+                                    private val zkClient: ZkClient)
   extends Logging with KafkaMetricsGroup {
   protected val name: String = "CompactConsumerFetcherManager-%d".format(System.currentTimeMillis)
   private val clientId: String = config.clientId
@@ -342,14 +340,14 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
         }
 
         info("Partitions without leader %s".format(noLeaderPartitionSet))
-        var start = new Date().getTime
-        val brokers = ClientUtils.parseBrokerList(brokerListStr)
+        val brokers = ClientUtils.getPlaintextBrokerEndPoints(ZkUtils.apply(zkClient, true))
+
         val topicsMetadata = ClientUtils.fetchTopicMetadata(noLeaderPartitionSet.map(m => m.topic).toSet,
           brokers,
           config.clientId,
           config.socketTimeoutMs,
           correlationId.getAndIncrement).topicsMetadata
-        topicsMetadata.foreach(topicMetadata => debug(topicMetadata.toString()))
+        if (logger.isDebugEnabled) topicsMetadata.foreach(topicMetadata => debug(topicMetadata.toString()))
         topicsMetadata.foreach { tmd =>
           val topic = tmd.topic
           tmd.partitionsMetadata.foreach { pmd =>
@@ -362,10 +360,9 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
             }
           }
         }
-        info("Find leader for partitions finished, took: %d ms".format(new Date().getTime - start))
       } catch {
         case t: Throwable => {
-          if (isRunning)
+          if (!isRunning.get())
             throw t /* If this thread is stopped, propagate this exception to kill the thread. */
           else
             warn("Failed to find leader for %s".format(noLeaderPartitionSet), t)
@@ -381,7 +378,7 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
         })
       } catch {
         case t: Throwable => {
-          if (isRunning)
+          if (!isRunning.get())
             throw t /* If this thread is stopped, propagate this exception to kill the thread. */
           else {
             warn("Failed to add leader for partitions %s; will retry".format(leaderForPartitionsMap.keySet.mkString(",")), t)
