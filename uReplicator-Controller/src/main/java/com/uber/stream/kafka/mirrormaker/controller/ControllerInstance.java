@@ -28,6 +28,8 @@ import com.uber.stream.kafka.mirrormaker.controller.validation.SourceKafkaCluste
 import com.uber.stream.kafka.mirrormaker.controller.validation.ValidationManager;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
 import org.restlet.Application;
 import org.restlet.Component;
 import org.restlet.Context;
@@ -82,7 +84,7 @@ public class ControllerInstance {
       LOGGER.info("Try to init SourceKafkaClusterValidationManager!");
       if (!_kafkaBrokerTopicObserverMap.containsKey(SRC_KAFKA_CLUSTER)) {
         _kafkaBrokerTopicObserverMap.put(SRC_KAFKA_CLUSTER,
-            new KafkaBrokerTopicObserver(SRC_KAFKA_CLUSTER, _config.getSrcKafkaZkPath()));
+            new KafkaBrokerTopicObserver(SRC_KAFKA_CLUSTER, _config.getSrcKafkaZkPath(), TimeUnit.MINUTES.toMillis(5)));
       }
       return new SourceKafkaClusterValidationManager(
           _kafkaBrokerTopicObserverMap.get(SRC_KAFKA_CLUSTER),
@@ -102,11 +104,11 @@ public class ControllerInstance {
       LOGGER.info("Try to init AutoTopicWhitelistingManager!");
       if (!_kafkaBrokerTopicObserverMap.containsKey(SRC_KAFKA_CLUSTER)) {
         _kafkaBrokerTopicObserverMap.put(SRC_KAFKA_CLUSTER,
-            new KafkaBrokerTopicObserver(SRC_KAFKA_CLUSTER, _config.getSrcKafkaZkPath()));
+            new KafkaBrokerTopicObserver(SRC_KAFKA_CLUSTER, _config.getSrcKafkaZkPath(), TimeUnit.MINUTES.toMillis(5)));
       }
       if (!_kafkaBrokerTopicObserverMap.containsKey(DEST_KAFKA_CLUSTER)) {
         _kafkaBrokerTopicObserverMap.put(DEST_KAFKA_CLUSTER,
-            new KafkaBrokerTopicObserver(DEST_KAFKA_CLUSTER, _config.getDestKafkaZkPath()));
+            new KafkaBrokerTopicObserver(DEST_KAFKA_CLUSTER, _config.getDestKafkaZkPath(), TimeUnit.MINUTES.toMillis(5)));
       }
 
       String patternToExcludeTopics = _config.getPatternToExcludeTopics();
