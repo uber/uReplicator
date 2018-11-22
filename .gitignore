@@ -63,4 +63,5 @@ out
 *.iws
 *.iml
 
-bin/pkg/*.sh
+bin/pkg/**
+

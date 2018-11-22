@@ -80,7 +80,7 @@ public class HelixMirrorMakerManagerCustomEmptyFullTest {
     List<FakeInstance> fakeInstances = ControllerTestUtils
         .addFakeDataInstancesToAutoJoinHelixCluster(helixClusterName, ZkStarter.DEFAULT_ZK_STR,
             numBatchBringUpInstances, 0);
-    Thread.sleep(2000);
+    Thread.sleep(5000);
     assertInstanceOwnedTopicPartitionsBalanced(helixMirrorMakerManager,
         numBatchBringUpInstances, 8 * numTotalTopics);
 
@@ -89,7 +89,7 @@ public class HelixMirrorMakerManagerCustomEmptyFullTest {
     fakeInstances.addAll(ControllerTestUtils
         .addFakeDataInstancesToAutoJoinHelixCluster(helixClusterName, ZkStarter.DEFAULT_ZK_STR,
             numBatchBringUpInstances, numBatchBringUpInstances));
-    Thread.sleep(2000);
+    Thread.sleep(5000);
     assertInstanceOwnedTopicPartitionsBalanced(helixMirrorMakerManager,
         numBatchBringUpInstances * 2, 8 * numTotalTopics);
 
@@ -97,7 +97,7 @@ public class HelixMirrorMakerManagerCustomEmptyFullTest {
       String topic = "testTopic" + i;
       LOGGER.info("Expanding topic: {} , waiting for rebalancing", topic);
       helixMirrorMakerManager.expandTopicInMirrorMaker(topic, 16);
-      Thread.sleep(2000);
+      Thread.sleep(5000);
       assertInstanceOwnedTopicPartitionsBalanced(helixMirrorMakerManager,
           numBatchBringUpInstances * 2, 8 * numTotalTopics + 8 * (i + 1));
     }
