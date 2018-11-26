@@ -70,7 +70,8 @@ class ManagerWorkerOnlineOfflineStateModelFactory(
         + message.getResourceName() + ", partition: " + message.getPartitionName())
       val srcDst = parseSrcDstCluster(message.getResourceName)
       if (srcDst != null) {
-        managerWorkerHelixHandler.handleRouteAssignmentOffline(srcDst(1), srcDst(2), message.getPartitionName())
+        // This can happen when onBecomeOfflineFromOnline comes after worker joins new route
+        // managerWorkerHelixHandler.handleRouteAssignmentOffline(srcDst(1), srcDst(2), message.getPartitionName())
       }
       debug("Finish OnlineOfflineStateModel.onBecomeOfflineFromError for route: "
         + message.getResourceName() + ", partition: " + message.getPartitionName())
@@ -81,6 +82,7 @@ class ManagerWorkerOnlineOfflineStateModelFactory(
         + message.getResourceName() + ", partition: " + message.getPartitionName())
       val srcDst = parseSrcDstCluster(message.getResourceName)
       if (srcDst != null) {
+        // Temporarily keep this to see if it could happen in addition to onBecomeOfflineFromError
         managerWorkerHelixHandler.handleRouteAssignmentOffline(srcDst(1), srcDst(2), message.getPartitionName())
       }
       debug("Finish OnlineOfflineStateModel.onBecomeDroppedFromError for route: "
