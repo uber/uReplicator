@@ -22,6 +22,7 @@ import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.kafka.mirrormaker.manager.ManagerConf;
 import com.uber.stream.kafka.mirrormaker.manager.core.ControllerHelixManager;
+import com.uber.stream.kafka.mirrormaker.manager.utils.ControllerUtils;
 import com.uber.stream.kafka.mirrormaker.manager.validation.SourceKafkaClusterValidationManager;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -49,8 +50,6 @@ import org.slf4j.LoggerFactory;
 public class TopicManagementRestletResource extends ServerResource {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TopicManagementRestletResource.class);
-
-  private static final String SEPARATOR = "@";
 
   private final ManagerConf _conf;
   private final ControllerHelixManager _helixMirrorMakerManager;
@@ -111,7 +110,7 @@ public class TopicManagementRestletResource extends ServerResource {
       }
     }
     // Get pipeline information
-    if (topicName.startsWith(SEPARATOR)) {
+    if (ControllerUtils.isPipelineName(topicName)) {
       try {
         if (_helixMirrorMakerManager.isPipelineExisted(topicName)) {
           // TODO: add worker information
@@ -204,7 +203,7 @@ public class TopicManagementRestletResource extends ServerResource {
 
     // TODO: updateCurrentStatus might take a long time
     _helixMirrorMakerManager.updateCurrentStatus();
-    String pipeline = SEPARATOR + srcCluster + SEPARATOR + dstCluster;
+    String pipeline = ControllerUtils.getPipelineName(srcCluster, dstCluster);
     if (_helixMirrorMakerManager.isTopicPipelineExisted(topicName, pipeline)) {
       LOGGER.info("Topic {} already on uReplicator in pipeline {}", topicName, pipeline);
 
@@ -258,7 +257,7 @@ public class TopicManagementRestletResource extends ServerResource {
         topicName, srcCluster, dstCluster, newNumPartitions);
 
     _helixMirrorMakerManager.updateCurrentStatus();
-    String pipeline = SEPARATOR + srcCluster + SEPARATOR + dstCluster;
+    String pipeline = ControllerUtils.getPipelineName(srcCluster, dstCluster);
     if (!_helixMirrorMakerManager.isTopicPipelineExisted(topicName, pipeline)) {
       LOGGER.info("Topic {} doesn't exist in pipeline {}, abandon expanding topic", topicName, pipeline);
       JSONObject responseJson = new JSONObject();
@@ -303,7 +302,7 @@ public class TopicManagementRestletResource extends ServerResource {
   public Representation delete() {
     final String topicName = (String) getRequest().getAttributes().get("topicName");
 
-    if (topicName.startsWith(SEPARATOR)) {
+    if (ControllerUtils.isPipelineName(topicName)) {
       // Delete pipeline
       LOGGER.info("Received request to delete pipeline {} on uReplicator ", topicName);
 
@@ -345,7 +344,7 @@ public class TopicManagementRestletResource extends ServerResource {
       Form queryParams = getRequest().getResourceRef().getQueryAsForm();
       String srcCluster = queryParams.getFirstValue("src");
       String dstCluster = queryParams.getFirstValue("dst");
-      String pipeline = SEPARATOR + srcCluster + SEPARATOR + dstCluster;
+      String pipeline = ControllerUtils.getPipelineName(srcCluster, dstCluster);
 
       LOGGER.info("Received request to delete topic {} from {} to {} on uReplicator ",
           topicName, srcCluster, dstCluster);
@@ -453,7 +452,7 @@ public class TopicManagementRestletResource extends ServerResource {
     helixInfoJson.put("serverToPartitionMapping", serverToPartitionMappingJson);
     helixInfoJson.put("serverToNumPartitionsMapping", serverToNumPartitionsMappingJson);
 
-    if (topicName.startsWith(SEPARATOR)) {
+    if (ControllerUtils.isPipelineName(topicName)) {
       return helixInfoJson;
     }
 

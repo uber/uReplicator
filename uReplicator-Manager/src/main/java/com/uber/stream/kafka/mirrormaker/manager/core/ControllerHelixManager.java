@@ -33,6 +33,7 @@ import com.uber.stream.kafka.mirrormaker.manager.reporter.HelixKafkaMirrorMakerM
 import com.uber.stream.kafka.mirrormaker.manager.validation.SourceKafkaClusterValidationManager;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1248,6 +1249,43 @@ public class ControllerHelixManager implements IHelixManager {
     }
   }
 
+  public boolean getControllerAutobalancingStatus(String controllerInstance) throws ControllerException {
+    try {
+      String result = HttpClientUtils
+          .getData(_httpClient, _requestConfig, controllerInstance, _controllerPort,
+              "/admin/" + "autobalancing_status");
+      return result.equalsIgnoreCase("enabled");
+    } catch (IOException | URISyntaxException ex) {
+      String msg = String.format("Got error from controller %s when trying to get balancing status",
+          controllerInstance);
+      LOGGER.error(msg, ex);
+      throw new ControllerException(msg, ex);
+    }
+  }
+  /**
+   * RPC call to notify controller to change autobalancing status.
+   * No retry
+   * @param controllerInstance The controller InstanceName
+   * @param enable whether to enable autobalancing
+   * @return
+   */
+  public boolean notifyControllerAutobalancing(String controllerInstance, boolean enable) throws ControllerException {
+    //TODO: need to convert to hostname after code change
+    JSONObject entity = new JSONObject();
+
+    String cmd = enable ? "enable_autobalancing" : "disable_autobalancing";
+    try {
+      String result = HttpClientUtils
+          .getData(_httpClient, _requestConfig, controllerInstance, _controllerPort,
+              "/admin/" + cmd);
+    } catch (IOException | URISyntaxException ex) {
+      String msg = String.format("Got error from controller %s when trying to do %s",
+          controllerInstance, cmd);
+      LOGGER.error(msg, ex);
+      throw new ControllerException(msg, ex);
+    }
+    return true;
+  }
   public synchronized void deletePipelineInMirrorMaker(String pipeline) {
     // TODO: delete topic first
     _lock.lock();

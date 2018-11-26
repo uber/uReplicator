@@ -51,6 +51,34 @@ public class ManagerRequestURLBuilder {
     return request;
   }
 
+  public Request postSetControllerRebalance(String srcCluster, String dstCluster, boolean enabled) {
+    String requestUrl = StringUtils.join(new String[]{
+        _baseUrl, "/admin/controller_autobalance?srcCluster="+ srcCluster + "&dstCluster=" + dstCluster
+        + "&enabled=" + enabled
+    });
+
+    Request request = new Request(Method.POST, requestUrl);
+    return request;
+  }
+
+  public Request getControllerRebalanceStatus() {
+    String requestUrl = StringUtils.join(new String[]{
+        _baseUrl, "/admin/controller_autobalance"
+    });
+
+    Request request = new Request(Method.GET, requestUrl);
+    return request;
+  }
+
+  public Request postSetControllerRebalance(boolean enabled) {
+    String requestUrl = StringUtils.join(new String[]{
+        _baseUrl, "/admin/controller_autobalance?enabled=" + enabled
+    });
+
+    Request request = new Request(Method.POST, requestUrl);
+    return request;
+  }
+
   public Request getTopicExternalViewRequestUrl(String topic) {
     String requestUrl = StringUtils.join(new String[]{
         _baseUrl, "/topics/", topic
