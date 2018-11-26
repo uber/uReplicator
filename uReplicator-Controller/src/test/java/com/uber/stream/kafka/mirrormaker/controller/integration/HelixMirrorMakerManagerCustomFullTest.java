@@ -52,13 +52,16 @@ public class HelixMirrorMakerManagerCustomFullTest {
   public void testControllerStarter() throws Exception {
     LOGGER.info("testControllerStarter");
     String helixClusterName = "HelixMirrorMakerManagerCustomFullTest";
+    String deploymentName = "DeploymentHelixMirrorMakerManagerCustomFullTest";
     ControllerConf controllerConf = new ControllerConf();
     controllerConf.setControllerPort("9090");
     controllerConf.setHelixClusterName(helixClusterName);
+    controllerConf.setDeploymentName(deploymentName);
     controllerConf.setInstanceId("controller-0");
     controllerConf.setControllerMode("customized");
     controllerConf.setBackUpToGit("false");
     controllerConf.setAutoRebalanceDelayInSeconds("1");
+    controllerConf.setAutoRebalanceWorkloadRatioThreshold("0");
     controllerConf.setZkStr(ZkStarter.DEFAULT_ZK_STR);
     HelixMirrorMakerManager helixMirrorMakerManager = new HelixMirrorMakerManager(controllerConf);
     helixMirrorMakerManager.start();
@@ -107,7 +110,7 @@ public class HelixMirrorMakerManagerCustomFullTest {
         fakeInstances.get(i / 2).start();
         totalInstancesSize++;
       }
-      Thread.sleep(5000);
+      Thread.sleep(6000);
       assertInstanceOwnedTopicPartitionsBalanced(helixMirrorMakerManager,
           totalInstancesSize, 16 * numTotalTopics);
     }
@@ -117,7 +120,7 @@ public class HelixMirrorMakerManagerCustomFullTest {
       LOGGER.info("Trying to bring down: " + fakeInstances.get(i).getInstanceId());
       fakeInstances.get(i).stop();
       totalInstancesSize--;
-      Thread.sleep(5000);
+      Thread.sleep(6000);
       assertInstanceOwnedTopicPartitionsBalanced(helixMirrorMakerManager,
           totalInstancesSize, 16 * numTotalTopics);
     }
@@ -127,7 +130,7 @@ public class HelixMirrorMakerManagerCustomFullTest {
       LOGGER.info("Trying to bring up: " + fakeInstances.get(i).getInstanceId());
       fakeInstances.get(i).start();
       totalInstancesSize++;
-      Thread.sleep(5000);
+      Thread.sleep(6000);
       assertInstanceOwnedTopicPartitionsBalanced(helixMirrorMakerManager,
           totalInstancesSize, 16 * numTotalTopics);
     }

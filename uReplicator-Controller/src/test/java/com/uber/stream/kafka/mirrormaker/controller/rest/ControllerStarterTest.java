@@ -49,6 +49,7 @@ public class ControllerStarterTest {
   public static ControllerStarter CONTROLLER_STARTER = null;
   public static String REQUEST_URL;
   public static String HELIX_CLUSTER_NAME = "ControllerStarterTest";
+  public static String DEPLOYMENT_NAME = "StarterTestDeployment";
   public static List<FakeInstance> FAKE_INSTANCES = new ArrayList<FakeInstance>();
   public static ZkClient ZK_CLIENT = null;
 
@@ -74,7 +75,7 @@ public class ControllerStarterTest {
     ZK_CLIENT = new ZkClient(ZkStarter.DEFAULT_ZK_STR);
     ZK_CLIENT.deleteRecursive("/" + HELIX_CLUSTER_NAME);
     REQUEST_URL = "http://localhost:" + CONTROLLER_PORT;
-    CONTROLLER_STARTER = startController(HELIX_CLUSTER_NAME, CONTROLLER_PORT);
+    CONTROLLER_STARTER = startController(DEPLOYMENT_NAME, HELIX_CLUSTER_NAME, CONTROLLER_PORT);
     try {
       FAKE_INSTANCES.addAll(ControllerTestUtils
           .addFakeDataInstancesToAutoJoinHelixCluster(HELIX_CLUSTER_NAME, ZkStarter.DEFAULT_ZK_STR,
@@ -107,11 +108,12 @@ public class ControllerStarterTest {
     ZkStarter.stopLocalZkServer();
   }
 
-  public ControllerStarter startController(String helixClusterName, String port) {
+  public ControllerStarter startController(String deploymentName, String helixClusterName, String port) {
     final ControllerConf conf = new ControllerConf();
     conf.setControllerPort(port);
     conf.setZkStr(ZkStarter.DEFAULT_ZK_STR);
     conf.setHelixClusterName(helixClusterName);
+    conf.setDeploymentName(deploymentName);
     conf.setBackUpToGit("false");
     conf.setAutoRebalanceDelayInSeconds("0");
     conf.setEnableAutoWhitelist("true");

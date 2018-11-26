@@ -37,6 +37,12 @@ public class AdminRestletResource extends ServerResource {
       _helixMirrorMakerManager.enableAutoBalancing();
       LOGGER.info("Enabled autobalancing!");
       return new StringRepresentation("Enabled autobalancing!\n");
+    } else if ("autobalancing_status".equalsIgnoreCase(opt)) {
+      if (_helixMirrorMakerManager.isAutoBalancingEnabled()) {
+        return new StringRepresentation("enabled");
+      } else {
+        return new StringRepresentation("disabled");
+      }
     }
     LOGGER.info("No valid input!");
     return new StringRepresentation("No valid input!\n");

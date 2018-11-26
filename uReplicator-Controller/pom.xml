@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <artifactId>uReplicator-Controller</artifactId>
   <packaging>jar</packaging>
@@ -8,7 +9,7 @@
   <parent>
     <groupId>com.uber.uReplicator</groupId>
     <artifactId>uReplicator</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>1.0.0-SNAPSHOT</version>
   </parent>
   <description>
     Kafka MirrorMaker with Helix is built for resolving high level consumers rebalancing pain point.
@@ -17,25 +18,19 @@
   </description>
 
   <properties>
-    <slf4j.version>1.7.6</slf4j.version>
-    <log4j.version>1.2.17</log4j.version>
+    <googlecode.json.simple.version>1.1</googlecode.json.simple.version>
   </properties>
 
   <dependencies>
     <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
-      <version>${slf4j.version}</version>
+      <groupId>com.uber.uReplicator</groupId>
+      <artifactId>uReplicator-Common</artifactId>
+      <version>${project.parent.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-log4j12</artifactId>
-      <version>${slf4j.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>log4j</groupId>
-      <artifactId>log4j</artifactId>
-      <version>${log4j.version}</version>
+      <groupId>com.googlecode.json-simple</groupId>
+      <artifactId>json-simple</artifactId>
+      <version>${googlecode.json.simple.version}</version>
     </dependency>
   </dependencies>
 
@@ -83,18 +78,16 @@
           <downloadJavadocs>true</downloadJavadocs>
         </configuration>
       </plugin>
-      <plugin>
+      <!--<plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>2.14</version>
         <configuration>
           <argLine>-Xmx2g</argLine>
-          <!-- Do not set argLine here, it will break the code coverage plugin.
-                        Set it in the properties section. -->
           <forkCount>1</forkCount>
           <reuseForks>false</reuseForks>
         </configuration>
-      </plugin>
+      </plugin>-->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-assembly-plugin</artifactId>
@@ -116,6 +109,25 @@
         </executions>
       </plugin>
       <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>0.7.9</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>generate-code-coverage-report</id>
+            <phase>test</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <!--<plugin>
         <groupId>org.jacoco</groupId>
         <artifactId>jacoco-maven-plugin</artifactId>
         <version>0.7.9</version>
@@ -151,11 +163,9 @@
             </goals>
             <configuration>
               <rules>
-                <!--  implementation is needed only for Maven 2  -->
                 <rule implementation="org.jacoco.maven.RuleConfiguration">
                   <element>BUNDLE</element>
                   <limits>
-                    <!--  implementation is needed only for Maven 2  -->
                     <limit implementation="org.jacoco.report.check.Limit">
                       <counter>COMPLEXITY</counter>
                       <value>COVEREDRATIO</value>
@@ -167,7 +177,7 @@
             </configuration>
           </execution>
         </executions>
-      </plugin>
+      </plugin>-->
     </plugins>
   </build>
 </project>
