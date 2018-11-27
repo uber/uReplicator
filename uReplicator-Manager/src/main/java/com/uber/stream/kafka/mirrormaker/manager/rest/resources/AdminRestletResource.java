@@ -15,6 +15,7 @@
  */
 package com.uber.stream.kafka.mirrormaker.manager.rest.resources;
 
+import java.util.Map;
 import com.alibaba.fastjson.JSONObject;
 import com.uber.stream.kafka.mirrormaker.manager.core.ControllerHelixManager;
 import org.restlet.data.Form;
@@ -28,6 +29,10 @@ import org.restlet.resource.Post;
 import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Strings;
+import com.uber.stream.kafka.mirrormaker.manager.core.AdminHelper;
 
 /**
  * Rest API for topic management
@@ -35,6 +40,8 @@ import org.slf4j.LoggerFactory;
 public class AdminRestletResource extends ServerResource {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AdminRestletResource.class);
+
+  private static final boolean ENABLE_PER_ROUTE_CHANGE = false;
 
   private final ControllerHelixManager _helixMirrorMakerManager;
 
@@ -79,6 +86,10 @@ public class AdminRestletResource extends ServerResource {
       } else {
         return new StringRepresentation("disabled\n");
       }
+    } else if ("controller_autobalance".equalsIgnoreCase(opt)) {
+      AdminHelper helper = new AdminHelper(_helixMirrorMakerManager);
+      return new StringRepresentation(helper.getControllerAutobalancingStatus(null, null)
+          .toJSONString());
     }
     LOGGER.info("No valid input!");
     return new StringRepresentation("No valid input!\n");
@@ -87,33 +98,72 @@ public class AdminRestletResource extends ServerResource {
 
   @Post
   public Representation post(Representation entity) {
-    Form queryParams = getRequest().getResourceRef().getQueryAsForm();
-    String forceRebalanceStr = queryParams.getFirstValue("forceRebalance", true);
-    Boolean forceRebalance = Boolean.parseBoolean(forceRebalanceStr);
-    JSONObject responseJson = new JSONObject();
-
-    if (forceRebalance) {
-      try {
-        _helixMirrorMakerManager.handleLiveInstanceChange(false, true);
-        responseJson.put("status", Status.SUCCESS_OK.getCode());
-
+    final String opt = (String) getRequest().getAttributes().get("opt");
+    if (!Strings.isNullOrEmpty(opt) && opt.toLowerCase().equals("controller_autobalance")) {
+      Form queryParams = getRequest().getResourceRef().getQueryAsForm();
+      String srcCluster = ENABLE_PER_ROUTE_CHANGE ? queryParams.getFirstValue("srcCluster", true) : "";
+      String dstCluster = ENABLE_PER_ROUTE_CHANGE ? queryParams.getFirstValue("dstCluster", true) : "";
+      String enabledStr = queryParams.getFirstValue("enabled", true);
+      if (Strings.isNullOrEmpty(enabledStr) || (Strings.isNullOrEmpty(srcCluster) != Strings.isNullOrEmpty(dstCluster))) {
+        JSONObject responseJson = new JSONObject();
+        getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+        responseJson.put("status", Status.CLIENT_ERROR_BAD_REQUEST.getCode());
+        responseJson.put("message", String.format("invalid operation"));
         return new StringRepresentation(responseJson.toJSONString());
-      } catch (Exception e) {
-        LOGGER.error("manual re-balance failed due to exception: {}", e, e);
-
-        responseJson.put("status", Status.SERVER_ERROR_INTERNAL.getCode());
-        responseJson.put("message",
-            String.format("manual re-balance failed due to exception: {}", e));
-
-        getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
-        return new StringRepresentation(responseJson.toJSONString());
+      } else {
+        return new StringRepresentation(setControllerAutobalancing(srcCluster, dstCluster, enabledStr).toJSONString());
       }
     } else {
-      getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
-      responseJson.put("status", Status.CLIENT_ERROR_BAD_REQUEST.getCode());
-      responseJson.put("message",
-          String.format("invalid operation"));
-      return new StringRepresentation(responseJson.toJSONString());
+      Form queryParams = getRequest().getResourceRef().getQueryAsForm();
+      String forceRebalanceStr = queryParams.getFirstValue("forceRebalance", true);
+      Boolean forceRebalance = Boolean.parseBoolean(forceRebalanceStr);
+      JSONObject responseJson = new JSONObject();
+
+      if (forceRebalance) {
+        try {
+          _helixMirrorMakerManager.handleLiveInstanceChange(false, true);
+          responseJson.put("status", Status.SUCCESS_OK.getCode());
+
+          return new StringRepresentation(responseJson.toJSONString());
+        } catch (Exception e) {
+          LOGGER.error("manual re-balance failed due to exception: {}", e, e);
+
+          responseJson.put("status", Status.SERVER_ERROR_INTERNAL.getCode());
+          responseJson
+              .put("message", String.format("manual re-balance failed due to exception: %s", e));
+
+          getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
+          return new StringRepresentation(responseJson.toJSONString());
+        }
+      } else {
+        getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+        responseJson.put("status", Status.CLIENT_ERROR_BAD_REQUEST.getCode());
+        responseJson.put("message", String.format("invalid operation"));
+        return new StringRepresentation(responseJson.toJSONString());
+      }
     }
+  }
+
+  private JSONObject setControllerAutobalancing(String srcCluster, String dstCluster, String enabledStr) {
+    JSONObject responseJson = new JSONObject();
+    boolean enabled = Boolean.parseBoolean(enabledStr);
+    AdminHelper helper = new AdminHelper(_helixMirrorMakerManager);
+    Map<String, Boolean> status = helper.setControllerAutobalancing(srcCluster, dstCluster, enabled);
+    JSONObject statusJson = new JSONObject();
+    for (String instance: status.keySet()) {
+      statusJson.put(instance, status.get(instance) ? "success" : "failed");
+    }
+    JSONObject queriedResult = helper.getControllerAutobalancingStatus(srcCluster, dstCluster);
+    responseJson.put("execution", statusJson);
+    responseJson.put("status", queriedResult);
+    if (Strings.isNullOrEmpty(srcCluster) && Strings.isNullOrEmpty(dstCluster)) {
+      if (enabled) {
+        _helixMirrorMakerManager.enableAutoScaling();
+      } else {
+        _helixMirrorMakerManager.disableAutoScaling();
+      }
+    }
+    responseJson.put("managerAutoscaling", _helixMirrorMakerManager.isAutoScalingEnabled());
+    return responseJson;
   }
 }
