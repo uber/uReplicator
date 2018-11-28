@@ -37,15 +37,20 @@ import scala.collection.JavaConverters._
  */
 class KafkaConnector(private val consumerIdString: String,
                      private val config: ConsumerConfig) extends KafkaMetricsGroup {
-  private val commitZkClient: ZkClient = ZkUtils.createZkClient(config.props.getString("commit.zookeeper.connect"), config.zkSessionTimeoutMs, config.zkConnectionTimeoutMs)
+
+
   private val zkClient: ZkClient = ZkUtils.createZkClient(config.zkConnect, config.zkSessionTimeoutMs, config.zkConnectionTimeoutMs)
   private val queue: LinkedBlockingQueue[FetchedDataChunk] = new LinkedBlockingQueue[FetchedDataChunk](config.queuedMaxMessages)
   private val decoder: DefaultDecoder = new DefaultDecoder()
   private val fetcherManager: CompactConsumerFetcherManager = new CompactConsumerFetcherManager(consumerIdString, config, zkClient)
-  private val commitZkUtils = ZkUtils.apply(commitZkClient, false)
+
   private val zkUtils = ZkUtils.apply(zkClient, false)
   private val cluster = zkUtils.getCluster()
 
+  private val commitZkClient: ZkClient = if (config.props.containsKey("commit.zookeeper.connect"))
+    ZkUtils.createZkClient(config.props.getString("commit.zookeeper.connect"), config.zkSessionTimeoutMs, config.zkConnectionTimeoutMs)
+  else null
+  private val commitZkUtils = if (commitZkClient != null) ZkUtils.apply(commitZkClient, false) else zkUtils
   // Using a concurrent hash map for efficiency. Without this we will need a lock
   val topicRegistry = new ConcurrentHashMap[TopicAndPartition, PartitionTopicInfo]()
   private val checkpointedZkOffsets = new Pool[TopicAndPartition, Long]
