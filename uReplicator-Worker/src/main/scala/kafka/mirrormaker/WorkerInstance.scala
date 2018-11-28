@@ -129,10 +129,17 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
             dstZkProps.getProperty("connection.timeout.ms", "120000").toInt,
             dstZkProps.getProperty("session.timeout.ms", "600000").toInt,
             dstZkProps.getProperty("refresh.interval.ms", "3600000").toInt)
-          topicPartitionCountObserver.start()
         case None // non-federated mode
         =>
+          info("TopicPartitionCountObserver is enabled")
+          topicPartitionCountObserver = new TopicPartitionCountObserver(
+          dstZkProps.getProperty("zkServer", "localhost:2181"),
+          dstZkProps.getProperty("zkPath", "/brokers/topics"),
+          dstZkProps.getProperty("connection.timeout.ms", "120000").toInt,
+          dstZkProps.getProperty("session.timeout.ms", "600000").toInt,
+          dstZkProps.getProperty("refresh.interval.ms", "3600000").toInt)
       }
+      topicPartitionCountObserver.start()
     } else {
       info("Disable TopicPartitionCountObserver to use round robin to produce msg")
     }
