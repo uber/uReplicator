@@ -21,6 +21,7 @@ import com.uber.stream.kafka.mirrormaker.controller.utils.HelixUtils;
 import org.apache.helix.HelixManager;
 import org.apache.helix.HelixManagerFactory;
 import org.apache.helix.InstanceType;
+import org.apache.helix.model.InstanceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +43,7 @@ public class ManagerControllerHelix {
   private final String _helixZkURL;
   private final String _instanceId;
   private HelixManager _helixZkManager;
+  private String _hostname = "localhost";
 
   private final Object _handlerLock = new Object();
 
@@ -55,6 +57,7 @@ public class ManagerControllerHelix {
     _helixClusterName = MANAGER_CONTROLLER_HELIX_PREFIX + _controllerConf.getDeploymentName();
     _helixZkURL = HelixUtils.getAbsoluteZkPathForHelix(_controllerConf.getZkStr());
     _instanceId = controllerConf.getInstanceId();
+    _hostname = controllerConf.getHostname();
   }
 
   public synchronized void start() {
@@ -67,6 +70,11 @@ public class ManagerControllerHelix {
         new ControllerStateModelFactory(this));
     try {
       _helixZkManager.connect();
+      InstanceConfig instanceConfig = new InstanceConfig(_instanceId);
+      instanceConfig.setHostName(_hostname);
+      instanceConfig.setInstanceEnabled(true);
+      _helixZkManager.getConfigAccessor().setInstanceConfig(_helixClusterName, _instanceId,
+          instanceConfig);
     } catch (Exception e) {
       LOGGER.error("Failed to start ManagerControllerHelix " + _helixClusterName, e);
     }

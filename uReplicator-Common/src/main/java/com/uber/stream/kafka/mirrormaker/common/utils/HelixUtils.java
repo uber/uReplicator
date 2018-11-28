@@ -37,6 +37,7 @@ import org.apache.helix.PropertyType;
 import org.apache.helix.ZNRecord;
 import org.apache.helix.manager.zk.ZkBaseDataAccessor;
 import org.apache.helix.model.IdealState;
+import org.apache.helix.model.InstanceConfig;
 import org.apache.helix.model.builder.CustomModeISBuilder;
 import org.apache.helix.store.zk.ZkHelixPropertyStore;
 
@@ -60,6 +61,20 @@ public class HelixUtils {
 
     return propertyStore;
   }
+
+  public static Map<String, String> getInstanceToHostnameMap(HelixManager helixManager) {
+    List<String> instances = liveInstances(helixManager);
+    HashMap<String, String> retVal = new HashMap<>(instances.size());
+    for (String instance: instances) {
+      InstanceConfig config = helixManager.getConfigAccessor().getInstanceConfig(
+          helixManager.getClusterName(), instance);
+      if (config != null) {
+        retVal.put(instance, config.getHostName());
+      }
+    }
+    return retVal;
+  }
+
 
   public static List<String> liveInstances(HelixManager helixManager) {
     HelixDataAccessor helixDataAccessor = helixManager.getHelixDataAccessor();

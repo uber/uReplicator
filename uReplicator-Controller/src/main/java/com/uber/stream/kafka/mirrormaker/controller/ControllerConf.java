@@ -145,6 +145,8 @@ public class ControllerConf extends PropertiesConfiguration {
 
   private static final String defaultLocal = "/var/log/kafka-mirror-maker-controller";
 
+  private static final String HOSTNAME = "controller.hostname";
+
   public ControllerConf() {
     super();
     this.setDelimiterParsingDisabled(true);
@@ -244,6 +246,10 @@ public class ControllerConf extends PropertiesConfiguration {
 
   public void setNumOffsetThread(String numOffsetThread) {
     setProperty(NUM_OFFSET_THREAD, Integer.valueOf(numOffsetThread));
+  }
+
+  public void setHostname(String hostname) {
+    setProperty(HOSTNAME, hostname);
   }
 
   public void setBlockingQueueSize(String blockingQueueSize) {
@@ -602,6 +608,18 @@ public class ControllerConf extends PropertiesConfiguration {
       }
     }
     return false;
+  }
+
+  public String getHostname() {
+    if (containsKey(HOSTNAME)) {
+      return (String) getProperty(HOSTNAME);
+    } else {
+      try {
+        return InetAddress.getLocalHost().getHostName();
+      } catch (UnknownHostException ex) {
+        return "localhost";
+      }
+    }
   }
 
   public Integer getNumOffsetThread() {
