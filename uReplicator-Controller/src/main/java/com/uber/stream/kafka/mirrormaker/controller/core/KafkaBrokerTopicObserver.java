@@ -55,10 +55,11 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
   private final ZkClient _zkClient;
   private final ZkUtils _zkUtils;
   private final String _kakfaClusterName;
-  private final Map<String, TopicPartition> _topicPartitionInfoMap = new ConcurrentHashMap<>();
+  private final Map<String, TopicPartition> _topicPartitionInfoMap =
+      new ConcurrentHashMap<String, TopicPartition>();
   private final AtomicLong _lastRefreshTime = new AtomicLong(0);
-  private long _refreshTimeIntervalInMillis;
 
+  private long _refreshTimeIntervalInMillis;
   private final Timer _refreshLatency = new Timer();
   private final Counter _kafkaTopicsCounter = new Counter();
   private final static String METRIC_TEMPLATE = "KafkaBrokerTopicObserver.%s.%s";
@@ -98,8 +99,7 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
       throws Exception {
     if (!tryToRefreshCache()) {
       synchronized (_lock) {
-        LOGGER.info("starting to refresh topic list due to zk child change");
-        Set<String> newAddedTopics = new HashSet<>(currentChilds);
+        Set<String> newAddedTopics = new HashSet<String>(currentChilds);
         Set<String> currentServingTopics = getAllTopics();
         newAddedTopics.removeAll(currentServingTopics);
         for (String existedTopic : currentServingTopics) {
@@ -121,55 +121,30 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
             LOGGER.warn("Failed to get topicPartition info for {} from kafka zk: {}", topic, e);
           }
         }
-        LOGGER.info("added {} new topics to topic list in zk child change", newAddedTopics.size());
         _kafkaTopicsCounter.inc(_topicPartitionInfoMap.size() - _kafkaTopicsCounter.getCount());
       }
     }
   }
 
-  private void tryAddTopic(String topic) {
-    scala.collection.mutable.Map<String, scala.collection.Map<Object, Seq<Object>>> partitionAssignmentForTopics =
-        _zkUtils.getPartitionAssignmentForTopics(JavaConversions.asScalaBuffer(ImmutableList.of(topic)));
-    if (partitionAssignmentForTopics.get(topic).isEmpty()
-        || partitionAssignmentForTopics.get(topic).get().size() == 0) {
-      LOGGER.info("try to refresh for topic {} but found no topic partition for it", topic);
-      return;
-    }
-    synchronized (_lock) {
-      LOGGER.info("starting to refresh for adding topic {}", topic);
-      if (!getAllTopics().contains(topic)) {
-        try {
-          _topicPartitionInfoMap.put(topic, new TopicPartition(topic,
-              partitionAssignmentForTopics.get(topic).get().size()));
-        } catch (Exception e) {
-          LOGGER.warn("Failed to get topicPartition info for {} from kafka zk: {}", topic, e);
-        }
-      }
-      LOGGER.info("finished refreshing for adding topic {}", topic);
-    }
-  }
-
-  private void refreshCache() {
+  private synchronized void refreshCache() {
     Context context = _refreshLatency.time();
-
-    Set<String> servingTopics;
-    try {
-      servingTopics = ImmutableSet.copyOf(_zkClient.getChildren(KAFKA_TOPICS_PATH));
-    } catch (Exception e) {
-      LOGGER.warn("Failed to get topics from kafka zk: {}", e);
-      return;
-    }
-
-    scala.collection.mutable.Map<String, scala.collection.Map<Object, Seq<Object>>> partitionAssignmentForTopics =
-        _zkUtils.getPartitionAssignmentForTopics(JavaConversions.asScalaBuffer(ImmutableList.copyOf(servingTopics)));
-
     synchronized (_lock) {
-      LOGGER.info("updating topic cache map for {} new topics", servingTopics.size());
+      Set<String> servingTopics;
+      try {
+        servingTopics = ImmutableSet.copyOf(_zkClient.getChildren(KAFKA_TOPICS_PATH));
+      } catch (Exception e) {
+        LOGGER.warn("Failed to get topics from kafka zk: {}", e);
+        return;
+      }
       for (String existedTopic : getAllTopics()) {
         if (!servingTopics.contains(existedTopic)) {
           _topicPartitionInfoMap.remove(existedTopic);
         }
       }
+
+      scala.collection.mutable.Map<String, scala.collection.Map<Object, Seq<Object>>> partitionAssignmentForTopics =
+          _zkUtils.getPartitionAssignmentForTopics(
+              JavaConversions.asScalaBuffer(ImmutableList.copyOf(servingTopics)));
 
       for (String topic : servingTopics) {
         try {
@@ -189,7 +164,7 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
     context.stop();
   }
 
-  private boolean tryToRefreshCache() {
+  private synchronized boolean tryToRefreshCache() {
     if (_refreshTimeIntervalInMillis + _lastRefreshTime.get() < System.currentTimeMillis()) {
       refreshCache();
       return true;
@@ -206,17 +181,6 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
     } else {
       return null;
     }
-  }
-
-  public TopicPartition getTopicPartitionWithRefresh(String topic) {
-    TopicPartition topicPartition = getTopicPartition(topic);
-    if (topicPartition == null) {
-      LOGGER.info("couldn't find topic {}, going to add topic and retry", topic);
-      tryAddTopic(topic);
-      LOGGER.info("refreshed and tried to fetch topic info again", topic);
-      topicPartition = getTopicPartition(topic);
-    }
-    return topicPartition;
   }
 
   public Set<String> getAllTopics() {

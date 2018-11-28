@@ -42,7 +42,6 @@ public class TestValidationManager {
   private HelixMirrorMakerManager helixMirrorMakerManager;
   private ValidationManager validationManager;
   private final String helixClusterName = "TestValidationManager";
-  private final String deploymentHelixClusterName = "TestValidationManagerDeployment";
   public static List<FakeInstance> fakeInstances = new ArrayList<FakeInstance>();
 
   @BeforeTest
@@ -66,7 +65,6 @@ public class TestValidationManager {
     ControllerConf controllerConf = new ControllerConf();
     controllerConf.setControllerPort("9090");
     controllerConf.setHelixClusterName(helixClusterName);
-    controllerConf.setDeploymentName(deploymentHelixClusterName);
     controllerConf.setInstanceId("controller-0");
     controllerConf.setControllerMode("customized");
     controllerConf.setZkStr(ZkStarter.DEFAULT_ZK_STR);

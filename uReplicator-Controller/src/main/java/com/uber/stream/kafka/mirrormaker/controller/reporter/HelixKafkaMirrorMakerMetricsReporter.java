@@ -34,6 +34,9 @@ import org.apache.log4j.Logger;
  */
 public class HelixKafkaMirrorMakerMetricsReporter {
 
+  private static final String KAFKA_MIRROR_MAKER_METRICS_REPORTER_PREFIX_FORMAT =
+      "stats.%s.counter.kafka-mirror-maker-controller.%s.%s";
+
   private static HelixKafkaMirrorMakerMetricsReporter METRICS_REPORTER_INSTANCE = null;
   private static final Logger LOGGER = Logger.getLogger(HelixKafkaMirrorMakerMetricsReporter.class);
   private static volatile boolean DID_INIT = false;
@@ -56,16 +59,13 @@ public class HelixKafkaMirrorMakerMetricsReporter {
       _reporterMetricPrefix = null;
       return;
     }
-    _reporterMetricPrefix = config.isFederatedEnabled() ?
-        String.format("stats.%s.counter.%s.%s.%s.%s",
-            dcNenv[0], config.getMetricsPrefix(), dcNenv[1], config.getRoute(), clientId) :
-        String.format("stats.%s.counter.%s.%s.%s",
-            dcNenv[0], config.getMetricsPrefix(), dcNenv[1], clientId);
+    _reporterMetricPrefix = String.format(KAFKA_MIRROR_MAKER_METRICS_REPORTER_PREFIX_FORMAT,
+        dcNenv[0], dcNenv[1], clientId);
     LOGGER.info("Reporter Metric Prefix is : " + _reporterMetricPrefix);
     _registry = new MetricRegistry();
     final Boolean enabledGraphiteReporting = true;
     final Boolean enabledJmxReporting = true;
-    final long graphiteReportFreqSec = 60L;
+    final long graphiteReportFreqSec = 10L;
 
     // Init jmx reporter
     if (enabledJmxReporting) {
@@ -126,7 +126,7 @@ public class HelixKafkaMirrorMakerMetricsReporter {
     }
     InetSocketAddress graphiteAddress =
         new InetSocketAddress(config.getGraphiteHost(), config.getGraphitePort());
-    LOGGER.info(String.format("Trying to connect to Graphite with address: %s",
+    LOGGER.warn(String.format("Trying to connect to Graphite with address: %s",
         graphiteAddress.toString()));
     return new Graphite(graphiteAddress);
   }

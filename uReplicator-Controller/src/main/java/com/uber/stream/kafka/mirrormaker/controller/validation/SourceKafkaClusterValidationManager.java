@@ -38,7 +38,6 @@ public class SourceKafkaClusterValidationManager {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SourceKafkaClusterValidationManager.class);
-  private static final int STOP_TIMEOUT_SEC = 5;
 
   private final HelixMirrorMakerManager _helixMirrorMakerManager;
   private final ScheduledExecutorService _executorService =
@@ -101,16 +100,6 @@ public class SourceKafkaClusterValidationManager {
         }
       }
     }, 120, _timeValue, _timeUnit);
-  }
-
-  public void stop() {
-    _executorService.shutdown();
-    try {
-      _executorService.awaitTermination(STOP_TIMEOUT_SEC, TimeUnit.SECONDS);
-    } catch (InterruptedException e) {
-      LOGGER.info("Stop SourceKafkaClusterValidationManager got interrupted");
-    }
-    _executorService.shutdownNow();
   }
 
   public String validateSourceKafkaCluster() {

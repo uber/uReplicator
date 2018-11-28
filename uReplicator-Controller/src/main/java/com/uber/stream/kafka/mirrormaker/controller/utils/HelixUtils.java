@@ -16,8 +16,8 @@
 package com.uber.stream.kafka.mirrormaker.controller.utils;
 
 import com.google.common.collect.ImmutableList;
-import com.uber.stream.kafka.mirrormaker.common.core.OnlineOfflineStateModel;
 import com.uber.stream.kafka.mirrormaker.controller.core.InstanceTopicPartitionHolder;
+import com.uber.stream.kafka.mirrormaker.controller.core.OnlineOfflineStateModel;
 import com.uber.stream.kafka.mirrormaker.controller.core.TopicPartition;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -69,8 +69,10 @@ public class HelixUtils {
    *
    * @return InstanceToNumTopicPartitionMap
    */
-  public static Map<String, Set<TopicPartition>> getInstanceToTopicPartitionsMap(HelixManager helixManager) {
-    Map<String, Set<TopicPartition>> instanceToNumTopicPartitionMap = new HashMap<>();
+  public static Map<String, Set<TopicPartition>> getInstanceToTopicPartitionsMap(
+      HelixManager helixManager) {
+    Map<String, Set<TopicPartition>> instanceToNumTopicPartitionMap =
+        new HashMap<String, Set<TopicPartition>>();
     HelixAdmin helixAdmin = helixManager.getClusterManagmentTool();
     String helixClusterName = helixManager.getClusterName();
     for (String topic : helixAdmin.getResourcesInCluster(helixClusterName)) {
@@ -79,7 +81,7 @@ public class HelixUtils {
         TopicPartition tpi = new TopicPartition(topic, Integer.parseInt(partition));
         for (String instance : is.getInstanceSet(partition)) {
           if (!instanceToNumTopicPartitionMap.containsKey(instance)) {
-            instanceToNumTopicPartitionMap.put(instance, new HashSet<>());
+            instanceToNumTopicPartitionMap.put(instance, new HashSet<TopicPartition>());
           }
           instanceToNumTopicPartitionMap.get(instance).add(tpi);
         }
@@ -113,7 +115,8 @@ public class HelixUtils {
 
   public static Map<String, IdealState> getIdealStatesFromAssignment(
       Set<InstanceTopicPartitionHolder> newAssignment) {
-    Map<String, CustomModeISBuilder> idealStatesBuilderMap = new HashMap<>();
+    Map<String, CustomModeISBuilder> idealStatesBuilderMap =
+        new HashMap<String, CustomModeISBuilder>();
     for (InstanceTopicPartitionHolder instance : newAssignment) {
       for (TopicPartition tpi : instance.getServingTopicPartitionSet()) {
         String topicName = tpi.getTopic();
@@ -132,7 +135,7 @@ public class HelixUtils {
             "ONLINE");
       }
     }
-    Map<String, IdealState> idealStatesMap = new HashMap<>();
+    Map<String, IdealState> idealStatesMap = new HashMap<String, IdealState>();
     for (String topic : idealStatesBuilderMap.keySet()) {
       IdealState idealState = idealStatesBuilderMap.get(topic).build();
       idealState.setMaxPartitionsPerInstance(idealState.getPartitionSet().size());

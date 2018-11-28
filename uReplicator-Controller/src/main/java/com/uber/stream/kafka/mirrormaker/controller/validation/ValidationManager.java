@@ -41,8 +41,6 @@ public class ValidationManager {
   private static final String EXTERNALVIEW_PER_WORKER_METRICS_FORMAT =
       "externalView.topicPartitions.%s.totalNumber";
 
-  private static final int STOP_TIMEOUT_SEC = 5;
-
   private final HelixMirrorMakerManager _helixMirrorMakerManager;
   private final ScheduledExecutorService _executorService =
       Executors.newSingleThreadScheduledExecutor();
@@ -106,17 +104,6 @@ public class ValidationManager {
     }, 120, _timeValue, _timeUnit);
   }
 
-  public void stop() {
-    _executorService.shutdown();
-    try {
-      _executorService.awaitTermination(STOP_TIMEOUT_SEC, TimeUnit.SECONDS);
-    } catch (InterruptedException e) {
-      LOGGER.info("Stop ValidationManager got interrupted");
-    }
-    _executorService.shutdownNow();
-    unregisterMetrics();
-  }
-
   private void registerMetrics() {
     try {
       HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("leader.counter",
@@ -135,16 +122,6 @@ public class ValidationManager {
           _numErrorTopicPartitions);
     } catch (Exception e) {
       LOGGER.error("Error registering metrics!", e);
-    }
-  }
-
-  private void unregisterMetrics() {
-    try {
-      for (String name : HelixKafkaMirrorMakerMetricsReporter.get().getRegistry().getNames()) {
-        HelixKafkaMirrorMakerMetricsReporter.get().getRegistry().remove(name);
-      }
-    } catch (Exception e) {
-      LOGGER.error("Error unregistering metrics!", e);
     }
   }
 
@@ -202,7 +179,7 @@ public class ValidationManager {
       if (_helixMirrorMakerManager.isLeader()) {
         updateMetrics(numOnlineTopicPartitions, numOfflineTopicPartitions, numErrorTopicPartitions,
             numTopicPartitions, numServingTopics, numErrorTopics);
-        updatePerWorkerISMetrics(topicPartitionMapForIdealState);
+        updatePerWorkerISMetrics(topicPartitionMapForExternalView);
         updatePerWorkerEVMetrics(topicPartitionMapForExternalView);
       }
       JSONObject perWorkerISCounterJson =
@@ -268,18 +245,13 @@ public class ValidationManager {
         _idealStatePerWorkerTopicPartitionCounter.put(worker, workCounter);
       }
       Counter counter = _idealStatePerWorkerTopicPartitionCounter.get(worker);
-      counter.inc(topicPartitionMapForIdealState.get(worker) - counter.getCount());
+      counter.inc(topicPartitionMapForIdealState.get(worker) -
+          counter.getCount());
     }
     for (String worker : _idealStatePerWorkerTopicPartitionCounter.keySet()) {
       if (!topicPartitionMapForIdealState.containsKey(worker)) {
-        //Counter counter = _idealStatePerWorkerTopicPartitionCounter.get(worker);
-        //counter.dec(counter.getCount());
-        _idealStatePerWorkerTopicPartitionCounter.remove(worker);
-        try {
-          HelixKafkaMirrorMakerMetricsReporter.get().getRegistry().remove(getIdealStatePerWorkMetricName(worker));
-        } catch (Exception e) {
-          LOGGER.warn("Got exception when removing metrics for {}", getIdealStatePerWorkMetricName(worker), e);
-        }
+        Counter counter = _idealStatePerWorkerTopicPartitionCounter.get(worker);
+        counter.dec(counter.getCount());
       }
     }
   }
@@ -298,18 +270,13 @@ public class ValidationManager {
         _externalViewPerWorkerTopicPartitionCounter.put(worker, workCounter);
       }
       Counter counter = _externalViewPerWorkerTopicPartitionCounter.get(worker);
-      counter.inc(topicPartitionMapForExternalView.get(worker) - counter.getCount());
+      counter.inc(topicPartitionMapForExternalView.get(worker) -
+          counter.getCount());
     }
     for (String worker : _externalViewPerWorkerTopicPartitionCounter.keySet()) {
       if (!topicPartitionMapForExternalView.containsKey(worker)) {
-        //Counter counter = _externalViewPerWorkerTopicPartitionCounter.get(worker);
-        //counter.dec(counter.getCount());
-        _externalViewPerWorkerTopicPartitionCounter.remove(getExternalViewPerWorkMetricName(worker));
-        try {
-          HelixKafkaMirrorMakerMetricsReporter.get().getRegistry().remove(getExternalViewPerWorkMetricName(worker));
-        } catch (Exception e) {
-          LOGGER.warn("Got exception when removing metrics for {}", getExternalViewPerWorkMetricName(worker), e);
-        }
+        Counter counter = _externalViewPerWorkerTopicPartitionCounter.get(worker);
+        counter.dec(counter.getCount());
       }
     }
   }
