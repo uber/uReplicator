@@ -198,7 +198,7 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
     }
   }
 
-  def startConnections(topicInfos: Iterable[PartitionTopicInfo], cluster: Cluster) {
+  def startConnections(topicInfos: Iterable[PartitionTopicInfo]) {
     inLock(updateMapLock) {
       topicInfos.foreach(tpi => partitionAddMap.put(TopicAndPartition(tpi.topic, tpi.partitionId), tpi))
     }
@@ -360,7 +360,6 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
               noLeaderPartitionSet -= topicAndPartition
             }
           }
-          debug(tmd.toString())
         }
         info("Find leader for partitions finished, took: %d ms".format(new Date().getTime - start))
       } catch {

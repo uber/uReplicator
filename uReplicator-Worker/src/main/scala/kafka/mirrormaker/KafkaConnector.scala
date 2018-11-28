@@ -45,7 +45,6 @@ class KafkaConnector(private val consumerIdString: String,
   private val fetcherManager: CompactConsumerFetcherManager = new CompactConsumerFetcherManager(consumerIdString, config, zkClient, brokerListStr)
   private val commitZkUtils = ZkUtils.apply(commitZkClient, false)
   private val zkUtils = ZkUtils.apply(zkClient, false)
-  private val cluster = zkUtils.getCluster()
 
   // Using a concurrent hash map for efficiency. Without this we will need a lock
   val topicRegistry = new ConcurrentHashMap[TopicAndPartition, PartitionTopicInfo]()
@@ -68,7 +67,7 @@ class KafkaConnector(private val consumerIdString: String,
   )
 
   // Initialize the fetcher manager
-  fetcherManager.startConnections(Nil, cluster)
+  fetcherManager.startConnections(Nil)
 
   KafkaMetricsReporter.startReporters(config.props)
   AppInfo.registerInfo()
