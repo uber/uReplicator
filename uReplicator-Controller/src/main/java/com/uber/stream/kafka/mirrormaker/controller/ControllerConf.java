@@ -744,7 +744,8 @@ public class ControllerConf extends PropertiesConfiguration {
         .addOption("backUpToGit", true, "Backup controller metadata to git (true) or local file (false)")
         .addOption("remoteBackupRepo", true, "Remote Backup Repo to store cluster state")
         .addOption("localGitRepoClonePath", true, "Clone location of the remote git backup repo")
-        .addOption("localBackupFilePath", true, "Local backup file location");
+        .addOption("localBackupFilePath", true, "Local backup file location")
+        .addOption("hostname", true, "hostname for this host");
     return controllerOptions;
   }
 
@@ -952,6 +953,9 @@ public class ControllerConf extends PropertiesConfiguration {
     }
     if (cmd.hasOption("groupId")) {
       controllerConf.setGroupId(cmd.getOptionValue("groupId"));
+    }
+    if (cmd.hasOption("hostname")) {
+      controllerConf.setHostname(cmd.getOptionValue("hostname"));
     }
     if (cmd.hasOption("backUpToGit")) {
       controllerConf.setBackUpToGit(cmd.getOptionValue("backUpToGit"));
