@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.uber.stream.kafka.mirrormaker.controller.utils;
+package com.uber.stream.kafka.mirrormaker.common.utils;
 
-import com.uber.stream.kafka.mirrormaker.controller.core.OnlineOfflineStateModel;
+import com.uber.stream.kafka.mirrormaker.common.core.OnlineOfflineStateModel;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.helix.HelixAdmin;
@@ -38,8 +38,7 @@ public class HelixSetupUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(HelixSetupUtils.class);
 
-  public static synchronized HelixManager setup(String helixClusterName, String zkPath,
-      String controllerInstanceId) {
+  public static synchronized HelixManager setup(String helixClusterName, String zkPath, String controllerInstanceId) {
     try {
       createHelixClusterIfNeeded(helixClusterName, zkPath);
     } catch (final Exception e) {
@@ -59,8 +58,7 @@ public class HelixSetupUtils {
     final HelixAdmin admin = new ZKHelixAdmin(zkPath);
 
     if (admin.getClusters().contains(helixClusterName)) {
-      LOGGER.info(
-          "cluster already exist, skipping it.. ********************************************* ");
+      LOGGER.info("cluster already exist, skipping it.. ********************************************* ");
       return;
     }
 

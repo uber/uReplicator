@@ -16,7 +16,7 @@
 package kafka.mirrormaker
 
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import java.util.concurrent.locks.ReentrantLock
 
 import com.yammer.metrics.core.Gauge
@@ -67,6 +67,8 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
   private var leaderFinderThread: ShutdownableThread = null
   private val correlationId = new AtomicInteger(0)
 
+  val systemExisting = new AtomicBoolean(false)
+
   newGauge("OwnedPartitionsCount",
     new Gauge[Int] {
       def value() = getPartitionInfoMapSize()
@@ -88,6 +90,20 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
   )
 
   newGauge(
+    "TotalLag",
+    new Gauge[Long] {
+      // current total lag across all fetchers/topics/partitions
+      def value = fetcherThreadMap.foldLeft(0L)((curTotalAll, fetcherThreadMapEntry) => {
+        fetcherThreadMapEntry._2.fetcherLagStats.stats.foldLeft(0L)((curTotalThread, fetcherLagStatsEntry) => {
+          curTotalThread + fetcherLagStatsEntry._2.lag
+        }) + curTotalAll
+      })
+    },
+    Map("clientId" -> clientId)
+  )
+
+
+  newGauge(
     "MinFetchRate", {
       new Gauge[Double] {
         // current min fetch rate across all fetchers/topics/partitions
@@ -103,6 +119,14 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
     },
     Map("clientId" -> clientId)
   )
+
+  private def removeCustomizedMetrics() {
+    removeMetric("OwnedPartitionsCount", Map("clientId" -> clientId))
+    removeMetric("MaxLag", Map("clientId" -> clientId))
+    removeMetric("TotalLag", Map("clientId" -> clientId))
+    removeMetric("MinFetchRate", Map("clientId" -> clientId))
+    trace("Removed metrics: OwnedPartitionsCount, MaxLag, MinFetchRate for clientId=" + clientId)
+  }
 
   private def getFetcherId(topic: String, partitionId: Int): Int = {
     Utils.abs(31 * topic.hashCode() + partitionId) % numFetchers
@@ -162,7 +186,11 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
   def closeAllFetchers() {
     mapLock synchronized {
       for ((_, fetcher) <- fetcherThreadMap) {
-        fetcher.shutdown()
+        if (fetcher.isOOM) {
+          info("%s got OOM, skip shutdown".format(fetcher.name))
+        } else {
+          fetcher.shutdown()
+        }
       }
       fetcherThreadMap.clear()
     }
@@ -199,6 +227,8 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
     partitionAddMap.clear()
     partitionDeleteMap.clear()
     partitionNewLeaderMap.clear()
+
+    removeCustomizedMetrics()
 
     info("All connections stopped")
   }
