@@ -52,17 +52,14 @@ public class HelixMirrorMakerManagerCustomEmptyWorkerTest {
   public void testControllerStarter() throws Exception {
     LOGGER.info("testControllerStarter");
     String helixClusterName = "HelixMirrorMakerManagerCustomEmptyWorkerTest";
-    String deploymentName = "DeploymentHelixMirrorMakerManagerCustomFullTest";
     ControllerConf controllerConf = new ControllerConf();
     controllerConf.setControllerPort("9090");
     controllerConf.setHelixClusterName(helixClusterName);
-    controllerConf.setDeploymentName(deploymentName);
     controllerConf.setInstanceId("controller-0");
     controllerConf.setZkStr(ZkStarter.DEFAULT_ZK_STR);
     controllerConf.setControllerMode("customized");
     controllerConf.setBackUpToGit("false");
     controllerConf.setAutoRebalanceDelayInSeconds("0");
-    controllerConf.setAutoRebalanceWorkloadRatioThreshold("0");
     HelixMirrorMakerManager helixMirrorMakerManager = new HelixMirrorMakerManager(controllerConf);
     helixMirrorMakerManager.start();
     LOGGER.info("Trying to add topic testTopic0");
@@ -79,7 +76,7 @@ public class HelixMirrorMakerManagerCustomEmptyWorkerTest {
     fakeInstances.addAll(ControllerTestUtils
         .addFakeDataInstancesToAutoJoinHelixCluster(helixClusterName, ZkStarter.DEFAULT_ZK_STR, 1,
             1));
-    Thread.sleep(6000);
+    Thread.sleep(5000);
     assertTopicExternalViewWithGivenPartitions(helixMirrorMakerManager, "testTopic0", 8, 2);
     helixMirrorMakerManager.stop();
   }

@@ -45,13 +45,14 @@ public class FileBackUpHandler extends BackUpHandler {
         output.flush();
         LOGGER.info("Successful backup of file " + fileName);
       } catch (IOException e) {
-        LOGGER.error("Error writing backup to the file " + fileName, e);
+        LOGGER.error("Error writing backup to the file " + fileName);
         throw e;
       }
+
+    } catch (Exception e) {
+      throw e;
     } finally {
-      if (output != null) {
-        output.close();
-      }
+      output.close();
     }
   }
 

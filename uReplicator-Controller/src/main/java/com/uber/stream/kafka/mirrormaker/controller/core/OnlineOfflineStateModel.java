@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.uber.stream.kafka.mirrormaker.common.core;
+package com.uber.stream.kafka.mirrormaker.controller.core;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,7 +43,7 @@ public final class OnlineOfflineStateModel extends StateModelDefinition {
    * Build OnlineOffline state model definition
    */
   public static StateModelDefinition build() {
-    Builder builder = new Builder(name);
+    StateModelDefinition.Builder builder = new StateModelDefinition.Builder(name);
     // init state
     builder.initialState(States.OFFLINE.name());
 
