@@ -33,7 +33,7 @@ import org.I0Itec.zkclient.ZkClient
 import org.apache.kafka.common.utils.Utils
 
 import scala.collection.mutable.HashMap
-import scala.collection.{JavaConversions, Map, Set, mutable}
+import scala.collection.{JavaConversions, Map, Seq, Set, mutable}
 
 /**
  * CompactConsumerFetcherManager uses LeaderFinderThread to handle the partition addition, deletion and leader change.
@@ -341,7 +341,12 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
 
         info("Partitions without leader %s".format(noLeaderPartitionSet))
         var start = new Date().getTime
-        val brokers = ClientUtils.parseBrokerList(brokerListStr)
+        val brokers = if (brokerListStr == null || brokerListStr.isEmpty) {
+          ClientUtils.getPlaintextBrokerEndPoints(ZkUtils.apply(zkClient, true))
+        } else {
+          ClientUtils.parseBrokerList(brokerListStr)
+        }
+
         val topicsMetadata = ClientUtils.fetchTopicMetadata(noLeaderPartitionSet.map(m => m.topic).toSet,
           brokers,
           config.clientId,
