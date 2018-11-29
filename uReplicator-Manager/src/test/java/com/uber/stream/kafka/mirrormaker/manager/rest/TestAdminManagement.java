@@ -38,4 +38,27 @@ public class TestAdminManagement extends RestTestBase {
     Assert.assertEquals(response.getStatus(), Status.CLIENT_ERROR_BAD_REQUEST);
     Assert.assertEquals(responseString, "{\"message\":\"invalid operation\",\"status\":400}");
   }
+
+  @Test
+  public void testPostControllerRebalance() {
+    Request request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL).postSetControllerRebalance(true);
+    Response response = HTTP_CLIENT.handle(request);
+    String responseString = response.getEntityAsText();
+    Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
+    Assert.assertEquals(responseString, "{\"execution\":{},\"managerAutoscaling\":true,\"status\":{}}");
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL).postSetControllerRebalance("sjc1a", "sjc1-agg1", true);
+    response = HTTP_CLIENT.handle(request);
+    responseString = response.getEntityAsText();
+    Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
+    Assert.assertEquals(responseString, "{\"execution\":{},\"managerAutoscaling\":true,\"status\":{}}");
+  }
+  @Test
+  public void testGetControllerRebalance() {
+    Request request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL).getControllerRebalanceStatus();
+    Response response = HTTP_CLIENT.handle(request);
+    String responseString = response.getEntityAsText();
+    Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
+    Assert.assertEquals(responseString, "{}");
+  }
+
 }
