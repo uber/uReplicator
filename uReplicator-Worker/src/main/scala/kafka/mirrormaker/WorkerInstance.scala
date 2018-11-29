@@ -275,7 +275,9 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
       Source.fromFile(topicMappingsFile).getLines().flatMap(_ match {
         case topicMappingPattern(consumerTopic, producerTopic) => {
           info("Topic mapping: '" + consumerTopic + "' -> '" + producerTopic + "'")
-          topicPartitionCountObserver.addTopic(producerTopic)
+          if (topicPartitionCountObserver != null) {
+            topicPartitionCountObserver.addTopic(producerTopic)
+          }
           Some(consumerTopic -> producerTopic)
         }
         case line => {
