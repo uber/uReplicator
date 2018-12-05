@@ -60,6 +60,7 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
                      private val dstCluster: Option[String],
                      private val helixClusterName: String,
                      private val route: String) extends Logging with KafkaMetricsGroup {
+  private val WORKER_CLIENT_ID = "ureplicator-worker"
   private var instanceId: String = null
   private var clientId: String = null
   private var zkServer: String = null
@@ -176,7 +177,7 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
           throw new Exception("Cannot find bootstrap servers for destination cluster: " + dstCluster)
         } else {
           producerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, dstServers)
-          producerProps.setProperty(ProducerConfig.CLIENT_ID_CONFIG, route)
+          producerProps.setProperty(ProducerConfig.CLIENT_ID_CONFIG, WORKER_CLIENT_ID)
         }
       case None // non-federated mode
       =>
@@ -187,6 +188,7 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
     maybeSetDefaultProperty(producerProps, ProducerConfig.MAX_BLOCK_MS_CONFIG, "600000")
     maybeSetDefaultProperty(producerProps, ProducerConfig.ACKS_CONFIG, "all")
     maybeSetDefaultProperty(producerProps, ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, "1")
+    logger.info("ProducerConfig: %s".format(producerProps))
     producer = new MirrorMakerProducer(producerProps)
 
     // create helix manager
@@ -216,7 +218,7 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
           consumerConfigProps.setProperty("zookeeper.connect", srcClusterZk)
           consumerConfigProps.setProperty("commit.zookeeper.connect", commitZkConnection)
           consumerConfigProps.setProperty("group.id", "ureplicator-" + srcCluster + "-" + dstCluster.getOrElse("none"))
-          consumerConfigProps.setProperty("client.id", route)
+          consumerConfigProps.setProperty("client.id", WORKER_CLIENT_ID)
         }
       case None // non-federated mode
       =>
@@ -236,6 +238,7 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
       }
       consumerConfig.groupId + "_" + consumerUuid
     }
+    logger.info("ConsumerConfig: %s".format(consumerConfig))
     connector = new KafkaConnector(consumerIdString, consumerConfig)
 
     additionalConfigs(srcCluster, dstCluster)
@@ -245,7 +248,7 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
     // If a message send failed after retries are exhausted. The offset of the messages will also be removed from
     // the unacked offset list to avoid offset commit being stuck on that offset. In this case, the offset of that
     // message was not really acked, but was skipped. This metric records the number of skipped offsets.
-    clientId = consumerConfig.clientId
+    clientId = if (route == null || route.isEmpty) { clientId } else { route }
     newGauge("MirrorMaker-numDroppedMessages",
       new Gauge[Int] {
         def value = numDroppedMessages.get()
@@ -254,18 +257,18 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
     )
 
     flushLatency = new KafkaTimer(newTimer("MirrorMaker-flushLatencyMs",
-      TimeUnit.MILLISECONDS, TimeUnit.SECONDS, Map("clientId" -> consumerConfig.clientId)))
+      TimeUnit.MILLISECONDS, TimeUnit.SECONDS, Map("clientId" -> clientId)))
     commitLatency = new KafkaTimer(newTimer("MirrorMaker-commitLatencyMs",
-      TimeUnit.MILLISECONDS, TimeUnit.SECONDS, Map("clientId" -> consumerConfig.clientId)))
+      TimeUnit.MILLISECONDS, TimeUnit.SECONDS, Map("clientId" -> clientId)))
     callbackLatency = new KafkaTimer(newTimer("MirrorMaker-callbackLatency",
-      TimeUnit.MILLISECONDS, TimeUnit.SECONDS, Map("clientId" -> consumerConfig.clientId)))
+      TimeUnit.MILLISECONDS, TimeUnit.SECONDS, Map("clientId" -> clientId)))
 
     startMeter = newMeter("MirrorMaker-startPerSec", "start", TimeUnit.SECONDS,
-      Map("clientId" -> consumerConfig.clientId))
+      Map("clientId" -> clientId))
     startMeter.mark()
 
     mapFailureMeter = newMeter("MirrorMaker-mapFailurePerSec", "start", TimeUnit.SECONDS,
-      Map("clientId" -> consumerConfig.clientId))
+      Map("clientId" -> clientId))
 
     // initialize topic mappings for rewriting topic names between consuming side and producing side
     // TODO: add checking in uReplicator-Controller/Manager
