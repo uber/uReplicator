@@ -239,7 +239,7 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
       consumerConfig.groupId + "_" + consumerUuid
     }
     logger.info("ConsumerConfig: %s".format(consumerConfig))
-    connector = new KafkaConnector(consumerIdString, consumerConfig)
+    connector = new KafkaConnector(consumerIdString, consumerConfig, route)
 
     additionalConfigs(srcCluster, dstCluster)
 

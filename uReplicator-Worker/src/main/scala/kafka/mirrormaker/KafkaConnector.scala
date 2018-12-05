@@ -36,12 +36,13 @@ import scala.collection.JavaConverters._
  * @param config
  */
 class KafkaConnector(private val consumerIdString: String,
-                     private val config: ConsumerConfig) extends KafkaMetricsGroup {
+                     private val config: ConsumerConfig,
+                     private val routeName: String) extends KafkaMetricsGroup {
   private val commitZkClient: ZkClient = ZkUtils.createZkClient(config.props.getString("commit.zookeeper.connect"), config.zkSessionTimeoutMs, config.zkConnectionTimeoutMs)
   private val zkClient: ZkClient = ZkUtils.createZkClient(config.zkConnect, config.zkSessionTimeoutMs, config.zkConnectionTimeoutMs)
   private val queue: LinkedBlockingQueue[FetchedDataChunk] = new LinkedBlockingQueue[FetchedDataChunk](config.queuedMaxMessages)
   private val decoder: DefaultDecoder = new DefaultDecoder()
-  private val fetcherManager: CompactConsumerFetcherManager = new CompactConsumerFetcherManager(consumerIdString, config, zkClient)
+  private val fetcherManager: CompactConsumerFetcherManager = new CompactConsumerFetcherManager(consumerIdString, config, zkClient, routeName)
   private val commitZkUtils = ZkUtils.apply(commitZkClient, false)
   private val zkUtils = ZkUtils.apply(zkClient, false)
   private val cluster = zkUtils.getCluster()
@@ -52,8 +53,8 @@ class KafkaConnector(private val consumerIdString: String,
   private val isShuttingDown = new AtomicBoolean(false)
 
   // useful for tracking migration of consumers to store offsets in kafka
-  private val kafkaCommitMeter = newMeter("KafkaCommitsPerSec", "commits", TimeUnit.SECONDS, Map("clientId" -> config.clientId))
-  private val zkCommitMeter = newMeter("ZooKeeperCommitsPerSec", "commits", TimeUnit.SECONDS, Map("clientId" -> config.clientId))
+  private val kafkaCommitMeter = newMeter("KafkaCommitsPerSec", "commits", TimeUnit.SECONDS, Map("clientId" -> routeName))
+  private val zkCommitMeter = newMeter("ZooKeeperCommitsPerSec", "commits", TimeUnit.SECONDS, Map("clientId" -> routeName))
 
   newGauge(
     "TotalBlockingQueueSize",
@@ -63,7 +64,7 @@ class KafkaConnector(private val consumerIdString: String,
         queue.size()
       }
     },
-    Map("clientId" -> config.clientId)
+    Map("clientId" -> routeName)
   )
 
   // Initialize the fetcher manager
@@ -76,7 +77,7 @@ class KafkaConnector(private val consumerIdString: String,
     val canShutdown = isShuttingDown.compareAndSet(false, true)
     if (canShutdown) {
       info("Connector is now shutting down!")
-      KafkaMetricsGroup.removeAllConsumerMetrics(config.clientId)
+      KafkaMetricsGroup.removeAllConsumerMetrics(routeName)
       fetcherManager.stopConnections()
       if (zkClient != null) {
         zkClient.close()

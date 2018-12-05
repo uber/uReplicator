@@ -46,7 +46,8 @@ import scala.collection.{JavaConversions, Map, Set, mutable}
  */
 class CompactConsumerFetcherManager(private val consumerIdString: String,
                                     private val config: ConsumerConfig,
-                                    private val zkClient: ZkClient)
+                                    private val zkClient: ZkClient,
+                                    private val routeName: String)
   extends Logging with KafkaMetricsGroup {
   protected val name: String = "CompactConsumerFetcherManager-%d".format(System.currentTimeMillis)
   private val clientId: String = config.clientId
@@ -73,7 +74,7 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
     new Gauge[Int] {
       def value() = getPartitionInfoMapSize()
     },
-    Map("clientId" -> clientId)
+    Map("clientId" -> routeName)
   )
 
   newGauge(
@@ -86,7 +87,7 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
         }).max(curMaxAll)
       })
     },
-    Map("clientId" -> clientId)
+    Map("clientId" -> routeName)
   )
 
   newGauge(
@@ -99,7 +100,7 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
         }) + curTotalAll
       })
     },
-    Map("clientId" -> clientId)
+    Map("clientId" -> routeName)
   )
 
 
@@ -117,15 +118,15 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
         }
       }
     },
-    Map("clientId" -> clientId)
+    Map("clientId" -> routeName)
   )
 
   private def removeCustomizedMetrics() {
-    removeMetric("OwnedPartitionsCount", Map("clientId" -> clientId))
-    removeMetric("MaxLag", Map("clientId" -> clientId))
-    removeMetric("TotalLag", Map("clientId" -> clientId))
-    removeMetric("MinFetchRate", Map("clientId" -> clientId))
-    trace("Removed metrics: OwnedPartitionsCount, MaxLag, MinFetchRate for clientId=" + clientId)
+    removeMetric("OwnedPartitionsCount", Map("clientId" -> routeName))
+    removeMetric("MaxLag", Map("clientId" -> routeName))
+    removeMetric("TotalLag", Map("clientId" -> routeName))
+    removeMetric("MinFetchRate", Map("clientId" -> routeName))
+    trace("Removed metrics: OwnedPartitionsCount, MaxLag, MinFetchRate for clientId=" + routeName)
   }
 
   private def getFetcherId(topic: String, partitionId: Int): Int = {
