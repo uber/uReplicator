@@ -9,7 +9,7 @@
   <parent>
     <artifactId>uReplicator</artifactId>
     <groupId>com.uber.uReplicator</groupId>
-    <version>v1.0.3-hotfix</version>
+    <version>1.0.3-hotfix-SNAPSHOT</version>
   </parent>
 
   <build>

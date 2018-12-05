@@ -5,7 +5,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.uber.uReplicator</groupId>
   <artifactId>uReplicator</artifactId>
-  <version>v1.0.3-hotfix</version>
+  <version>1.0.3-hotfix-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>uReplicator</name>
 

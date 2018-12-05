@@ -9,7 +9,7 @@
   <parent>
     <groupId>com.uber.uReplicator</groupId>
     <artifactId>uReplicator</artifactId>
-    <version>v1.0.3-hotfix</version>
+    <version>1.0.3-hotfix-SNAPSHOT</version>
   </parent>
   <description>
     A distribution for this project.
