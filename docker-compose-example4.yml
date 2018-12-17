@@ -1,0 +1,58 @@
+version: '3'
+services:
+  devenv:
+    build: devenv/.
+    ports:
+    - "2181:2181"
+    - "9093:9093"
+    - "9094:9094"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9093"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+  controller:
+    build: .
+    ports:
+    - "9000:9000"
+    command: "controller \
+      -mode auto \
+      backUpToGit false \
+      -enableAutoTopicExpansion true \
+      -port 9000 \
+      -refreshTimeInSeconds 10 \
+      -srcKafkaZkPath devenv:2181/cluster1 \
+      -zookeeper devenv:2181 \
+      -destKafkaZkPath devenv:2181/cluster1 \
+      -helixClusterName testMirrorMaker"
+    depends_on:
+    - devenv
+    links:
+    - devenv
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+  worker_1:
+    image: ureplicator_controller
+    command: "worker \
+        --consumer.config example/example-consumer.properties \
+        --producer.config example/example-producer.properties \
+        --helix.config example/example-helix.properties \
+        --topic.mappings example/example-topicmapping.properties"
+    depends_on:
+    - controller
+    links:
+    - controller
+  worker_2:
+    image: ureplicator_controller
+    command: "worker \
+        --consumer.config example/example-consumer.properties \
+        --producer.config example/example-producer.properties \
+        --helix.config example/example-helix-2.properties \
+        --topic.mappings example/example-topicmapping.properties"
+    depends_on:
+    - controller
+    links:
+    - controller
