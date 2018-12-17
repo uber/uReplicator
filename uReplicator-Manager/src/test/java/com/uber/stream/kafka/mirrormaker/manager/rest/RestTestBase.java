@@ -65,7 +65,8 @@ public class RestTestBase {
         "-initMaxNumPartitionsPerRoute", "20",
         "-maxNumPartitionsPerRoute", "30",
         "-initMaxNumWorkersPerRoute", "20",
-        "-maxNumWorkersPerRoute", "30"
+        "-maxNumWorkersPerRoute", "30",
+        "-updateStatusCoolDownMs", "30"
     };
     CommandLineParser parser = new DefaultParser();
     CommandLine cmd = parser.parse(ManagerConf.constructManagerOptions(), args);

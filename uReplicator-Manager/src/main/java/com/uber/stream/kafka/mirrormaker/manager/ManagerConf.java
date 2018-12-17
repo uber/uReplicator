@@ -91,6 +91,9 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
   private static final String MSGS_PER_SECOND_DEFAULT = "manager.msgs.per.second.default";
   private static final double DEFAULT_MSGS_PER_SECOND_DEFAULT = 1;
 
+  private static final String UPDATE_STATUS_COOL_DOWN_MS = "manager.update.status.cool.down";
+  private static final int DEFAULT_UPDATE_STATUS_COOL_DOWN_MS = 60000;
+
   public ManagerConf() {
     super();
     this.setDelimiterParsingDisabled(true);
@@ -196,6 +199,10 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
     setProperty(MSGS_PER_SECOND_DEFAULT, Double.parseDouble(msgsPerSecondDefault));
   }
 
+  public void setUpdateStatusCoolDownMs(String updateStatusCoolDownMs) {
+    setProperty(UPDATE_STATUS_COOL_DOWN_MS, Integer.parseInt(updateStatusCoolDownMs));
+  }
+
   public String getConfigFile() {
     if (!containsKey(CONFIG_FILE)) {
       return "";
@@ -246,6 +253,8 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
   public Integer getGraphitePort() {
     return (Integer) getProperty(GRAPHITE_PORT);
   }
+
+  public Integer getUpdateStatusCoolDownMs() { return (Integer) getProperty(UPDATE_STATUS_COOL_DOWN_MS); }
 
   public String getMetricsPrefix() {
     if (containsKey(METRICS_PREFIX)) {
@@ -411,7 +420,8 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
         .addOption("initMaxNumWorkersPerRoute", true, "The max number of workers when init a route")
         .addOption("maxNumWorkersPerRoute", true, "The max number of workers a route can have")
         .addOption("bytesPerSecondDefault", true, "The default value for bytes per second")
-        .addOption("msgsPerSecondDefault", true, "The default value for msgs per second");
+        .addOption("msgsPerSecondDefault", true, "The default value for msgs per second")
+        .addOption("updateStatusCoolDownMs", true, "The waiting period for next helix status check");
     return managerOptions;
   }
 
@@ -543,6 +553,11 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
       managerConf.setMsgsPerSecondDefault(cmd.getOptionValue("msgsPerSecondDefault"));
     } else {
       managerConf.setMsgsPerSecondDefault(Double.toString(DEFAULT_MSGS_PER_SECOND_DEFAULT));
+    }
+    if (cmd.hasOption("updateStatusCoolDownMs")) {
+      managerConf.setUpdateStatusCoolDownMs(cmd.getOptionValue("updateStatusCoolDownMs"));
+    } else {
+      managerConf.setUpdateStatusCoolDownMs(Integer.toString(DEFAULT_UPDATE_STATUS_COOL_DOWN_MS));
     }
 
     if (cmd.hasOption("config")) {

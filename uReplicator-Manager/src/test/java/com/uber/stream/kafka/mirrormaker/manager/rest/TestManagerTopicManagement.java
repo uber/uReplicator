@@ -332,7 +332,7 @@ public class TestManagerTopicManagement extends RestTestBase {
     startController(DEPLOYMENT_NAME, CONTROLLER_PORT, 1);
     startWorker(DEPLOYMENT_NAME, 2);
     try {
-      Thread.sleep(60000);
+      Thread.sleep(2000);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
@@ -407,6 +407,16 @@ public class TestManagerTopicManagement extends RestTestBase {
     Assert.assertEquals(json.getString("status"), "200");
     Assert.assertFalse(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testTopic0"));
 
+
+    // Add controller
+    startController(DEPLOYMENT_NAME, CONTROLLER_PORT, 1);
+    startWorker(DEPLOYMENT_NAME, 2);
+    try {
+      Thread.sleep(2000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
     // Create topic
     request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
         .getTopicCreationRequestUrl("testTopic0", "cluster1", "cluster3");
@@ -471,6 +481,15 @@ public class TestManagerTopicManagement extends RestTestBase {
     Assert.assertEquals(json.getString("status"), "200");
     Assert.assertFalse(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testTopic0"));
 
+    // Add controller
+    startController(DEPLOYMENT_NAME, CONTROLLER_PORT, 1);
+    startWorker(DEPLOYMENT_NAME, 2);
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
     // Create topic
     request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
         .getTopicCreationRequestUrl("testTopic0", "cluster1", "cluster3");
@@ -530,6 +549,15 @@ public class TestManagerTopicManagement extends RestTestBase {
     Assert.assertEquals(json.getString("message"), "No topic is added in uReplicator!");
     Assert.assertEquals(json.getString("status"), "200");
     Assert.assertFalse(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testTopic0"));
+
+    // Add controller
+    startController(DEPLOYMENT_NAME, CONTROLLER_PORT, 1);
+    startWorker(DEPLOYMENT_NAME, 2);
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
 
     // Create topic
     request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
