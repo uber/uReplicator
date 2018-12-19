@@ -16,8 +16,10 @@
 package com.uber.stream.kafka.mirrormaker.manager.rest;
 
 import com.alibaba.fastjson.JSONObject;
+import com.codahale.metrics.Counter;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerStarter;
+import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import com.uber.stream.kafka.mirrormaker.manager.utils.KafkaStarterUtils;
 import com.uber.stream.kafka.mirrormaker.manager.utils.ManagerRequestURLBuilder;
 import com.uber.stream.kafka.mirrormaker.manager.utils.ZkStarter;
@@ -76,7 +78,7 @@ public class TestManagerTopicManagement extends RestTestBase {
     }
 
     try {
-      Thread.sleep(30000);
+      Thread.sleep(10000);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
@@ -114,8 +116,13 @@ public class TestManagerTopicManagement extends RestTestBase {
           conf.setEnableAutoTopicExpansion("true");
           conf.setSourceClusters("cluster1");
           conf.setDestinationClusters("cluster3");
+          conf.setEnvironment("sjc1.sjc1a");
+          conf.setHelixClusterName("testMirrorMaker");
           conf.addProperty("kafka.cluster.zkStr.cluster1", ZkStarter.DEFAULT_ZK_STR + "/cluster1");
           conf.addProperty("kafka.cluster.zkStr.cluster3", ZkStarter.DEFAULT_ZK_STR + "/cluster3");
+          HelixKafkaMirrorMakerMetricsReporter.init(conf);
+          Counter testCounter0 = new Counter();
+          HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("offsetMonitor.executed", testCounter0);
 
           final ControllerStarter controllerStarter = new ControllerStarter(conf);
           try {
@@ -332,7 +339,7 @@ public class TestManagerTopicManagement extends RestTestBase {
     startController(DEPLOYMENT_NAME, CONTROLLER_PORT, 1);
     startWorker(DEPLOYMENT_NAME, 2);
     try {
-      Thread.sleep(60000);
+      Thread.sleep(1000);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
@@ -407,6 +414,16 @@ public class TestManagerTopicManagement extends RestTestBase {
     Assert.assertEquals(json.getString("status"), "200");
     Assert.assertFalse(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testTopic0"));
 
+
+    // Add controller
+    startController(DEPLOYMENT_NAME, CONTROLLER_PORT, 1);
+    startWorker(DEPLOYMENT_NAME, 2);
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
     // Create topic
     request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
         .getTopicCreationRequestUrl("testTopic0", "cluster1", "cluster3");
@@ -471,6 +488,15 @@ public class TestManagerTopicManagement extends RestTestBase {
     Assert.assertEquals(json.getString("status"), "200");
     Assert.assertFalse(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testTopic0"));
 
+    // Add controller
+    startController(DEPLOYMENT_NAME, CONTROLLER_PORT, 1);
+    startWorker(DEPLOYMENT_NAME, 2);
+    try {
+      Thread.sleep(100);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
     // Create topic
     request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
         .getTopicCreationRequestUrl("testTopic0", "cluster1", "cluster3");
@@ -531,6 +557,15 @@ public class TestManagerTopicManagement extends RestTestBase {
     Assert.assertEquals(json.getString("status"), "200");
     Assert.assertFalse(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testTopic0"));
 
+    // Add controller
+    startController(DEPLOYMENT_NAME, CONTROLLER_PORT, 1);
+    startWorker(DEPLOYMENT_NAME, 2);
+    try {
+      Thread.sleep(100);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
     // Create topic
     request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
         .getTopicCreationRequestUrl("testTopic0", "cluster1", "cluster3");
@@ -543,7 +578,7 @@ public class TestManagerTopicManagement extends RestTestBase {
         .getTopicDeleteRequestUrl("testTopic0", "cluster2", "cluster3");
     response = HTTP_CLIENT.handle(request);
     json = JSONObject.parseObject(response.getEntityAsText());
-    Assert.assertEquals(response.getStatus(), Status.CLIENT_ERROR_NOT_FOUND);
+    Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
     Assert.assertEquals(json.getString("message"), "Failed to delete not existed topic: testTopic0 in pipeline: @cluster2@cluster3");
 
     // Delete topic but expect failure due to non-whitelisted topic
@@ -551,7 +586,7 @@ public class TestManagerTopicManagement extends RestTestBase {
         .getTopicDeleteRequestUrl("testTopic1", "cluster1", "cluster3");
     response = HTTP_CLIENT.handle(request);
     json = JSONObject.parseObject(response.getEntityAsText());
-    Assert.assertEquals(response.getStatus(), Status.CLIENT_ERROR_NOT_FOUND);
+    Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
     Assert.assertEquals(json.getString("message"), "Failed to delete not existed topic: testTopic1 in pipeline: @cluster1@cluster3");
 
     // Delete topic

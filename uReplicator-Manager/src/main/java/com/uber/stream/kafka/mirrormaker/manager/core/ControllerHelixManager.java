@@ -510,7 +510,7 @@ public class ControllerHelixManager implements IHelixManager {
     _lock.lock();
     try {
       long currTimeMs = System.currentTimeMillis();
-      if (currTimeMs - lastUpdateTimeMs < 60000) {
+      if (currTimeMs - lastUpdateTimeMs < _conf.getUpdateStatusCoolDownMs()) {
         LOGGER.info("Only {} ms since last updateCurrentStatus, wait for next one", currTimeMs - lastUpdateTimeMs);
         return;
       }
