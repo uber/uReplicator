@@ -16,6 +16,9 @@
 
 FROM maven:3.5-jdk-8
 
+RUN apt-get update && \
+apt-get install -y netcat
+
 ARG MAVEN_OPTS="-Xmx1024M -Xss128M -XX:MetaspaceSize=512M -XX:MaxMetaspaceSize=1024M -XX:+CMSClassUnloadingEnabled"
 COPY . /usr/src/app
 WORKDIR /usr/src/app

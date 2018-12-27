@@ -220,7 +220,7 @@ docker exec -it ureplicator_devenv_1 bash;
 
 - Create topic in kafka2 with 4 partition
 ```
-docker exec -it devenv bash
+docker exec -it ureplicator_devenv_1 bash;
 $KAFKA_HOME/bin/kafka-topics.sh --create --zookeeper localhost:2181/cluster2 --topic dummyTopic1 --partition 4 --replication-factor 1
 ```
 
