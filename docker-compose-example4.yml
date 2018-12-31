@@ -41,7 +41,7 @@ services:
     links:
     - devenv
     healthcheck:
-      test: ["CMD", "./wait-for-it.sh", "controller:9000", "-t", "60"]
+      test: ["CMD", "./wait-for-it.sh", "controller:9000", "60"]
       interval: 30s
       timeout: 10s
       retries: 5
