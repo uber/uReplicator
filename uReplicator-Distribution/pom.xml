@@ -26,6 +26,11 @@
       <artifactId>uReplicator-Worker</artifactId>
       <version>${project.parent.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.uber.uReplicator</groupId>
+      <artifactId>uReplicator-Manager</artifactId>
+      <version>${project.parent.version}</version>
+    </dependency>
   </dependencies>
 
   <build>
@@ -228,6 +233,40 @@
                   --helix.config config/helix.properties
                 </commandLineArgument>
               </commandLineArguments>
+            </program>
+            <program>
+              <mainClass>com.uber.stream.kafka.mirrormaker.starter.MirrorMakerStarter</mainClass>
+              <id>start-manager</id>
+              <commandLineArguments>
+                <commandLineArgument>startMirrorMakerManager</commandLineArgument>
+              </commandLineArguments>
+              <jvmSettings>
+                <initialMemorySize>512m</initialMemorySize>
+                <maxMemorySize>512m</maxMemorySize>
+              </jvmSettings>
+              <jvmSettings>
+                <extraArguments>
+                  <extraArgument>-Dapp_name=uReplicator-Manager</extraArgument>
+                  <extraArgument>-cp</extraArgument>
+                  <extraArgument>
+                    uReplicator-Distribution/target/uReplicator-Distribution-0.1-SNAPSHOT-jar-with-dependencies.jar
+                  </extraArgument>
+                  <extraArgument>-XX:+UseG1GC</extraArgument>
+                  <extraArgument>-XX:+DisableExplicitGC</extraArgument>
+                  <extraArgument>-XX:+PrintGCDetails</extraArgument>
+                  <extraArgument>-XX:+PrintGCDateStamps</extraArgument>
+                  <extraArgument>-XX:+PrintAdaptiveSizePolicy</extraArgument>
+                  <extraArgument>-XX:+PrintTenuringDistribution</extraArgument>
+                  <extraArgument>-XX:+PrintGCApplicationStoppedTime</extraArgument>
+                  <extraArgument>-XX:+PrintReferenceGC</extraArgument>
+                  <extraArgument>-XX:+ParallelRefProcEnabled</extraArgument>
+                  <extraArgument>-XX:G1HeapRegionSize=8m</extraArgument>
+                  <extraArgument>-XX:InitiatingHeapOccupancyPercent=85</extraArgument>
+                  <extraArgument>-XX:+UnlockExperimentalVMOptions</extraArgument>
+                  <extraArgument>-XX:G1MixedGCLiveThresholdPercent=85</extraArgument>
+                  <extraArgument>-XX:G1HeapWastePercent=5</extraArgument>
+                </extraArguments>
+              </jvmSettings>
             </program>
           </programs>
           <binFileExtensions>

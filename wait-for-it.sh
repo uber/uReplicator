@@ -1,3 +1,4 @@
+#!/bin/sh
 #
 # Copyright (C) 2015-2017 Uber Technologies, Inc. (streaming-data@uber.com)
 #
@@ -14,19 +15,27 @@
 # limitations under the License.
 #
 
-FROM maven:3.5-jdk-8
+TIMEOUT=15
+QUIET=0
 
-RUN apt-get update && \
-apt-get install -y netcat
+wait_for() {
+  for i in `seq $TIMEOUT` ; do
+    nc -z "$HOST" "$PORT" > /dev/null 2>&1
 
-ARG MAVEN_OPTS="-Xmx1024M -Xss128M -XX:MetaspaceSize=512M -XX:MaxMetaspaceSize=1024M -XX:+CMSClassUnloadingEnabled"
-COPY . /usr/src/app
-WORKDIR /usr/src/app
+    result=$?
+    if [ $result -eq 0 ] ; then
+      if [ $# -gt 0 ] ; then
+        echo "Host started"
+      fi
+      exit 0
+    fi
+    sleep 1
+  done
+  echo "Operation timed out" >&2
+  exit 0
+}
+HOST=$(printf "%s\n" "$1"| cut -d : -f 1)
+PORT=$(printf "%s\n" "$1"| cut -d : -f 2)
+TIMEOUT="$2"
 
-RUN mvn clean package -DskipTests
-RUN chmod +x /usr/src/app/bin/pkg/*.sh
-
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-
-ENTRYPOINT [ "/docker-entrypoint.sh" ]
-CMD [ "controller" ]
+wait_for

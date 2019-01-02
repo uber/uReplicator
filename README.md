@@ -140,3 +140,107 @@ When you’re done, you can clean everything up using the same grid script:
 ```
 
 Congratulations! You’ve now set up a local grid that includes Kafka and ZooKeeper, and you've run a uReplicator worker on it.
+ 
+## Start uReplicator on docker
+
+**Example 3**: Run ureplicator on Docker
+
+- Build uReplicator devenv
+```
+docker build -t devenv devenv/.
+```
+
+- Start uReplicator DockerImages
+```
+docker run -d -p 2181:2181 -p 9093:9093 -p 9094:9094  --add-host devenv:127.0.0.1 --name devenv devenv
+```
+
+- Build uReplicator Images
+```
+docker build -t ureplicator .
+```
+
+- Start uReplicator Controller
+```
+docker run -d --link devenv:devenv -p 9000:9000 --name controller --expose=9000 ureplicator "controller" -mode auto \
+-enableAutoWhitelist true \
+-port 9000 \
+-refreshTimeInSeconds 10 \
+-srcKafkaZkPath devenv:2181/cluster1 \
+-zookeeper devenv:2181 \
+-destKafkaZkPath devenv:2181/cluster1 \
+-helixClusterName testMirrorMaker
+```
+
+- Start uReplicator Worker
+```
+docker run -d --link devenv:devenv --name worker ureplicator "worker" \
+--consumer.config example/example-consumer.properties \
+--producer.config example/example-producer.properties \
+--helix.config example/example-helix.properties
+```
+
+- Create topic in kafka2. Example 3 enables topic auto-whitelisting, so you don't need to whitelist topics manually. If a topic is in both source and destination Kafka clusters, the controller auto-whitelists the topic and starts copying data.
+```
+docker exec -it devenv bash
+$KAFKA_HOME/bin/kafka-topics.sh --create --zookeeper localhost:2181/cluster2 --topic dummyTopic --partition 4 --replication-factor 1
+```
+
+- Produce test data
+```
+docker exec -it devenv bash
+./usr/kafka/produce-data-to-kafka-topic-dummyTopic.sh 
+
+```
+
+- To check if the data is successfully copied to kafka2, open another console tab and execute this command 
+```
+docker exec -it devenv bash 
+$KAFKA_HOME/bin/kafka-console-consumer.sh --zookeeper localhost:2181/cluster2 --topic dummyTopic
+```
+
+
+**Example 4** Run urepliator with 2 workers
+- Build Docker Compose
+```
+docker-compose -f docker-compose-example4.yml build
+```
+
+- Start Docker Compose
+```
+docker-compose -f docker-compose-example4.yml up
+```
+
+- Produce test data
+```
+docker exec -it ureplicator_devenv_1 bash;
+./usr/kafka/produce-data-to-kafka-topic-dummyTopic.sh 
+
+```
+
+- Create topic in kafka2 with 4 partition
+```
+docker exec -it ureplicator_devenv_1 bash;
+$KAFKA_HOME/bin/kafka-topics.sh --create --zookeeper localhost:2181/cluster2 --topic dummyTopic1 --partition 4 --replication-factor 1
+```
+
+- Add topic to uReplicator Controller to start copying from kafka1 to kafka2:
+```
+curl -X POST -d '{"topic":"dummyTopic", "numPartitions":"4"}' http://localhost:9000/topics
+```
+
+- To check if the data is successfully copied to kafka2, open another console tab and execute this command 
+```
+docker exec -it ureplicator_devenv_1 bash;
+$KAFKA_HOME/bin/kafka-console-consumer.sh --zookeeper localhost:2181/cluster2 --topic dummyTopic1
+```
+
+- Check topic partition allocation
+```
+curl localhost:9000/topics/dummyTopic | jq .
+
+```
+- Check online instances
+```
+curl localhost:9000/instances | jq .
+```
