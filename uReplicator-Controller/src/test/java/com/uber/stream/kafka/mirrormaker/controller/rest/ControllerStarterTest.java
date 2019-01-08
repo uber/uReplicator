@@ -17,119 +17,14 @@ package com.uber.stream.kafka.mirrormaker.controller.rest;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
-import com.uber.stream.kafka.mirrormaker.controller.ControllerStarter;
-import com.uber.stream.kafka.mirrormaker.controller.core.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.controller.utils.ControllerRequestURLBuilder;
-import com.uber.stream.kafka.mirrormaker.controller.utils.ControllerTestUtils;
-import com.uber.stream.kafka.mirrormaker.controller.utils.FakeInstance;
-import com.uber.stream.kafka.mirrormaker.controller.utils.KafkaStarterUtils;
-import com.uber.stream.kafka.mirrormaker.controller.utils.ZkStarter;
-import java.util.ArrayList;
-import java.util.List;
-import kafka.server.KafkaServerStartable;
-import org.I0Itec.zkclient.ZkClient;
-import org.restlet.Client;
 import org.restlet.Request;
 import org.restlet.Response;
-import org.restlet.data.Protocol;
 import org.restlet.data.Status;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.testng.Assert;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
-public class ControllerStarterTest {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(ControllerStarterTest.class);
-  public static String CONTROLLER_PORT = "9999";
-  public static Client HTTP_CLIENT = new Client(Protocol.HTTP);
-  public static ControllerStarter CONTROLLER_STARTER = null;
-  public static String REQUEST_URL;
-  public static String HELIX_CLUSTER_NAME = "ControllerStarterTest";
-  public static String DEPLOYMENT_NAME = "StarterTestDeployment";
-  public static List<FakeInstance> FAKE_INSTANCES = new ArrayList<FakeInstance>();
-  public static ZkClient ZK_CLIENT = null;
-
-  private static KafkaBrokerTopicObserver kafkaBrokerTopicObserver;
-  private KafkaServerStartable kafkaStarter;
-
-  @BeforeTest
-  public void setup() {
-    LOGGER.info("Trying to setup");
-    ZkStarter.startLocalZkServer();
-    kafkaStarter =
-        KafkaStarterUtils.startServer(KafkaStarterUtils.DEFAULT_KAFKA_PORT,
-            KafkaStarterUtils.DEFAULT_BROKER_ID,
-            KafkaStarterUtils.DEFAULT_ZK_STR, KafkaStarterUtils.getDefaultKafkaConfiguration());
-
-    try {
-      Thread.sleep(2000);
-    } catch (Exception e) {
-    }
-    kafkaBrokerTopicObserver =
-        new KafkaBrokerTopicObserver("broker0", KafkaStarterUtils.DEFAULT_ZK_STR, 1);
-
-    ZK_CLIENT = new ZkClient(ZkStarter.DEFAULT_ZK_STR);
-    ZK_CLIENT.deleteRecursive("/" + HELIX_CLUSTER_NAME);
-    REQUEST_URL = "http://localhost:" + CONTROLLER_PORT;
-    CONTROLLER_STARTER = startController(DEPLOYMENT_NAME, HELIX_CLUSTER_NAME, CONTROLLER_PORT);
-    try {
-      FAKE_INSTANCES.addAll(ControllerTestUtils
-          .addFakeDataInstancesToAutoJoinHelixCluster(HELIX_CLUSTER_NAME, ZkStarter.DEFAULT_ZK_STR,
-              4, 0));
-      Thread.sleep(4000);
-    } catch (Exception e) {
-      throw new RuntimeException("Error during adding fake instances");
-    }
-  }
-
-  @AfterTest
-  public void shutdown() {
-    LOGGER.info("Trying to shutdown");
-    for (FakeInstance fakeInstance : FAKE_INSTANCES) {
-      try {
-        LOGGER.info("Trying to shutdown: " + fakeInstance);
-        fakeInstance.stop();
-      } catch (Exception e) {
-      }
-    }
-    LOGGER.info("Trying to stop controller");
-    CONTROLLER_STARTER.stop();
-    LOGGER.info("Trying to stop zk");
-
-    kafkaBrokerTopicObserver.stop();
-    KafkaStarterUtils.stopServer(kafkaStarter);
-
-    ZK_CLIENT.deleteRecursive("/" + HELIX_CLUSTER_NAME);
-    ZK_CLIENT.close();
-    ZkStarter.stopLocalZkServer();
-  }
-
-  public ControllerStarter startController(String deploymentName, String helixClusterName, String port) {
-    final ControllerConf conf = new ControllerConf();
-    conf.setControllerPort(port);
-    conf.setZkStr(ZkStarter.DEFAULT_ZK_STR);
-    conf.setHelixClusterName(helixClusterName);
-    conf.setDeploymentName(deploymentName);
-    conf.setBackUpToGit("false");
-    conf.setAutoRebalanceDelayInSeconds("0");
-    conf.setEnableAutoWhitelist("true");
-    conf.setEnableAutoTopicExpansion("true");
-    conf.setSrcKafkaZkPath(KafkaStarterUtils.DEFAULT_ZK_STR);
-    conf.setDestKafkaZkPath(KafkaStarterUtils.DEFAULT_ZK_STR);
-
-    final ControllerStarter starter = new ControllerStarter(conf);
-    try {
-      starter.start();
-    } catch (Exception e) {
-      throw new RuntimeException("Cannot start Helix Mirror Maker Controller", e);
-    }
-    return starter;
-  }
-
+public class ControllerStarterTest extends RestTestBase {
   @Test
   public void testGet() {
     // Get call
@@ -167,15 +62,15 @@ public class ControllerStarterTest {
     Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
     JSONObject jsonObject = JSON.parseObject(response.getEntityAsText());
     System.out.println(jsonObject);
-    Assert.assertEquals(jsonObject.getJSONObject("serverToNumPartitionsMapping").size(), 4);
+    Assert.assertEquals(jsonObject.getJSONObject("serverToNumPartitionsMapping").size(), 2);
     for (String server : jsonObject.getJSONObject("serverToNumPartitionsMapping").keySet()) {
       Assert.assertEquals(
-          jsonObject.getJSONObject("serverToNumPartitionsMapping").getIntValue(server), 2);
+          jsonObject.getJSONObject("serverToNumPartitionsMapping").getIntValue(server), 4);
     }
-    Assert.assertEquals(jsonObject.getJSONObject("serverToPartitionMapping").size(), 4);
+    Assert.assertEquals(jsonObject.getJSONObject("serverToPartitionMapping").size(), 2);
     for (String server : jsonObject.getJSONObject("serverToPartitionMapping").keySet()) {
       Assert.assertEquals(
-          jsonObject.getJSONObject("serverToPartitionMapping").getJSONArray(server).size(), 2);
+          jsonObject.getJSONObject("serverToPartitionMapping").getJSONArray(server).size(), 4);
     }
     Assert.assertEquals(jsonObject.getString("topic"), "testTopic0");
 
@@ -263,12 +158,6 @@ public class ControllerStarterTest {
     Assert.assertEquals(response.getEntityAsText(),
         "Successfully add new topic: {topic: testTopic3, partition: 8}");
     Assert.assertTrue(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testTopic3"));
-
-    try {
-      Thread.sleep(5000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
 
     request = ControllerRequestURLBuilder.baseUrl(REQUEST_URL)
         .getTopicExternalViewRequestUrl("testTopic3");

@@ -42,9 +42,9 @@ public class ManagerRequestURLBuilder {
     return request;
   }
 
-  public Request postInstanceRebalance(Boolean status) {
+  public Request postInstanceRebalance() {
     String requestUrl = StringUtils.join(new String[]{
-        _baseUrl, "/admin?forceRebalance="+ status.toString()
+        _baseUrl, "/admin/force_rebalance"
     });
 
     Request request = new Request(Method.POST, requestUrl);

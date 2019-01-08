@@ -23,7 +23,7 @@ ENV DOWNLOAD_ZOOKEEPER http://archive.apache.org/dist/zookeeper/zookeeper-3.4.3/
 
 # Install Kafka, Zookeeper and other needed things
 RUN apt-get update && \
-apt-get install -y zookeeper wget supervisor dnsutils && \
+apt-get install -y zookeeper wget supervisor dnsutils netcat && \
 rm -rf /var/lib/apt/lists/* && \
 apt-get clean
 
@@ -51,5 +51,9 @@ EXPOSE 2181 9093 9094
 
 # hack for advertised.host.name
 RUN echo "127.0.0.1 devenv" >> /etc/hosts
+ENV PATH="/usr/share/zookeeper/bin:${PATH}"
+
+
+ADD prepare-zk.sh .
 
 CMD ["supervisord", "-n"]

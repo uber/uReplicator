@@ -34,28 +34,18 @@ import com.uber.stream.kafka.mirrormaker.manager.validation.SourceKafkaClusterVa
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 import kafka.utils.ZKStringSerializer$;
 import org.I0Itec.zkclient.ZkClient;
-import org.apache.helix.HelixAdmin;
-import org.apache.helix.HelixManager;
-import org.apache.helix.HelixManagerFactory;
-import org.apache.helix.InstanceType;
-import org.apache.helix.LiveInstanceChangeListener;
+import org.apache.helix.*;
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.HelixConfigScope.ConfigScopeProperty;
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.builder.HelixConfigScopeBuilder;
+import org.apache.helix.store.zk.ZkHelixPropertyStore;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
@@ -81,6 +71,7 @@ public class ControllerHelixManager implements IHelixManager {
   private final String _helixZkURL;
   private final String _helixClusterName;
   private HelixManager _helixManager;
+  private ZkHelixPropertyStore<ZNRecord> _helixPropertyStore;
   private HelixAdmin _helixAdmin;
   private String _instanceId;
 
@@ -107,6 +98,8 @@ public class ControllerHelixManager implements IHelixManager {
   private static final String CONTROLLER_ERROR_NUMBER = "controllerErrorNumber";
   private static final String WORKER_TOTAL_NUMBER = "workerTotalNumber";
   private static final String WORKER_ERROR_NUMBER = "workerErrorNumber";
+  private static final String WORKER_NUMBER_OVERRIDE = "worker_number_override";
+  private static final String PIPELINE_PATH = "/pipeline";
 
   private static final Counter _availableController = new Counter();
   private static final Counter _availableWorker = new Counter();
@@ -126,7 +119,8 @@ public class ControllerHelixManager implements IHelixManager {
   private boolean _enableAutoScaling = true;
   private boolean _enableRebalance;
 
-  public ControllerHelixManager(SourceKafkaClusterValidationManager srcKafkaValidationManager,
+  public ControllerHelixManager(
+      SourceKafkaClusterValidationManager srcKafkaValidationManager,
       ManagerConf managerConf) {
     _conf = managerConf;
     _enableRebalance = managerConf.getEnableRebalance();
@@ -174,6 +168,8 @@ public class ControllerHelixManager implements IHelixManager {
 
     _helixManager = HelixSetupUtils.setup(_helixClusterName, _helixZkURL, _instanceId);
     _helixAdmin = _helixManager.getClusterManagmentTool();
+    _helixPropertyStore = _helixManager.getHelixPropertyStore();
+
 
     initWorkloadInfoRetriever();
 
@@ -191,7 +187,7 @@ public class ControllerHelixManager implements IHelixManager {
   private void initWorkloadInfoRetriever() {
     for (String cluster : _conf.getSourceClusters()) {
       String srcKafkaZkPath = (String) _conf.getProperty(CONFIG_KAFKA_CLUSTER_KEY_PREFIX + cluster);
-      _workloadInfoRetrieverMap.put(cluster, new WorkloadInfoRetriever(this, srcKafkaZkPath));
+      _workloadInfoRetrieverMap.put(cluster, new WorkloadInfoRetriever(this, false, srcKafkaZkPath));
       _workloadInfoRetrieverMap.get(cluster).start();
     }
   }
@@ -256,7 +252,8 @@ public class ControllerHelixManager implements IHelixManager {
     return route.replace('@', '-').substring(1);
   }
 
-  private void validateInstanceToTopicPartitionsMap(Map<String, Set<TopicPartition>> instanceToTopicPartitionsMap,
+  private void validateInstanceToTopicPartitionsMap(
+      Map<String, Set<TopicPartition>> instanceToTopicPartitionsMap,
       Map<String, InstanceTopicPartitionHolder> instanceMap) {
     LOGGER.info("\n\nFor controller instanceToTopicPartitionsMap:");
     int validateWrongCount = 0;
@@ -454,7 +451,8 @@ public class ControllerHelixManager implements IHelixManager {
     }
   }
 
-  private void updateMetrics(Map<String, Set<TopicPartition>> instanceToTopicPartitionsMap,
+  private void updateMetrics(
+      Map<String, Set<TopicPartition>> instanceToTopicPartitionsMap,
       Map<String, InstanceTopicPartitionHolder> instanceMap) {
     // int[3]: 0: #topic, 1: #controller, 2: #worker
     Map<String, int[]> currRouteInfo = new ConcurrentHashMap<>();
@@ -885,6 +883,7 @@ public class ControllerHelixManager implements IHelixManager {
   public void scaleCurrentCluster() throws Exception {
     int oldTotalNumWorker = 0;
     int newTotalNumWorker = 0;
+    Map<String, Integer> _routeWorkerOverrides = getRouteWorkerOverride();
     for (String pipeline : _pipelineToInstanceMap.keySet()) {
       LOGGER.info("Start rescale pipeline: {}", pipeline);
       PriorityQueue<InstanceTopicPartitionHolder> newItphQueue = new PriorityQueue<>(1,
@@ -986,23 +985,28 @@ public class ControllerHelixManager implements IHelixManager {
 
       // After moving topics, scale workers based on workload
       for (InstanceTopicPartitionHolder itph : newItphQueue) {
+        String routeString = itph.getRouteString();
+        int initWorkerCount = _initMaxNumWorkersPerRoute;
+        if (_routeWorkerOverrides.containsKey(routeString) && _routeWorkerOverrides.get(routeString) > initWorkerCount) {
+          initWorkerCount = _routeWorkerOverrides.get(routeString);
+        }
         String cluster = itph.getSrc();
         WorkloadInfoRetriever retriever = _workloadInfoRetrieverMap.get(cluster);
         if (retriever == null) {
           String srcKafkaZkPath = (String) _conf.getProperty(CONFIG_KAFKA_CLUSTER_KEY_PREFIX + cluster);
-          _workloadInfoRetrieverMap.put(cluster, new WorkloadInfoRetriever(this, srcKafkaZkPath));
+          _workloadInfoRetrieverMap.put(cluster, new WorkloadInfoRetriever(this, false, srcKafkaZkPath));
           _workloadInfoRetrieverMap.get(cluster).start();
         }
         if (!retriever.isInitialized()) {
           LOGGER.info("Retriever for itph: {} not initialized", itph.getInstanceName());
           int actualNumWorkers = itph.getWorkerSet().size();
-          if (_initMaxNumWorkersPerRoute > itph.getWorkerSet().size()) {
+          if (initWorkerCount > itph.getWorkerSet().size()) {
             LOGGER.info("Current {} workers in route {}, expect at least {} workers, add {} workers",
-                itph.getWorkerSet().size(), itph.getRouteString(), _initMaxNumWorkersPerRoute, _initMaxNumWorkersPerRoute - itph.getWorkerSet().size());
+                itph.getWorkerSet().size(), itph.getRouteString(), initWorkerCount, _initMaxNumWorkersPerRoute - itph.getWorkerSet().size());
             // TODO: handle exception
             _workerHelixManager.addWorkersToMirrorMaker(itph, itph.getRoute().getTopic(),
-                itph.getRoute().getPartition(), _initMaxNumWorkersPerRoute - itph.getWorkerSet().size());
-            actualNumWorkers = _initMaxNumWorkersPerRoute;
+                itph.getRoute().getPartition(), initWorkerCount - itph.getWorkerSet().size());
+            actualNumWorkers = initWorkerCount;
           }
           oldTotalNumWorker += itph.getWorkerSet().size();
           newTotalNumWorker += actualNumWorkers;
@@ -1015,7 +1019,7 @@ public class ControllerHelixManager implements IHelixManager {
         int expectedNumWorkers = (int) Math.round(totalWorkload.getBytesPerSecond() / workloadPerWorker);
         LOGGER.info("Current {} workers in route {}, expect {} workers",
             itph.getWorkerSet().size(), itph.getRouteString(), expectedNumWorkers);
-        int actualExpectedNumWorkers = getActualExpectedNumWorkers(expectedNumWorkers);
+        int actualExpectedNumWorkers = getActualExpectedNumWorkers(expectedNumWorkers, initWorkerCount);
         LOGGER.info("Current {} workers in route {}, actual expect {} workers",
             itph.getWorkerSet().size(), itph.getRouteString(), actualExpectedNumWorkers);
 
@@ -1043,14 +1047,14 @@ public class ControllerHelixManager implements IHelixManager {
     LOGGER.info("oldTotalNumWorker: {}, newTotalNumWorker: {}", oldTotalNumWorker, newTotalNumWorker);
   }
 
-  private int getActualExpectedNumWorkers(int expectedNumWorkers) {
-    if (expectedNumWorkers <= _initMaxNumWorkersPerRoute) {
-      return _initMaxNumWorkersPerRoute;
+  private int getActualExpectedNumWorkers(int expectedNumWorkers, int initWorkerPerRoute) {
+    if (expectedNumWorkers <= initWorkerPerRoute) {
+      return initWorkerPerRoute;
     }
     if (expectedNumWorkers >= _maxNumWorkersPerRoute) {
       return _maxNumWorkersPerRoute;
     }
-    return (int) (Math.ceil((double) (expectedNumWorkers - _initMaxNumWorkersPerRoute) / 5) * 5) + _initMaxNumWorkersPerRoute;
+    return (int) (Math.ceil((double) (expectedNumWorkers - initWorkerPerRoute) / 5) * 5) + initWorkerPerRoute;
   }
 
   public int getExpectedNumWorkers(int currNumPartitions) {
@@ -1155,8 +1159,12 @@ public class ControllerHelixManager implements IHelixManager {
     return createNewRoute(pipeline, routeId);
   }
 
-  public synchronized void addTopicToMirrorMaker(String topicName, int numPartitions,
-      String src, String dst, String pipeline) throws Exception {
+  public synchronized void addTopicToMirrorMaker(
+      String topicName,
+      int numPartitions,
+      String src,
+      String dst,
+      String pipeline) throws Exception {
     _lock.lock();
     try {
       LOGGER.info("Trying to add topic: {} to pipeline: {}", topicName, pipeline);
@@ -1191,7 +1199,10 @@ public class ControllerHelixManager implements IHelixManager {
   }
 
   // TODO: fix status if accidentally expanding a topic to a larger number
-  public synchronized void expandTopicInMirrorMaker(String topicName, String srcCluster, String pipeline,
+  public synchronized void expandTopicInMirrorMaker(
+      String topicName,
+      String srcCluster,
+      String pipeline,
       int newNumPartitions) throws Exception {
     _lock.lock();
     try {
@@ -1369,11 +1380,13 @@ public class ControllerHelixManager implements IHelixManager {
       throw new ControllerException(msg, ex);
     }
   }
+
   /**
    * RPC call to notify controller to change autobalancing status.
    * No retry
+   *
    * @param controllerInstance The controller InstanceName
-   * @param enable whether to enable autobalancing
+   * @param enable             whether to enable autobalancing
    * @return
    */
   public boolean notifyControllerAutobalancing(String controllerInstance, boolean enable) throws ControllerException {
@@ -1391,5 +1404,28 @@ public class ControllerHelixManager implements IHelixManager {
       throw new ControllerException(msg, ex);
     }
     return true;
+  }
+
+  public Map<String, Integer> getRouteWorkerOverride() {
+    List<ZNRecord> znRecordList = _helixPropertyStore.getChildren(PIPELINE_PATH, null, AccessOption.PERSISTENT);
+    Map<String, Integer> hashMap = new HashMap<>();
+    if (znRecordList == null) {
+      _helixPropertyStore.create(PIPELINE_PATH, new ZNRecord(""), AccessOption.PERSISTENT);
+      return hashMap;
+    }
+    for (ZNRecord znRecord : znRecordList) {
+      hashMap.put(znRecord.getId(), znRecord.getIntField(WORKER_NUMBER_OVERRIDE, _initMaxNumWorkersPerRoute));
+    }
+    return hashMap;
+  }
+
+  public void updateRouteWorkerOverride(String pipeline, Integer value) {
+    String resourcePath = PIPELINE_PATH + "/" + pipeline;
+    ZNRecord znRecord = _helixPropertyStore.get(resourcePath, null, AccessOption.PERSISTENT);
+    if (znRecord == null) {
+      znRecord = new ZNRecord(pipeline);
+    }
+    znRecord.setIntField(WORKER_NUMBER_OVERRIDE, value);
+    _helixPropertyStore.set(resourcePath, znRecord, AccessOption.PERSISTENT);
   }
 }

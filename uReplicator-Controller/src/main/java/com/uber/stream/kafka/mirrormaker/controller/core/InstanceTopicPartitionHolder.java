@@ -16,6 +16,10 @@
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
 import com.google.common.collect.ImmutableSet;
+import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
+import com.uber.stream.kafka.mirrormaker.common.core.TopicWorkload;
+import com.uber.stream.kafka.mirrormaker.common.core.WorkloadInfoRetriever;
+
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;

@@ -19,6 +19,7 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import java.util.ArrayList;
@@ -346,11 +347,16 @@ public class OffsetMonitor {
     return topicPartitionToOffsetMap;
   }
 
+
   private static String getOffsetLagName(TopicAndPartition tp) {
     return "OffsetMonitorLag." + tp.topic().replace('.', '_') + "." + tp.partition();
   }
 
-  Map<TopicAndPartition, TopicPartitionLag> getNoProgressTopicToOffsetMap() {
+  /**
+   * Expose the stuck partition map.
+   * @return
+   */
+  public Map<TopicAndPartition, TopicPartitionLag> getNoProgressTopicToOffsetMap() {
     return noProgressMap;
   }
 

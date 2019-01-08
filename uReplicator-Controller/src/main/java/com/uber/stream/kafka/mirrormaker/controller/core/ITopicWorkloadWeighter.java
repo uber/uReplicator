@@ -15,6 +15,8 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
+import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
+
 public interface ITopicWorkloadWeighter {
 
   public double partitionWeight(TopicPartition tp);
