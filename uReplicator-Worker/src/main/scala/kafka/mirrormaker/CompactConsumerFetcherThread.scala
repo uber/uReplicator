@@ -32,6 +32,7 @@ import kafka.utils.ShutdownableThread
 import org.apache.kafka.clients.CommonClientConfigs
 
 import scala.collection.{Map, Set, mutable}
+import scala.util.control.Breaks._
 
 /**
  * Fetcher thread that fetches data for multiple topic partitions from the same broker.
@@ -108,6 +109,7 @@ class CompactConsumerFetcherThread(name: String,
       if (pti.getFetchOffset != fetchOffset)
         throw new RuntimeException("Offset doesn't match for partition [%s,%d] pti offset: %d fetch offset: %d"
           .format(topicAndPartition.topic, topicAndPartition.partition, pti.getFetchOffset, fetchOffset))
+      logger.info(s"came_here123 enqueue $partitionData")
       pti.enqueue(partitionData.messages.asInstanceOf[ByteBufferMessageSet])
     } catch {
       case e: java.util.NoSuchElementException => {
@@ -148,7 +150,6 @@ class CompactConsumerFetcherThread(name: String,
     val pti = partitionInfoMap.get(topicAndPartition)
     pti.resetFetchOffset(newOffset)
     pti.resetConsumeOffset(newOffset)
-    logger.info(s"here123 $newOffset")
     newOffset
   }
 
@@ -219,7 +220,6 @@ class CompactConsumerFetcherThread(name: String,
             }
         }
         fetchRequestBuilder = org.apache.kafka.common.requests.FetchRequest.Builder.forConsumer(maxWait, minBytes, fetchData)
-        logger.info(s"here1234 $fetchData $fetchRequestBuilder")
 
         if (fetchData.isEmpty) {
           trace("There are no active partitions. Back off for %d ms before sending a fetch request".format(fetchBackOffMs))
@@ -256,7 +256,6 @@ class CompactConsumerFetcherThread(name: String,
     try {
       trace("Issuing to broker %d of fetch request %s".format(sourceBroker.id, fetchRequestBuilder))
       response = simpleConsumer.fetch(fetchRequestBuilder)
-      logger.info(s"here12345 $response")
     } catch {
       case t: Throwable =>
         if (isRunning) {
@@ -278,20 +277,21 @@ class CompactConsumerFetcherThread(name: String,
       // process fetched data
       inLock(partitionMapLock) {
         val a = response.data()
-        logger.info(s"here123456 $a")
+        var count = 0
+//        breakable {
         a.foreach {
           case (topicAndPartition, partitionData) =>
-            logger.info(s"here1234567 $topicAndPartition $partitionData")
             val topic = topicAndPartition.topic
-            val partitionId =topicAndPartition.partition
-          partitionMap.get(topicAndPartition).foreach(currentPartitionFetchState => {
+            val partitionId = topicAndPartition.partition
+            partitionMap.get(topicAndPartition).foreach(currentPartitionFetchState => {
               // we append to the log if the current offset is defined and it is the same as the offset requested during fetch
+              val topicPartition = new org.apache.kafka.common.TopicPartition(topic, partitionId)
               var requestOffset = -1L
-              val requestPartitionData = fetchRequestBuilder.fetchData.get(topicAndPartition)
-              if (requestPartitionData == null) {
+              val requestPartitionData = fetchRequestBuilder.fetchData.get(topicPartition)
+              if (requestPartitionData != null) {
                 requestOffset = requestPartitionData.fetchOffset
               }
-
+              logger.info(s"here12345678 $requestOffset")
               if (requestOffset == currentPartitionFetchState.fetchOffset) {
                 partitionData.error.code() match {
                   case ErrorMapping.NoError =>
@@ -341,7 +341,10 @@ class CompactConsumerFetcherThread(name: String,
                 }
               }
             })
+//            count = count + 1
+//            if (count > 20) break
         }
+//      }
       }
     }
 

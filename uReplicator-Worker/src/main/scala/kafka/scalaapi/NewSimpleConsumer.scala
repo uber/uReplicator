@@ -24,13 +24,11 @@ class NewSimpleConsumer(val host: String, val port: Int, val config: NewSimpleCo
     //     TODO: change this to implicts
     val a = underlying.fetch(requestBuilder)
     val b = a.responseData().keySet().size()
-    logger1.info(s"here12345678 $a $b $requestBuilder")
     new FetchResponse(a)
   }
 
   def earliestOrLatestOffset(topicAndPartition: TopicAndPartition, earliestOrLatest: Long, consumerId: Int): Long = {
     val topicPartition = new TopicPartition(topicAndPartition.topic, topicAndPartition.partition)
-    println("here123 $topicPartition $earliestOrLatest")
     underlying.earliestOrLatestOffset(topicPartition, earliestOrLatest)
   }
 

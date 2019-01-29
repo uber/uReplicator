@@ -3,7 +3,9 @@ import kafka.message.{ByteBufferMessageSet, Message}
 import kafka.api.FetchResponsePartitionData
 
 import scala.collection.JavaConversions._
+import util.control.Breaks._
 import org.slf4j.{Logger, LoggerFactory}
+import java.nio.charset.StandardCharsets
 
 class FetchResponse(private val underlying: org.apache.kafka.common.requests.FetchResponse) {
   val logger1: Logger = LoggerFactory.getLogger(this.getClass)
@@ -15,30 +17,38 @@ class FetchResponse(private val underlying: org.apache.kafka.common.requests.Fet
       val topicAndPartition = entry.getKey
       val partitionData = entry.getValue
       val a = kafka.common.TopicAndPartition(topicAndPartition.topic(), topicAndPartition.partition())
-      logger1.info(s"qwerty12345 $topicAndPartition, $partitionData")
 
       var messages : List[Message] = List()
 
       val records = partitionData.records.records()
-      records.foreach {
-        case (record) =>
 
-          var key : Array[Byte] = null
-          if (record.key() != null) {
-            key = record.value().array()
-          }
+      var count = 0
+      breakable {
+        records.foreach {
+          case (record) =>
 
-          val msg = new Message(record.value().array(), key, record.timestamp(), Message.CurrentMagicValue)
-          messages = messages :+ msg
+            var key : Array[Byte] = null
+            if (record.key() != null) {
+              key = record.value().array()
+            }
+
+            val msg = new Message(record.value().array(), key, record.timestamp(), Message.CurrentMagicValue)
+            val strMsg = new String(record.value().array(), StandardCharsets.UTF_8)
+            messages = messages :+ msg
+            count = count + 1
+            if (count > 20) {
+               break
+            }
+        }
       }
+
       val b : ByteBufferMessageSet = new ByteBufferMessageSet(messages:_*)
       val d = FetchResponsePartitionData(partitionData.error, partitionData.highWatermark, b)
 
       seq = seq :+ Tuple2(a, d)
       val c = seq.length
-      logger1.info(s"qwerty123456 seq length $b $c $d $messages")
-      logger1.info(s"qwerty1234567 seq $seq")
     }
+    logger1.info(s"qwerty123456 seq length $seq")
     seq
   }
 }
