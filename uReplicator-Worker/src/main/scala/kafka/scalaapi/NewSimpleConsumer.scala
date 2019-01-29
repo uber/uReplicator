@@ -24,7 +24,7 @@ class NewSimpleConsumer(val host: String, val port: Int, val config: NewSimpleCo
     //     TODO: change this to implicts
     val a = underlying.fetch(requestBuilder)
     val b = a.responseData().keySet().size()
-    logger1.info(s"qwerty1234 $a $b $requestBuilder")
+    logger1.info(s"here12345678 $a $b $requestBuilder")
     new FetchResponse(a)
   }
 

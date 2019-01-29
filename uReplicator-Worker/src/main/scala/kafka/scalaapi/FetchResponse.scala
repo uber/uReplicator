@@ -22,7 +22,13 @@ class FetchResponse(private val underlying: org.apache.kafka.common.requests.Fet
       val records = partitionData.records.records()
       records.foreach {
         case (record) =>
-          val msg = new Message(record.value().array(), record.key().array(), record.timestamp(), Message.CurrentMagicValue)
+
+          var key : Array[Byte] = null
+          if (record.key() != null) {
+            key = record.value().array()
+          }
+
+          val msg = new Message(record.value().array(), key, record.timestamp(), Message.CurrentMagicValue)
           messages = messages :+ msg
       }
       val b : ByteBufferMessageSet = new ByteBufferMessageSet(messages:_*)

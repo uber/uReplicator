@@ -148,6 +148,7 @@ class CompactConsumerFetcherThread(name: String,
     val pti = partitionInfoMap.get(topicAndPartition)
     pti.resetFetchOffset(newOffset)
     pti.resetConsumeOffset(newOffset)
+    logger.info(s"here123 $newOffset")
     newOffset
   }
 
@@ -208,7 +209,17 @@ class CompactConsumerFetcherThread(name: String,
           partitionDeleteMap.clear()
         }
 
+        partitionMap.foreach {
+          case ((topicAndPartition, partitionFetchState)) =>
+            if (partitionFetchState.isReadyForFetch) {
+              fetchData.put(
+                new org.apache.kafka.common.TopicPartition(topicAndPartition.topic, topicAndPartition.partition),
+                new org.apache.kafka.common.requests.FetchRequest.PartitionData(partitionFetchState.fetchOffset, 0, fetchSize)
+              )
+            }
+        }
         fetchRequestBuilder = org.apache.kafka.common.requests.FetchRequest.Builder.forConsumer(maxWait, minBytes, fetchData)
+        logger.info(s"here1234 $fetchData $fetchRequestBuilder")
 
         if (fetchData.isEmpty) {
           trace("There are no active partitions. Back off for %d ms before sending a fetch request".format(fetchBackOffMs))
@@ -245,6 +256,7 @@ class CompactConsumerFetcherThread(name: String,
     try {
       trace("Issuing to broker %d of fetch request %s".format(sourceBroker.id, fetchRequestBuilder))
       response = simpleConsumer.fetch(fetchRequestBuilder)
+      logger.info(s"here12345 $response")
     } catch {
       case t: Throwable =>
         if (isRunning) {
@@ -265,8 +277,11 @@ class CompactConsumerFetcherThread(name: String,
     if (response != null) {
       // process fetched data
       inLock(partitionMapLock) {
-        response.data().foreach {
+        val a = response.data()
+        logger.info(s"here123456 $a")
+        a.foreach {
           case (topicAndPartition, partitionData) =>
+            logger.info(s"here1234567 $topicAndPartition $partitionData")
             val topic = topicAndPartition.topic
             val partitionId =topicAndPartition.partition
           partitionMap.get(topicAndPartition).foreach(currentPartitionFetchState => {
