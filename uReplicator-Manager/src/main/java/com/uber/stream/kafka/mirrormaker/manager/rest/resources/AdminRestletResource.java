@@ -104,7 +104,7 @@ public class AdminRestletResource extends ServerResource {
       LOGGER.info("Enabled autobalancing!");
       responseJson.put("opt", "enableAutoBalancing");
       responseJson.put("auto_balancing", _helixMirrorMakerManager.isAutoBalancingEnabled());
-    } else if ("controller_autobalance".equalsIgnoreCase(opt)) {
+    } else if ("controller_autobalancing".equalsIgnoreCase(opt)) {
       Form queryParams = getRequest().getResourceRef().getQueryAsForm();
       String srcCluster = ENABLE_PER_ROUTE_CHANGE ? queryParams.getFirstValue("srcCluster", true) : "";
       String dstCluster = ENABLE_PER_ROUTE_CHANGE ? queryParams.getFirstValue("dstCluster", true) : "";
