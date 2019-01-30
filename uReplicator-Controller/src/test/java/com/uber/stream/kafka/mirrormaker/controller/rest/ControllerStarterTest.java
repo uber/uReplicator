@@ -41,7 +41,7 @@ public class ControllerStarterTest extends RestTestBase {
     response = HTTP_CLIENT.handle(request);
     Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
     Assert.assertEquals(response.getEntityAsText(),
-        "Successfully add new topic: {topic: testTopic0, partition: 8}");
+        "Successfully add new topic: {topic: testTopic0, partition: 8, pipeline: null}");
     Assert.assertTrue(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testTopic0"));
 
     request = ControllerRequestURLBuilder.baseUrl(REQUEST_URL)
@@ -91,7 +91,7 @@ public class ControllerStarterTest extends RestTestBase {
     Response response = HTTP_CLIENT.handle(request);
     Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
     Assert.assertEquals(response.getEntityAsText(),
-        "Successfully add new topic: {topic: testTopic1, partition: 16}");
+        "Successfully add new topic: {topic: testTopic1, partition: 16, pipeline: null}");
     Assert.assertTrue(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testTopic1"));
 
     // Create existed topic
@@ -120,7 +120,7 @@ public class ControllerStarterTest extends RestTestBase {
     Response response = HTTP_CLIENT.handle(request);
     Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
     Assert.assertEquals(response.getEntityAsText(),
-        "Successfully add new topic: {topic: testTopic2, partition: 8}");
+        "Successfully add new topic: {topic: testTopic2, partition: 8, pipeline: null}");
     Assert.assertTrue(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testTopic2"));
 
     // Expand topic
@@ -129,7 +129,7 @@ public class ControllerStarterTest extends RestTestBase {
     response = HTTP_CLIENT.handle(request);
     Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
     Assert.assertEquals(response.getEntityAsText(),
-        "Successfully expand topic: {topic: testTopic2, partition: 16}");
+        "Successfully expand topic: {topic: testTopic2, partition: 16, pipeline: null}");
 
     // Expand non-existed topic
     request = ControllerRequestURLBuilder.baseUrl(REQUEST_URL)
@@ -156,7 +156,7 @@ public class ControllerStarterTest extends RestTestBase {
     Response response = HTTP_CLIENT.handle(request);
     Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
     Assert.assertEquals(response.getEntityAsText(),
-        "Successfully add new topic: {topic: testTopic3, partition: 8}");
+        "Successfully add new topic: {topic: testTopic3, partition: 8, pipeline: null}");
     Assert.assertTrue(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testTopic3"));
 
     request = ControllerRequestURLBuilder.baseUrl(REQUEST_URL)
