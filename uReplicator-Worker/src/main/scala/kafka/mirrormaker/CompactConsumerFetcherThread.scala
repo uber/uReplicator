@@ -24,15 +24,17 @@ import kafka.scalaapi.NewSimpleConsumer
 import kafka.api._
 import kafka.cluster.BrokerEndPoint
 import kafka.common.{ClientIdAndBroker, ErrorMapping, KafkaException, TopicAndPartition}
-import kafka.consumer.{ConsumerConfig, SimpleConsumer}
+import kafka.consumer.ConsumerConfig
 import kafka.message.{ByteBufferMessageSet, InvalidMessageException, MessageAndOffset}
 import kafka.server.{ClientIdTopicPartition, FetcherLagStats, FetcherStats, PartitionFetchState}
 import kafka.utils.CoreUtils._
 import kafka.utils.ShutdownableThread
 import org.apache.kafka.clients.CommonClientConfigs
+import org.apache.kafka.common.requests.FetchRequest
+import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.requests.FetchRequest
 
 import scala.collection.{Map, Set, mutable}
-import scala.util.control.Breaks._
 
 /**
  * Fetcher thread that fetches data for multiple topic partitions from the same broker.
@@ -69,6 +71,7 @@ class CompactConsumerFetcherThread(name: String,
   private val partitionMapLock = new ReentrantLock
   private val partitionMapCond = partitionMapLock.newCondition()
 
+  // todo: change to map from properties
   val consumerProperties = new Properties()
   consumerProperties.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId)
   consumerProperties.put(NewSimpleConsumerConfig.CLIENT_SOCKET_RECEIVE_BUFFER_CONFIG, socketBufferSize.toString)
@@ -81,11 +84,6 @@ class CompactConsumerFetcherThread(name: String,
   private val metricId = new ClientIdAndBroker(clientId, sourceBroker.host, sourceBroker.port)
   val fetcherStats = new FetcherStats(metricId)
   val fetcherLagStats = new FetcherLagStats(metricId)
-  val fetchRequestBuilder = new FetchRequestBuilder().
-    clientId(clientId).
-    replicaId(fetcherBrokerId).
-    maxWait(maxWait).
-    minBytes(minBytes)
 
   var newMsgSize = 0
 
@@ -109,7 +107,6 @@ class CompactConsumerFetcherThread(name: String,
       if (pti.getFetchOffset != fetchOffset)
         throw new RuntimeException("Offset doesn't match for partition [%s,%d] pti offset: %d fetch offset: %d"
           .format(topicAndPartition.topic, topicAndPartition.partition, pti.getFetchOffset, fetchOffset))
-      logger.info(s"came_here123 enqueue $partitionData")
       pti.enqueue(partitionData.messages.asInstanceOf[ByteBufferMessageSet])
     } catch {
       case e: java.util.NoSuchElementException => {
@@ -179,8 +176,8 @@ class CompactConsumerFetcherThread(name: String,
 
   override def doWork() {
     try {
-      var fetchRequestBuilder : org.apache.kafka.common.requests.FetchRequest.Builder = null
-      val fetchData = new java.util.HashMap[org.apache.kafka.common.TopicPartition, org.apache.kafka.common.requests.FetchRequest.PartitionData]()
+      var fetchRequestBuilder : FetchRequest.Builder = null
+      val fetchData = new java.util.HashMap[TopicPartition, FetchRequest.PartitionData]()
       inLock(partitionMapLock) {
         inLock(updateMapLock) {
           // add topic partition into partitionMap
@@ -214,12 +211,12 @@ class CompactConsumerFetcherThread(name: String,
           case ((topicAndPartition, partitionFetchState)) =>
             if (partitionFetchState.isReadyForFetch) {
               fetchData.put(
-                new org.apache.kafka.common.TopicPartition(topicAndPartition.topic, topicAndPartition.partition),
-                new org.apache.kafka.common.requests.FetchRequest.PartitionData(partitionFetchState.fetchOffset, 0, fetchSize)
+                new TopicPartition(topicAndPartition.topic, topicAndPartition.partition),
+                new FetchRequest.PartitionData(partitionFetchState.fetchOffset, 0, fetchSize)
               )
             }
         }
-        fetchRequestBuilder = org.apache.kafka.common.requests.FetchRequest.Builder.forConsumer(maxWait, minBytes, fetchData)
+        fetchRequestBuilder = FetchRequest.Builder.forConsumer(maxWait, minBytes, fetchData)
 
         if (fetchData.isEmpty) {
           trace("There are no active partitions. Back off for %d ms before sending a fetch request".format(fetchBackOffMs))
@@ -242,7 +239,7 @@ class CompactConsumerFetcherThread(name: String,
             isOOM = true
             if (consumerFetcherManager.systemExisting.compareAndSet(false, true)) {
               error("First OOM or processing error, call System.exit(-1);")
-              System.exit(-1);
+              System.exit(-1)
             }
             throw e
           }
@@ -276,22 +273,18 @@ class CompactConsumerFetcherThread(name: String,
     if (response != null) {
       // process fetched data
       inLock(partitionMapLock) {
-        val a = response.data()
-        var count = 0
-//        breakable {
-        a.foreach {
+        response.data().foreach {
           case (topicAndPartition, partitionData) =>
             val topic = topicAndPartition.topic
             val partitionId = topicAndPartition.partition
             partitionMap.get(topicAndPartition).foreach(currentPartitionFetchState => {
               // we append to the log if the current offset is defined and it is the same as the offset requested during fetch
-              val topicPartition = new org.apache.kafka.common.TopicPartition(topic, partitionId)
+              val topicPartition = new TopicPartition(topic, partitionId)
               var requestOffset = -1L
               val requestPartitionData = fetchRequestBuilder.fetchData.get(topicPartition)
               if (requestPartitionData != null) {
                 requestOffset = requestPartitionData.fetchOffset
               }
-              logger.info(s"here12345678 $requestOffset")
               if (requestOffset == currentPartitionFetchState.fetchOffset) {
                 partitionData.error.code() match {
                   case ErrorMapping.NoError =>
@@ -341,10 +334,7 @@ class CompactConsumerFetcherThread(name: String,
                 }
               }
             })
-//            count = count + 1
-//            if (count > 20) break
         }
-//      }
       }
     }
 

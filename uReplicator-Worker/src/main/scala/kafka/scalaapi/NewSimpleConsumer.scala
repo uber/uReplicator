@@ -1,16 +1,10 @@
 package kafka.scalaapi
 
-import com.uber.kafka.consumer.NewSimpleConsumerConfig
-import kafka.common.TopicAndPartition
 import org.apache.kafka.common.TopicPartition
-import java.util.Properties
-import java.util.concurrent.locks.ReentrantLock
-import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import org.slf4j.{Logger, LoggerFactory}
 
 import com.uber.kafka.consumer.NewSimpleConsumerConfig
-import kafka.common.{ClientIdAndBroker, ErrorMapping, KafkaException, TopicAndPartition}
-import kafka.utils.CoreUtils._
+import kafka.common.TopicAndPartition
 
 class NewSimpleConsumer(val host: String, val port: Int, val config: NewSimpleConsumerConfig) {
   val logger1: Logger = LoggerFactory.getLogger(this.getClass)
@@ -21,10 +15,7 @@ class NewSimpleConsumer(val host: String, val port: Int, val config: NewSimpleCo
   }
 
   def fetch(requestBuilder: org.apache.kafka.common.requests.FetchRequest.Builder): FetchResponse = {
-    //     TODO: change this to implicts
-    val a = underlying.fetch(requestBuilder)
-    val b = a.responseData().keySet().size()
-    new FetchResponse(a)
+    new FetchResponse(underlying.fetch(requestBuilder))
   }
 
   def earliestOrLatestOffset(topicAndPartition: TopicAndPartition, earliestOrLatest: Long, consumerId: Int): Long = {

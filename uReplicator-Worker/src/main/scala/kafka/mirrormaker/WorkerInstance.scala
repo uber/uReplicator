@@ -439,10 +439,8 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
           try {
             while (!exitingOnSendFailure && !shuttingDown && iter.hasNext()) {
               val data = iter.next()
-              logger.info(s"came_here1234 $data")
               trace("Sending message with value size %d".format(data.message().size))
               val records = messageHandler.handle(data)
-              logger.info(s"came_here12345 $records")
               val iterRecords = records.iterator()
               while (iterRecords.hasNext) {
                 val record = iterRecords.next()
@@ -577,18 +575,14 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
   private object defaultMirrorMakerMessageHandler extends MirrorMakerMessageHandler {
     override def handle(record: MessageAndMetadata[Array[Byte], Array[Byte]]): util.List[ProducerRecord[Array[Byte], Array[Byte]]] = {
       // rewrite topic between consuming side and producing side
-      logger.info(s"came_here123 $record")
       val topic = topicMappings.getOrElse(record.topic, record.topic)
       var partitionCount = 0
-      logger.info(s"came_here1234 $topicPartitionCountObserver")
       if (topicPartitionCountObserver != null) {
         partitionCount = topicPartitionCountObserver.getPartitionCount(topic)
       }
-      logger.info(s"came_here12345 $partitionCount")
       if (partitionCount > 0 && record.partition >= 0) {
         val a = new ProducerRecord[Array[Byte], Array[Byte]](topic,
           record.partition % partitionCount, record.key(), record.message())
-        logger.info(s"came_here123456 $a")
         Collections.singletonList(a)
       } else {
         if (topicPartitionCountObserver != null) {
@@ -597,7 +591,6 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
         }
         val a = new ProducerRecord[Array[Byte], Array[Byte]](topic,
           record.key(), record.message())
-        logger.info(s"came_here1234567 $a")
         Collections.singletonList(a)
       }
     }
