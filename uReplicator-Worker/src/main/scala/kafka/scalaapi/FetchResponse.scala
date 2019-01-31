@@ -1,4 +1,5 @@
 package kafka.scalaapi
+
 import kafka.message.{ByteBufferMessageSet, Message}
 import org.apache.kafka.common.utils.Utils
 

@@ -15,10 +15,11 @@
  */
 package kafka.mirrormaker
 
-import java.util.Properties
+import java.util.Map
 import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 
+import com.google.common.collect.ImmutableMap
 import com.uber.kafka.consumer.NewSimpleConsumerConfig
 import kafka.scalaapi.NewSimpleConsumer
 import kafka.api._
@@ -30,7 +31,6 @@ import kafka.server.{ClientIdTopicPartition, FetcherLagStats, FetcherStats, Part
 import kafka.utils.CoreUtils._
 import kafka.utils.ShutdownableThread
 import org.apache.kafka.clients.CommonClientConfigs
-import org.apache.kafka.common.requests.FetchRequest
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.requests.FetchRequest
 
@@ -71,11 +71,11 @@ class CompactConsumerFetcherThread(name: String,
   private val partitionMapLock = new ReentrantLock
   private val partitionMapCond = partitionMapLock.newCondition()
 
-  // todo: change to map from properties
-  val consumerProperties = new Properties()
-  consumerProperties.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId)
-  consumerProperties.put(NewSimpleConsumerConfig.CLIENT_SOCKET_RECEIVE_BUFFER_CONFIG, socketBufferSize.toString)
-  consumerProperties.put(NewSimpleConsumerConfig.CLIENT_CONNECTION_TIMEOUT_CONFIG, socketTimeout.toString)
+  val consumerProperties : java.util.Map[String, Object] = ImmutableMap.of(
+    CommonClientConfigs.CLIENT_ID_CONFIG, clientId,
+    NewSimpleConsumerConfig.CLIENT_SOCKET_RECEIVE_BUFFER_CONFIG, socketBufferSize.toString,
+    NewSimpleConsumerConfig.CLIENT_CONNECTION_TIMEOUT_CONFIG, socketTimeout.toString
+  )
   val newSimpleConsumerConfig = new NewSimpleConsumerConfig(consumerProperties)
 
   val simpleConsumer = new NewSimpleConsumer(sourceBroker.host, sourceBroker.port, newSimpleConsumerConfig)
@@ -251,7 +251,7 @@ class CompactConsumerFetcherThread(name: String,
     val partitionsWithError = new mutable.HashSet[TopicAndPartition]
     var response: kafka.scalaapi.FetchResponse = null
     try {
-      trace("Issuing to broker %d of fetch request %s".format(sourceBroker.id, fetchRequestBuilder))
+      trace("Issuing to broker %d of fetch request builder %s".format(sourceBroker.id, fetchRequestBuilder))
       response = simpleConsumer.fetch(fetchRequestBuilder)
     } catch {
       case t: Throwable =>
@@ -279,9 +279,8 @@ class CompactConsumerFetcherThread(name: String,
             val partitionId = topicAndPartition.partition
             partitionMap.get(topicAndPartition).foreach(currentPartitionFetchState => {
               // we append to the log if the current offset is defined and it is the same as the offset requested during fetch
-              val topicPartition = new TopicPartition(topic, partitionId)
               var requestOffset = -1L
-              val requestPartitionData = fetchRequestBuilder.fetchData.get(topicPartition)
+              val requestPartitionData = fetchRequestBuilder.fetchData.get(new TopicPartition(topic, partitionId))
               if (requestPartitionData != null) {
                 requestOffset = requestPartitionData.fetchOffset
               }

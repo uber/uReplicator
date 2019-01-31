@@ -581,17 +581,15 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
         partitionCount = topicPartitionCountObserver.getPartitionCount(topic)
       }
       if (partitionCount > 0 && record.partition >= 0) {
-        val a = new ProducerRecord[Array[Byte], Array[Byte]](topic,
-          record.partition % partitionCount, record.key(), record.message())
-        Collections.singletonList(a)
+        Collections.singletonList(new ProducerRecord[Array[Byte], Array[Byte]](topic,
+          record.partition % partitionCount, record.key(), record.message()))
       } else {
         if (topicPartitionCountObserver != null) {
           // this is failure if topicPartitionCountObserver is enabled
           mapFailureMeter.mark()
         }
-        val a = new ProducerRecord[Array[Byte], Array[Byte]](topic,
-          record.key(), record.message())
-        Collections.singletonList(a)
+        Collections.singletonList(new ProducerRecord[Array[Byte], Array[Byte]](topic,
+          record.key(), record.message()))
       }
     }
   }
