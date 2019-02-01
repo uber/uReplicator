@@ -322,10 +322,11 @@ public class ValidationManager {
     }
   }
 
-  private synchronized void updateMetrics(int numOnlineTopicPartitions,
-                                          int numOfflineTopicPartitions,
-                                          int numErrorTopicPartitions, int numTopicPartitions, int numServingTopics,
-                                          int numErrorTopics) {
+  private synchronized void updateMetrics(
+      int numOnlineTopicPartitions,
+      int numOfflineTopicPartitions,
+      int numErrorTopicPartitions, int numTopicPartitions, int numServingTopics,
+      int numErrorTopics) {
     _numServingTopics
         .inc(numServingTopics - _numServingTopics.getCount());
     _numTopicPartitions
@@ -340,8 +341,9 @@ public class ValidationManager {
         .inc(numErrorTopics - _numErrorTopics.getCount());
   }
 
-  private void updateIdealstateInfo(Map<String, Integer> topicPartitionMapForIdealState,
-                                    IdealState idealStateForTopic) {
+  private void updateIdealstateInfo(
+      Map<String, Integer> topicPartitionMapForIdealState,
+      IdealState idealStateForTopic) {
     for (String partition : idealStateForTopic.getPartitionSet()) {
       Map<String, String> idealStatesMap = idealStateForTopic.getInstanceStateMap(partition);
       for (String instance : idealStatesMap.keySet()) {
