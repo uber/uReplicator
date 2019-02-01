@@ -19,11 +19,13 @@ import com.alibaba.fastjson.JSONObject;
 import com.codahale.metrics.Counter;
 import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
 import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.IdealState;
 import org.slf4j.Logger;
@@ -140,8 +142,10 @@ public class ValidationManager {
 
   private void unregisterMetrics() {
     try {
-      for (String name : HelixKafkaMirrorMakerMetricsReporter.get().getRegistry().getNames()) {
-        HelixKafkaMirrorMakerMetricsReporter.get().getRegistry().remove(name);
+      if (HelixKafkaMirrorMakerMetricsReporter.get().getRegistry() != null) {
+        for (String name : HelixKafkaMirrorMakerMetricsReporter.get().getRegistry().getNames()) {
+          HelixKafkaMirrorMakerMetricsReporter.get().getRegistry().remove(name);
+        }
       }
     } catch (Exception e) {
       LOGGER.error("Error unregistering metrics!", e);
@@ -220,7 +224,8 @@ public class ValidationManager {
     }
   }
 
-  private JSONObject constructValidationResultJson(int numOnlineTopicPartitions,
+  private JSONObject constructValidationResultJson(
+      int numOnlineTopicPartitions,
       int numOfflineTopicPartitions,
       int numErrorTopicPartitions, int numTopicPartitions, int numServingTopics, int numErrorTopics,
       JSONObject perWorkerISCounterJson, JSONObject perWorkerEVCounterJson) {
@@ -260,8 +265,9 @@ public class ValidationManager {
       if (!_idealStatePerWorkerTopicPartitionCounter.containsKey(worker)) {
         Counter workCounter = new Counter();
         try {
-          HelixKafkaMirrorMakerMetricsReporter.get().getRegistry().register(
-              getIdealStatePerWorkMetricName(worker), workCounter);
+          if (HelixKafkaMirrorMakerMetricsReporter.get().getRegistry() != null) {
+            HelixKafkaMirrorMakerMetricsReporter.get().getRegistry().register(getIdealStatePerWorkMetricName(worker), workCounter);
+          }
         } catch (Exception e) {
           LOGGER.error("Error registering metrics!", e);
         }
@@ -276,7 +282,9 @@ public class ValidationManager {
         //counter.dec(counter.getCount());
         _idealStatePerWorkerTopicPartitionCounter.remove(worker);
         try {
-          HelixKafkaMirrorMakerMetricsReporter.get().getRegistry().remove(getIdealStatePerWorkMetricName(worker));
+          if (HelixKafkaMirrorMakerMetricsReporter.get().getRegistry() != null) {
+            HelixKafkaMirrorMakerMetricsReporter.get().getRegistry().remove(getIdealStatePerWorkMetricName(worker));
+          }
         } catch (Exception e) {
           LOGGER.warn("Got exception when removing metrics for {}", getIdealStatePerWorkMetricName(worker), e);
         }
@@ -315,9 +323,9 @@ public class ValidationManager {
   }
 
   private synchronized void updateMetrics(int numOnlineTopicPartitions,
-      int numOfflineTopicPartitions,
-      int numErrorTopicPartitions, int numTopicPartitions, int numServingTopics,
-      int numErrorTopics) {
+                                          int numOfflineTopicPartitions,
+                                          int numErrorTopicPartitions, int numTopicPartitions, int numServingTopics,
+                                          int numErrorTopics) {
     _numServingTopics
         .inc(numServingTopics - _numServingTopics.getCount());
     _numTopicPartitions
@@ -333,7 +341,7 @@ public class ValidationManager {
   }
 
   private void updateIdealstateInfo(Map<String, Integer> topicPartitionMapForIdealState,
-      IdealState idealStateForTopic) {
+                                    IdealState idealStateForTopic) {
     for (String partition : idealStateForTopic.getPartitionSet()) {
       Map<String, String> idealStatesMap = idealStateForTopic.getInstanceStateMap(partition);
       for (String instance : idealStatesMap.keySet()) {
