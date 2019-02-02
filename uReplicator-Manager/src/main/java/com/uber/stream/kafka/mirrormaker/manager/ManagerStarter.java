@@ -98,7 +98,7 @@ public class ManagerStarter {
     try {
       conf = ManagerConf.getManagerConf(cmd);
     } catch (Exception e) {
-      throw new RuntimeException("Not valid controller configurations!", e);
+      throw new RuntimeException("Not valid manager configurations!", e);
     }
 
     return new ManagerStarter(conf);

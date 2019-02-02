@@ -18,13 +18,15 @@ package com.uber.stream.kafka.mirrormaker.controller.utils;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import com.uber.stream.kafka.mirrormaker.controller.core.TopicWorkload;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.uber.stream.kafka.mirrormaker.common.core.TopicWorkload;
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;

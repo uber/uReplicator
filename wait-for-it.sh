@@ -32,7 +32,7 @@ wait_for() {
     sleep 1
   done
   echo "Operation timed out" >&2
-  exit 0
+  exit 1
 }
 HOST=$(printf "%s\n" "$1"| cut -d : -f 1)
 PORT=$(printf "%s\n" "$1"| cut -d : -f 2)

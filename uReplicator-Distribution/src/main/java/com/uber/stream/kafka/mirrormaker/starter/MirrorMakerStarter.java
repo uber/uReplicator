@@ -17,6 +17,8 @@ package com.uber.stream.kafka.mirrormaker.starter;
 
 import com.uber.stream.kafka.mirrormaker.controller.ControllerStarter;
 import java.util.Arrays;
+
+import com.uber.stream.kafka.mirrormaker.manager.ManagerStarter;
 import kafka.mirrormaker.MirrorMakerWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,8 +42,11 @@ public class MirrorMakerStarter {
       } else if (args[0].equalsIgnoreCase("startMirrorMakerWorker")) {
         LOGGER.info("Trying to start MirrorMaker Worker with args: {}", Arrays.toString(args));
         new MirrorMakerWorker().main(args);
+      } else if (args[0].equalsIgnoreCase("startMirrorMakerManager")) {
+        LOGGER.info("Trying to start MirrorMaker manager with args: {}", Arrays.toString(args));
+        ManagerStarter.main(args);
       } else {
-        LOGGER.error("Start script should provide the module(startMirrorMakerController/startMirrorMakerWorker)"
+        LOGGER.error("Start script should provide the module(startMirrorMakerController/startMirrorMakerWorker/startMirrorMakerManager)"
             + " to start as the first parameter! Current args: {}", Arrays.toString(args));
       }
     } else {

@@ -15,6 +15,10 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
+import com.uber.stream.kafka.mirrormaker.common.configuration.IuReplicatorConf;
+import com.uber.stream.kafka.mirrormaker.common.core.IHelixManager;
+import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
+import com.uber.stream.kafka.mirrormaker.common.core.WorkloadInfoRetriever;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixSetupUtils;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.utils.HelixUtils;
@@ -48,7 +52,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author xiangfu
  */
-public class HelixMirrorMakerManager {
+public class HelixMirrorMakerManager implements IHelixManager {
 
   private static final String ENABLE = "enable";
   private static final String DISABLE = "disable";
@@ -77,7 +81,7 @@ public class HelixMirrorMakerManager {
     _helixZkURL = HelixUtils.getAbsoluteZkPathForHelix(_controllerConf.getZkStr());
     _helixClusterName = _controllerConf.getHelixClusterName();
     _instanceId = controllerConf.getInstanceId();
-    _workloadInfoRetriever = new WorkloadInfoRetriever(this);
+    _workloadInfoRetriever = new WorkloadInfoRetriever(this, true);
     _currentServingInstance = new PriorityQueue<>(1,
         InstanceTopicPartitionHolder.getTotalWorkloadComparator(_workloadInfoRetriever, null));
     _offsetMonitor = new OffsetMonitor(this, controllerConf);
@@ -187,8 +191,14 @@ public class HelixMirrorMakerManager {
     _helixAdmin.dropResource(_helixClusterName, topicName);
   }
 
+  @Override
   public IdealState getIdealStateForTopic(String topicName) {
     return _helixAdmin.getResourceIdealState(_helixClusterName, topicName);
+  }
+
+  @Override
+  public IuReplicatorConf getConf() {
+    return _controllerConf;
   }
 
   public ExternalView getExternalViewForTopic(String topicName) {
@@ -199,6 +209,7 @@ public class HelixMirrorMakerManager {
     return _helixAdmin.getResourcesInCluster(_helixClusterName).contains(topicName);
   }
 
+  @Override
   public List<String> getTopicLists() {
     return _helixAdmin.getResourcesInCluster(_helixClusterName);
   }

@@ -15,10 +15,11 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.utils;
 
-import com.uber.stream.kafka.mirrormaker.controller.core.TopicWorkload;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+
+import com.uber.stream.kafka.mirrormaker.common.core.TopicWorkload;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

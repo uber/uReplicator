@@ -15,7 +15,7 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.utils;
 
-import com.uber.stream.kafka.mirrormaker.controller.core.TopicPartition;
+import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import org.apache.commons.lang.StringUtils;
 import org.restlet.Request;
 import org.restlet.data.MediaType;
@@ -48,6 +48,14 @@ public class ControllerRequestURLBuilder {
     });
 
     Request request = new Request(Method.DELETE, requestUrl);
+    return request;
+  }
+
+  public Request getNoProgressRequestUrl() {
+    String requestUrl = StringUtils.join(new String[]{
+        _baseUrl, "/noprogress"
+    });
+    Request request = new Request(Method.GET, requestUrl);
     return request;
   }
 

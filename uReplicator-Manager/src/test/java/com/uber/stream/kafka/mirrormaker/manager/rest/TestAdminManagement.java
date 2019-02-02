@@ -26,17 +26,11 @@ import org.testng.Assert;
 public class TestAdminManagement extends RestTestBase {
   @Test
   public void testPostRebalance() {
-    Request request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL).postInstanceRebalance(true);
+    Request request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL).postInstanceRebalance();
     Response response = HTTP_CLIENT.handle(request);
     String responseString = response.getEntityAsText();
     Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
     Assert.assertEquals(responseString, "{\"status\":200}");
-
-    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL).postInstanceRebalance(false);
-    response = HTTP_CLIENT.handle(request);
-    responseString = response.getEntityAsText();
-    Assert.assertEquals(response.getStatus(), Status.CLIENT_ERROR_BAD_REQUEST);
-    Assert.assertEquals(responseString, "{\"message\":\"invalid operation\",\"status\":400}");
   }
 
   @Test
