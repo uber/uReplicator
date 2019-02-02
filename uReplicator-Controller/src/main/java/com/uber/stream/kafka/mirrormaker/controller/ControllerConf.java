@@ -20,6 +20,8 @@ import java.net.UnknownHostException;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
+
+import com.uber.stream.kafka.mirrormaker.common.configuration.IuReplicatorConf;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.apache.commons.configuration.ConfigurationException;
@@ -31,7 +33,7 @@ import org.apache.commons.configuration.PropertiesConfiguration;
  *
  * @author xiangfu
  */
-public class ControllerConf extends PropertiesConfiguration {
+public class ControllerConf extends PropertiesConfiguration implements IuReplicatorConf {
 
   private static final String CONFIG_FILE = "config.file";
   private static final String FEDERATED_ENABLED = "federated.enabled";
@@ -144,6 +146,12 @@ public class ControllerConf extends PropertiesConfiguration {
   private static final int DEFAULT_MOVE_STUCK_PARTITION_AFTER_MINUTES = 20;
 
   private static final String defaultLocal = "/var/log/kafka-mirror-maker-controller";
+
+  private static final String BYTES_PER_SECOND_DEFAULT = "controller.bytes.per.second.default";
+  private static final double DEFAULT_BYTES_PER_SECOND_DEFAULT = 1000.0;
+
+  private static final String MSGS_PER_SECOND_DEFAULT = "controller.msgs.per.second.default";
+  private static final double DEFAULT_MSGS_PER_SECOND_DEFAULT = 1;
 
   public ControllerConf() {
     super();
@@ -444,6 +452,11 @@ public class ControllerConf extends PropertiesConfiguration {
     return (String) getProperty(SRC_KAFKA_ZK_PATH);
   }
 
+  @Override
+  public Integer getClusterPrefixLength() {
+    return 0;
+  }
+
   public String getDestKafkaZkPath() {
     return (String) getProperty(DEST_KAFKA_ZK_PATH);
   }
@@ -544,6 +557,24 @@ public class ControllerConf extends PropertiesConfiguration {
       return (Integer) getProperty(WORKLOAD_REFRESH_PERIOD_IN_SECONDS);
     } else {
       return DEFAULT_WORKLOAD_REFRESH_PERIOD_IN_SECONDS;
+    }
+  }
+
+  @Override
+  public Double getBytesPerSecondDefault() {
+    if (containsKey(BYTES_PER_SECOND_DEFAULT)) {
+      return (Double) getProperty(BYTES_PER_SECOND_DEFAULT);
+    } else {
+      return DEFAULT_BYTES_PER_SECOND_DEFAULT;
+    }
+  }
+
+  @Override
+  public Double getMsgsPerSecondDefault() {
+    if (containsKey(MSGS_PER_SECOND_DEFAULT)) {
+      return (Double) getProperty(MSGS_PER_SECOND_DEFAULT);
+    } else {
+      return DEFAULT_MSGS_PER_SECOND_DEFAULT;
     }
   }
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # Copyright (C) 2015-2017 Uber Technologies, Inc. (streaming-data@uber.com)
 #
@@ -15,19 +15,28 @@
 # limitations under the License.
 #
 
-set -e
+TIMEOUT=15
+QUIET=0
 
-case "$1" in
-  manager)
-    exec ./uReplicator-Distribution/target/uReplicator-Distribution-pkg/bin/start-manager.sh ${@:2}
-  ;;
-  controller)
-    exec ./uReplicator-Distribution/target/uReplicator-Distribution-pkg/bin/start-controller.sh ${@:2}
-  ;;
-  worker)
-    exec ./uReplicator-Distribution/target/uReplicator-Distribution-pkg/bin/start-worker.sh ${@:2}
-  ;;
-  *)
-    exec $@
-  ;;
-esac
+wait_for() {
+  for i in `seq $TIMEOUT` ; do
+    nc -z "$HOST" "2181" > /dev/null 2>&1
+
+    result=$?
+    if [ $result -eq 0 ] ; then
+      if [ $# -gt 0 ] ; then
+        echo "Host started"
+      fi
+      exec /usr/share/zookeeper/bin/zkCli.sh create /ureplicator-example ureplicator-example
+      exit 0
+    fi
+    sleep 1
+  done
+  echo "Operation timed out" >&2
+  exit 0
+}
+HOST="$1"
+TIMEOUT="$2"
+
+wait_for
+

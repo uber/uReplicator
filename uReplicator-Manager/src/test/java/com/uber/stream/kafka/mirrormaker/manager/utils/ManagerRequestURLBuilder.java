@@ -42,9 +42,9 @@ public class ManagerRequestURLBuilder {
     return request;
   }
 
-  public Request postInstanceRebalance(Boolean status) {
+  public Request postInstanceRebalance() {
     String requestUrl = StringUtils.join(new String[]{
-        _baseUrl, "/admin?forceRebalance="+ status.toString()
+        _baseUrl, "/admin/force_rebalance"
     });
 
     Request request = new Request(Method.POST, requestUrl);
@@ -90,7 +90,7 @@ public class ManagerRequestURLBuilder {
   }
   public Request postSetControllerRebalance(String srcCluster, String dstCluster, boolean enabled) {
     String requestUrl = StringUtils.join(new String[]{
-        _baseUrl, "/admin/controller_autobalance?srcCluster="+ srcCluster + "&dstCluster=" + dstCluster
+        _baseUrl, "/admin/controller_autobalancing?srcCluster="+ srcCluster + "&dstCluster=" + dstCluster
         + "&enabled=" + enabled
     });
     Request request = new Request(Method.POST, requestUrl);
@@ -98,14 +98,14 @@ public class ManagerRequestURLBuilder {
   }
   public Request getControllerRebalanceStatus() {
     String requestUrl = StringUtils.join(new String[]{
-        _baseUrl, "/admin/controller_autobalance"
+        _baseUrl, "/admin/controller_autobalancing"
     });
     Request request = new Request(Method.GET, requestUrl);
     return request;
   }
   public Request postSetControllerRebalance(boolean enabled) {
     String requestUrl = StringUtils.join(new String[]{
-        _baseUrl, "/admin/controller_autobalance?enabled=" + enabled
+        _baseUrl, "/admin/controller_autobalancing?enabled=" + enabled
     });
     Request request = new Request(Method.POST, requestUrl);
     return request;

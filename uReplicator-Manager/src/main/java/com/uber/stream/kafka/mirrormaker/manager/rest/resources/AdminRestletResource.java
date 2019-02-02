@@ -16,21 +16,24 @@
 package com.uber.stream.kafka.mirrormaker.manager.rest.resources;
 
 import java.util.Map;
+
 import com.alibaba.fastjson.JSONObject;
+import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
 import com.uber.stream.kafka.mirrormaker.manager.core.ControllerHelixManager;
+import com.uber.stream.kafka.mirrormaker.manager.core.WorkerHelixManager;
+import org.apache.commons.lang3.StringUtils;
 import org.restlet.data.Form;
 import org.restlet.data.MediaType;
 import org.restlet.data.Status;
 import org.restlet.representation.Representation;
 import org.restlet.representation.StringRepresentation;
 import org.restlet.representation.Variant;
+import org.restlet.resource.Delete;
 import org.restlet.resource.Get;
 import org.restlet.resource.Post;
 import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.uber.stream.kafka.mirrormaker.manager.core.AdminHelper;
 
@@ -58,54 +61,55 @@ public class AdminRestletResource extends ServerResource {
   @Get
   public Representation get() {
     final String opt = (String) getRequest().getAttributes().get("opt");
-    if ("disable_autoscaling".equalsIgnoreCase(opt)) {
-      _helixMirrorMakerManager.disableAutoScaling();
-      LOGGER.info("Disabled autoscaling!");
-      return new StringRepresentation("Disabled autoscaling!\n");
-    } else if ("enable_autoscaling".equalsIgnoreCase(opt)) {
-      _helixMirrorMakerManager.enableAutoScaling();
-      LOGGER.info("Enabled autobalancing!");
-      return new StringRepresentation("Enabled autoscaling!\n");
-    } else if ("autoscaling_status".equalsIgnoreCase(opt)) {
-      if (_helixMirrorMakerManager.isAutoScalingEnabled()) {
-        return new StringRepresentation("enabled\n");
-      } else {
-        return new StringRepresentation("disabled\n");
-      }
-    } else if ("disable_autobalancing".equalsIgnoreCase(opt)) {
-      _helixMirrorMakerManager.disableAutoBalancing();
-      LOGGER.info("Disabled autobalancing!");
-      return new StringRepresentation("Disabled autobalancing!\n");
-    } else if ("enable_autobalancing".equalsIgnoreCase(opt)) {
-      _helixMirrorMakerManager.enableAutoBalancing();
-      LOGGER.info("Enabled autobalancing!");
-      return new StringRepresentation("Enabled autobalancing!\n");
-    } else if ("autobalancing_status".equalsIgnoreCase(opt)) {
-      if (_helixMirrorMakerManager.isAutoBalancingEnabled()) {
-        return new StringRepresentation("enabled\n");
-      } else {
-        return new StringRepresentation("disabled\n");
-      }
-    } else if ("controller_autobalance".equalsIgnoreCase(opt)) {
+    JSONObject responseJson = new JSONObject();
+    if ("autoscaling".equalsIgnoreCase(opt)) {
+      responseJson.put("auto_scaling", _helixMirrorMakerManager.isAutoBalancingEnabled());
+    } else if ("autobalancing".equalsIgnoreCase(opt)) {
+      responseJson.put("auto_balancing", _helixMirrorMakerManager.isAutoBalancingEnabled());
+    } else if ("controller_autobalancing".equalsIgnoreCase(opt)) {
       AdminHelper helper = new AdminHelper(_helixMirrorMakerManager);
       return new StringRepresentation(helper.getControllerAutobalancingStatus(null, null)
           .toJSONString());
+    } else if ("worker_number_override".equalsIgnoreCase(opt)) {
+      responseJson.put("worker_number_override", _helixMirrorMakerManager.getRouteWorkerOverride());
+    } else {
+      LOGGER.info("No valid input!");
+      responseJson.put("opt", "No valid input!");
     }
-    LOGGER.info("No valid input!");
-    return new StringRepresentation("No valid input!\n");
+    return new StringRepresentation(responseJson.toJSONString());
   }
-
 
   @Post
   public Representation post(Representation entity) {
+    // TODO: separate manager and controller operation
     final String opt = (String) getRequest().getAttributes().get("opt");
-    if (!Strings.isNullOrEmpty(opt) && opt.toLowerCase().equals("controller_autobalance")) {
+    JSONObject responseJson = new JSONObject();
+    if ("disable_autoscaling".equalsIgnoreCase(opt)) {
+      _helixMirrorMakerManager.disableAutoScaling();
+      LOGGER.info("Disabled autoscaling!");
+      responseJson.put("opt", "disable_autoscaling");
+      responseJson.put("auto_scaling", _helixMirrorMakerManager.isAutoBalancingEnabled());
+    } else if ("enable_autoscaling".equalsIgnoreCase(opt)) {
+      _helixMirrorMakerManager.enableAutoScaling();
+      LOGGER.info("Enabled autobalancing!");
+      responseJson.put("opt", "enable_autobalancing");
+      responseJson.put("auto_scaling", _helixMirrorMakerManager.isAutoBalancingEnabled());
+    } else if ("disable_autobalancing".equalsIgnoreCase(opt)) {
+      _helixMirrorMakerManager.disableAutoBalancing();
+      LOGGER.info("Disabled autobalancing!");
+      responseJson.put("opt", "disable_autobalancing");
+      responseJson.put("auto_balancing", _helixMirrorMakerManager.isAutoBalancingEnabled());
+    } else if ("enable_autobalancing".equalsIgnoreCase(opt)) {
+      _helixMirrorMakerManager.enableAutoBalancing();
+      LOGGER.info("Enabled autobalancing!");
+      responseJson.put("opt", "enableAutoBalancing");
+      responseJson.put("auto_balancing", _helixMirrorMakerManager.isAutoBalancingEnabled());
+    } else if ("controller_autobalancing".equalsIgnoreCase(opt)) {
       Form queryParams = getRequest().getResourceRef().getQueryAsForm();
       String srcCluster = ENABLE_PER_ROUTE_CHANGE ? queryParams.getFirstValue("srcCluster", true) : "";
       String dstCluster = ENABLE_PER_ROUTE_CHANGE ? queryParams.getFirstValue("dstCluster", true) : "";
       String enabledStr = queryParams.getFirstValue("enabled", true);
       if (Strings.isNullOrEmpty(enabledStr) || (Strings.isNullOrEmpty(srcCluster) != Strings.isNullOrEmpty(dstCluster))) {
-        JSONObject responseJson = new JSONObject();
         getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
         responseJson.put("status", Status.CLIENT_ERROR_BAD_REQUEST.getCode());
         responseJson.put("message", String.format("invalid operation"));
@@ -113,35 +117,78 @@ public class AdminRestletResource extends ServerResource {
       } else {
         return new StringRepresentation(setControllerAutobalancing(srcCluster, dstCluster, enabledStr).toJSONString());
       }
-    } else {
+    } else if ("force_rebalance".equalsIgnoreCase(opt) || "manual_rebalance".equalsIgnoreCase(opt)) {
+      try {
+        boolean force = "force_rebalance".equalsIgnoreCase(opt);
+        _helixMirrorMakerManager.handleLiveInstanceChange(false, force);
+        responseJson.put("status", Status.SUCCESS_OK.getCode());
+        return new StringRepresentation(responseJson.toJSONString());
+      } catch (Exception e) {
+        LOGGER.error("manual re-balance failed due to exception: {}", e, e);
+        responseJson.put("status", Status.SERVER_ERROR_INTERNAL.getCode());
+        responseJson
+            .put("message", String.format("manual re-balance failed due to exception: %s", e));
+
+        getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
+      }
+    } else if ("worker_number_override".equalsIgnoreCase(opt)) {
       Form queryParams = getRequest().getResourceRef().getQueryAsForm();
-      String forceRebalanceStr = queryParams.getFirstValue("forceRebalance", true);
-      Boolean forceRebalance = Boolean.parseBoolean(forceRebalanceStr);
-      JSONObject responseJson = new JSONObject();
 
-      if (forceRebalance) {
-        try {
-          _helixMirrorMakerManager.handleLiveInstanceChange(false, true);
-          responseJson.put("status", Status.SUCCESS_OK.getCode());
-
-          return new StringRepresentation(responseJson.toJSONString());
-        } catch (Exception e) {
-          LOGGER.error("manual re-balance failed due to exception: {}", e, e);
-
-          responseJson.put("status", Status.SERVER_ERROR_INTERNAL.getCode());
-          responseJson
-              .put("message", String.format("manual re-balance failed due to exception: %s", e));
-
-          getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
-          return new StringRepresentation(responseJson.toJSONString());
+      String routeString = queryParams.getFirstValue("route", true);
+      String workerNum = queryParams.getFirstValue("workerNumber", true);
+      Integer workerCount = Integer.parseInt(workerNum);
+      boolean validRoute = false;
+      String example = "";
+      for (String pipeline : _helixMirrorMakerManager.getPipelineToInstanceMap().keySet()) {
+        for (InstanceTopicPartitionHolder itph : _helixMirrorMakerManager.getPipelineToInstanceMap().get(pipeline)) {
+          if (itph.getRouteString().equalsIgnoreCase(routeString)) {
+            validRoute = true;
+          }
+          if (StringUtils.isEmpty(example)) {
+            example = itph.getRouteString();
+          }
         }
+      }
+      if (validRoute) {
+        _helixMirrorMakerManager.updateRouteWorkerOverride(routeString, workerCount);
+        responseJson.put("worker_number_override", _helixMirrorMakerManager.getRouteWorkerOverride());
       } else {
+        return new StringRepresentation("invalid route string, route sample: " + example);
+      }
+    } else {
+      getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+      responseJson.put("status", Status.CLIENT_ERROR_BAD_REQUEST.getCode());
+      responseJson.put("message", String.format("invalid operation"));
+    }
+    return new StringRepresentation(responseJson.toJSONString());
+  }
+
+  @Delete
+  public Representation delete() {
+    final String opt = (String) getRequest().getAttributes().get("opt");
+    JSONObject responseJson = new JSONObject();
+    if ("worker_number_override".equalsIgnoreCase(opt)) {
+      Form queryParams = getRequest().getResourceRef().getQueryAsForm();
+      String routeString = queryParams.getFirstValue("route", true);
+      if (StringUtils.isEmpty(routeString)) {
         getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
         responseJson.put("status", Status.CLIENT_ERROR_BAD_REQUEST.getCode());
-        responseJson.put("message", String.format("invalid operation"));
-        return new StringRepresentation(responseJson.toJSONString());
+        responseJson.put("message", String.format("missing parameter route"));
+      } else {
+        if (_helixMirrorMakerManager.getRouteWorkerOverride().containsKey(routeString)) {
+          _helixMirrorMakerManager.updateRouteWorkerOverride(routeString, -1);
+          responseJson.put("worker_number_override", _helixMirrorMakerManager.getRouteWorkerOverride());
+          responseJson.put("status", Status.SUCCESS_OK);
+        } else {
+          responseJson.put("message", String.format("route override not exists"));
+          responseJson.put("status", Status.SUCCESS_OK);
+        }
       }
+    } else {
+      LOGGER.info("No valid input!");
+      responseJson.put("opt", "No valid input!");
     }
+    return new StringRepresentation(responseJson.toJSONString());
   }
 
   private JSONObject setControllerAutobalancing(String srcCluster, String dstCluster, String enabledStr) {
@@ -150,7 +197,7 @@ public class AdminRestletResource extends ServerResource {
     AdminHelper helper = new AdminHelper(_helixMirrorMakerManager);
     Map<String, Boolean> status = helper.setControllerAutobalancing(srcCluster, dstCluster, enabled);
     JSONObject statusJson = new JSONObject();
-    for (String instance: status.keySet()) {
+    for (String instance : status.keySet()) {
       statusJson.put(instance, status.get(instance) ? "success" : "failed");
     }
     JSONObject queriedResult = helper.getControllerAutobalancingStatus(srcCluster, dstCluster);

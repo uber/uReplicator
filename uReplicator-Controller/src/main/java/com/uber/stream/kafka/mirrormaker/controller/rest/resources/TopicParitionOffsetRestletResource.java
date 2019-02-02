@@ -1,5 +1,6 @@
 package com.uber.stream.kafka.mirrormaker.controller.rest.resources;
 
+import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import org.restlet.data.Status;
 import org.restlet.representation.Representation;
 import org.restlet.representation.StringRepresentation;
@@ -10,7 +11,6 @@ import org.slf4j.LoggerFactory;
 
 import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
 import com.uber.stream.kafka.mirrormaker.controller.core.OffsetMonitor;
-import com.uber.stream.kafka.mirrormaker.controller.core.TopicPartition;
 
 public class TopicParitionOffsetRestletResource extends ServerResource {
   private static final Logger LOGGER =

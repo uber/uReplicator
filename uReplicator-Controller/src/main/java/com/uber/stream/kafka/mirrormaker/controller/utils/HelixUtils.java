@@ -17,8 +17,8 @@ package com.uber.stream.kafka.mirrormaker.controller.utils;
 
 import com.google.common.collect.ImmutableList;
 import com.uber.stream.kafka.mirrormaker.common.core.OnlineOfflineStateModel;
+import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.kafka.mirrormaker.controller.core.InstanceTopicPartitionHolder;
-import com.uber.stream.kafka.mirrormaker.controller.core.TopicPartition;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
