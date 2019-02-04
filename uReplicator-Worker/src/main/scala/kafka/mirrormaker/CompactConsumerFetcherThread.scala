@@ -15,7 +15,6 @@
  */
 package kafka.mirrormaker
 
-import java.util.Map
 import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 
