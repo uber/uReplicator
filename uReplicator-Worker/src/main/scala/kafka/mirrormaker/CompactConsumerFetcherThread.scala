@@ -276,10 +276,18 @@ class CompactConsumerFetcherThread(name: String,
                     try {
                       val messages = partitionData.messages.asInstanceOf[ByteBufferMessageSet]
                       val validBytes = messages.validBytes
+                      var count = 0
+                      var string1 = ""
+                      messages.shallowIterator.toSeq.foreach {
+                        case s =>
+                          count = count + 1
+                          string1 += " " + s.nextOffset.toString
+                      }
                       val newOffset = messages.shallowIterator.toSeq.lastOption match {
                         case Some(m: MessageAndOffset) => m.nextOffset
                         case None => currentPartitionFetchState.fetchOffset
                       }
+                      info(s"temp4 $string1 $newOffset")
                       partitionMap.put(topicAndPartition, new PartitionFetchState(newOffset))
                       fetcherLagStats.getAndMaybePut(topic, partitionId).lag = partitionData.hw - newOffset
                       fetcherStats.byteRate.mark(validBytes)
