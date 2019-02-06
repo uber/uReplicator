@@ -23,12 +23,14 @@ import kafka.common.TopicAndPartition
 
 class NewSimpleConsumer(val host: String, val port: Int, val config: NewSimpleConsumerConfig) {
   private val underlying = new com.uber.kafka.consumer.NewSimpleConsumer(host, port, config)
+  val logger1: Logger = LoggerFactory.getLogger(this.getClass)
 
   def connect(): Unit = {
     underlying.connect()
   }
 
   def fetch(requestBuilder: org.apache.kafka.common.requests.FetchRequest.Builder): FetchResponse = {
+    logger1.info(s"temp2 request builder - $requestBuilder")
     new FetchResponse(underlying.fetch(requestBuilder))
   }
 

@@ -15,15 +15,19 @@
  */
 package kafka.scalaapi
 
-import kafka.message.{ByteBufferMessageSet, Message}
+import kafka.message.{ByteBufferMessageSet, Message, NoCompressionCodec}
 import org.apache.kafka.common.utils.Utils
 
 import scala.collection.JavaConversions._
 import kafka.common.TopicAndPartition
 import kafka.api.FetchResponsePartitionData
+
 import scala.collection.Seq
+import org.apache.kafka.common.record.{CompressionType, LegacyRecord, TimestampType}
+import org.slf4j.{Logger, LoggerFactory}
 
 class FetchResponse(private val underlying: org.apache.kafka.common.requests.FetchResponse) {
+  val logger1: Logger = LoggerFactory.getLogger(this.getClass)
   def data(): Seq[(TopicAndPartition, FetchResponsePartitionData)] = {
     var seq: Seq[(TopicAndPartition, FetchResponsePartitionData)] = Seq()
     for (entry <- underlying.responseData().entrySet()) {
@@ -32,6 +36,7 @@ class FetchResponse(private val underlying: org.apache.kafka.common.requests.Fet
 
       var messages : List[Message] = List()
 
+      var count = 0
       partitionData.records.records().foreach {
         case (record) =>
           var keyByteArr : Array[Byte] = null
@@ -46,9 +51,16 @@ class FetchResponse(private val underlying: org.apache.kafka.common.requests.Fet
             valueByteArr,
             keyByteArr,
             record.timestamp(),
+            TimestampType.CREATE_TIME,
+            NoCompressionCodec,
+            record.offset().toInt,
+            -1,
             Message.CurrentMagicValue
           )
           messages = messages :+ msg
+          count = count + 1
+          val s = new String(valueByteArr)
+          logger1.info(s"temp3 fetchresponse $count $s")
       }
 
       val responseDataPartition = FetchResponsePartitionData(

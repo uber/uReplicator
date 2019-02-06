@@ -154,12 +154,20 @@ class KafkaConnector(private val consumerIdString: String,
     // Commit all offsets to Zookeeper
     offsetsToCommit.foreach {
       case (topicAndPartition, offsetAndMetadata) =>
-        commitOffsetToZooKeeper(topicAndPartition, offsetAndMetadata.offset)
+        info(s"testinglola - $topicAndPartition, $offsetAndMetadata")
+        val offset = offsetAndMetadata.offset
+        info(s"testinglola1 - $topicAndPartition $offset")
+        commitOffsetToZooKeeper(topicAndPartition, offset)
     }
   }
 
   def commitOffsetToZooKeeper(topicPartition: TopicAndPartition, offset: Long) {
     // Check if the offsets need to be updated
+    val a = checkpointedZkOffsets.get(topicPartition)
+    val b = offset
+    val topicDirs = new ZKGroupTopicDirs(config.groupId, topicPartition.topic)
+    val path = topicDirs.consumerOffsetDir + "/" + topicPartition.partition
+    info(s"lola123 $a $b $topicDirs $path")
     if (checkpointedZkOffsets.get(topicPartition) != offset) {
       val topicDirs = new ZKGroupTopicDirs(config.groupId, topicPartition.topic)
       commitZkUtils.updatePersistentPath(topicDirs.consumerOffsetDir + "/" + topicPartition.partition, offset.toString)
@@ -171,6 +179,7 @@ class KafkaConnector(private val consumerIdString: String,
   private def fetchOffsetFromZooKeeper(topicPartition: TopicAndPartition) = {
     val dirs = new ZKGroupTopicDirs(config.groupId, topicPartition.topic)
     val offsetString = commitZkUtils.readDataMaybeNull(dirs.consumerOffsetDir + "/" + topicPartition.partition)._1
+    info(s"lola1234 $dirs $offsetString")
     offsetString match {
       case Some(offsetStr) => (topicPartition, OffsetMetadataAndError(offsetStr.toLong))
       case None => (topicPartition, OffsetMetadataAndError.NoOffset)

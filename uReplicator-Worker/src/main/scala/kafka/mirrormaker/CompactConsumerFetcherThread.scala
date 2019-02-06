@@ -144,6 +144,7 @@ class CompactConsumerFetcherThread(name: String,
     }
 
     val pti = partitionInfoMap.get(topicAndPartition)
+//    info(s"testing456 $newOffset $pti")
     pti.resetFetchOffset(newOffset)
     pti.resetConsumeOffset(newOffset)
     newOffset
@@ -208,6 +209,10 @@ class CompactConsumerFetcherThread(name: String,
 
         partitionMap.foreach {
           case ((topicAndPartition, partitionFetchState)) =>
+            val a = topicAndPartition.topic
+            val b = topicAndPartition.partition
+            val c = partitionFetchState.fetchOffset
+            info(s"temp1 fetchoffset - $c thread_id $this $partitionFetchState")
             if (partitionFetchState.isReadyForFetch) {
               fetchData.put(
                 new TopicPartition(topicAndPartition.topic, topicAndPartition.partition),
@@ -289,16 +294,29 @@ class CompactConsumerFetcherThread(name: String,
                     try {
                       val messages = partitionData.messages.asInstanceOf[ByteBufferMessageSet]
                       val validBytes = messages.validBytes
+                      // Check it!!!!!!!!!!!!
+                      var string1 = ""
+                      var count = 0
+                      messages.shallowIterator.toSeq.foreach {
+                        case s =>
+                          count = count + 1
+                          string1 += " " + s.nextOffset.toString
+                      }
+//                      info(s"sequence 12345: $count")
+                      if (string1 != "") {
+                        info(s"temp4: $string1")
+                      }
                       val newOffset = messages.shallowIterator.toSeq.lastOption match {
                         case Some(m: MessageAndOffset) => m.nextOffset
                         case None => currentPartitionFetchState.fetchOffset
                       }
+//                      info(s"sequence1234: $newOffset")
                       partitionMap.put(topicAndPartition, new PartitionFetchState(newOffset))
                       fetcherLagStats.getAndMaybePut(topic, partitionId).lag = partitionData.hw - newOffset
                       fetcherStats.byteRate.mark(validBytes)
                       // Once we hand off the partition data to processPartitionData, we don't want to mess with it any more in this thread
                       processPartitionData(topicAndPartition, currentPartitionFetchState.fetchOffset, partitionData)
-                      debug("validBytes=%d, sizeInBytes=%d".format(messages.validBytes, messages.sizeInBytes))
+//                      debug("validBytes=%d, sizeInBytes=%d".format(messages.validBytes, messages.sizeInBytes))
                       newMsgSize += validBytes
                     } catch {
                       // TODO: add stats tracking for invalid messages
