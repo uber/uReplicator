@@ -34,7 +34,7 @@ import java.util.Map;
 
 public class NoProgressTopicPartitionRestletResource  extends ServerResource {
   private final HelixMirrorMakerManager _helixMirrorMakerManager;
-  private final int MAX_SEARCH_TOPIC = 10;
+  private final int MAX_SEARCH_TOPIC = 30;
 
   public NoProgressTopicPartitionRestletResource() {
     _helixMirrorMakerManager = (HelixMirrorMakerManager) getApplication().getContext()
@@ -46,7 +46,7 @@ public class NoProgressTopicPartitionRestletResource  extends ServerResource {
   public Representation get() {
     Form queryParams = getRequest().getResourceRef().getQueryAsForm();
     String maxSearchTopicStr = queryParams.getFirstValue("max_search_topic", true);
-    Integer maxSearchTopic = StringUtils.isNoneEmpty() ? Integer.parseInt(maxSearchTopicStr) : MAX_SEARCH_TOPIC;
+    Integer maxSearchTopic = StringUtils.isNoneEmpty(maxSearchTopicStr) ? Integer.parseInt(maxSearchTopicStr) : MAX_SEARCH_TOPIC;
 
     JSONObject responseJson = new JSONObject();
     OffsetMonitor offsetMonitor = _helixMirrorMakerManager.getOffsetMonitor();
@@ -68,7 +68,12 @@ public class NoProgressTopicPartitionRestletResource  extends ServerResource {
         ExternalView externalViewForTopic =
             _helixMirrorMakerManager.getExternalViewForTopic(info.topic());
         Map<String, String> stateMap = externalViewForTopic.getStateMap(String.valueOf(info.partition()));
-        node.put("idealStateMap", idealStateMap);
+        if (idealStateMap != null && idealStateMap.keySet().size() != 0) {
+          node.put("idealWorker", idealStateMap.keySet().iterator().next());
+        }
+        if (stateMap != null && stateMap.keySet().size() != 0) {
+          node.put("actualWorker", stateMap.keySet().iterator().next());
+        }
         node.put("externalStateMap", stateMap);
       }
       jsonArray.add(node);

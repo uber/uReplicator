@@ -298,4 +298,7 @@ public class HelixMirrorMakerManager implements IHelixManager {
     return _offsetMonitor;
   }
 
+  public boolean isHealthy() {
+    return getOffsetMonitor().isHealthy();
+  }
 }

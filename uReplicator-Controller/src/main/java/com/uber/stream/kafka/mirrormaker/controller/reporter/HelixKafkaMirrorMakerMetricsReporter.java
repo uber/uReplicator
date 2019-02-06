@@ -93,16 +93,7 @@ public class HelixKafkaMirrorMakerMetricsReporter {
 
     Runtime.getRuntime().addShutdownHook(new Thread() {
       public void run() {
-        try {
-          if (enabledJmxReporting) {
-            Closeables.close(_jmxReporter, true);
-          }
-          if (enabledGraphiteReporting) {
-            Closeables.close(_graphiteReporter, true);
-          }
-        } catch (Exception e) {
-          LOGGER.error("Error while closing Jmx and Graphite reporters.", e);
-        }
+        stop();
       }
     });
   }
@@ -143,6 +134,25 @@ public class HelixKafkaMirrorMakerMetricsReporter {
     }
     METRICS_REPORTER_INSTANCE = new HelixKafkaMirrorMakerMetricsReporter(config);
     DID_INIT = true;
+  }
+
+  /**
+   * reset metrics report
+   */
+  public static synchronized void stop() {
+    try {
+      if (METRICS_REPORTER_INSTANCE._jmxReporter != null) {
+        Closeables.close(METRICS_REPORTER_INSTANCE._jmxReporter, true);
+      }
+      if (METRICS_REPORTER_INSTANCE._graphiteReporter != null) {
+        Closeables.close(METRICS_REPORTER_INSTANCE._graphiteReporter, true);
+      }
+    } catch (Exception e) {
+      LOGGER.error("Error while closing Jmx and Graphite reporters.", e);
+    }
+    DID_INIT = false;
+
+    METRICS_REPORTER_INSTANCE = null;
   }
 
   public static HelixKafkaMirrorMakerMetricsReporter get() {
