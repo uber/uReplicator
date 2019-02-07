@@ -247,7 +247,7 @@ class CompactConsumerFetcherThread(name: String,
     }
   }
 
-  private def processFetchRequest(fetchRequestBuilder: org.apache.kafka.common.requests.FetchRequest.Builder) {
+  private def processFetchRequest(fetchRequestBuilder: FetchRequest.Builder) {
     val partitionsWithError = new mutable.HashSet[TopicAndPartition]
     var response: kafka.scalaapi.FetchResponse = null
     try {
