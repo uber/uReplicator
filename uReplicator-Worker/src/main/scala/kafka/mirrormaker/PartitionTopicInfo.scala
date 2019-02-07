@@ -50,5 +50,4 @@ class PartitionTopicInfo(override val topic: String,
   val deleted: AtomicBoolean = new AtomicBoolean(false)
 
   def getDeleted() = deleted.get()
-
 }

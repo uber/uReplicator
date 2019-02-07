@@ -20,7 +20,6 @@ import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 
 import com.google.common.collect.ImmutableMap
 import com.uber.kafka.consumer.NewSimpleConsumerConfig
-import kafka.scalaapi.NewSimpleConsumer
 import kafka.api._
 import kafka.cluster.BrokerEndPoint
 import kafka.common._
@@ -32,6 +31,7 @@ import kafka.utils.ShutdownableThread
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.requests.FetchRequest
+
 import scala.collection.{Map, Set, mutable}
 
 /**
@@ -43,8 +43,6 @@ import scala.collection.{Map, Set, mutable}
  * @param partitionInfoMap
  * @param consumerFetcherManager
  */
-
-
 class CompactConsumerFetcherThread(name: String,
                                    val config: ConsumerConfig,
                                    sourceBroker: BrokerEndPoint,
@@ -176,7 +174,7 @@ class CompactConsumerFetcherThread(name: String,
 
   override def doWork() {
     try {
-      var fetchRequestBuilder : FetchRequest.Builder = null
+      var fetchRequestBuilder :FetchRequest.Builder = null
       val fetchData = new java.util.HashMap[TopicPartition, FetchRequest.PartitionData]()
       inLock(partitionMapLock) {
         inLock(updateMapLock) {
@@ -249,7 +247,7 @@ class CompactConsumerFetcherThread(name: String,
 
   private def processFetchRequest(fetchRequestBuilder: FetchRequest.Builder) {
     val partitionsWithError = new mutable.HashSet[TopicAndPartition]
-    var response: kafka.scalaapi.FetchResponse = null
+    var response: FetchResponse = null
     try {
       trace("Issuing to broker %d of fetch request builder %s".format(sourceBroker.id, fetchRequestBuilder))
       response = simpleConsumer.fetch(fetchRequestBuilder)
@@ -275,7 +273,6 @@ class CompactConsumerFetcherThread(name: String,
       inLock(partitionMapLock) {
         response.data().foreach {
           case (topicAndPartition, partitionData) =>
-            val pti = partitionInfoMap.get(topicAndPartition)
             val topic = topicAndPartition.topic
             val partitionId = topicAndPartition.partition
             partitionMap.get(topicAndPartition).foreach(currentPartitionFetchState => {

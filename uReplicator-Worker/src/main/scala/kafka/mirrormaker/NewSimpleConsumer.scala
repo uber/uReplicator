@@ -13,17 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package kafka.scalaapi
-
-import org.apache.kafka.common.TopicPartition
-import org.slf4j.{Logger, LoggerFactory}
+package kafka.mirrormaker
 
 import com.uber.kafka.consumer.NewSimpleConsumerConfig
 import kafka.common.TopicAndPartition
+import org.apache.kafka.common.TopicPartition
 
 class NewSimpleConsumer(val host: String, val port: Int, val config: NewSimpleConsumerConfig) {
   private val underlying = new com.uber.kafka.consumer.NewSimpleConsumer(host, port, config)
-  val logger1: Logger = LoggerFactory.getLogger(this.getClass)
 
   def connect(): Unit = {
     underlying.connect()

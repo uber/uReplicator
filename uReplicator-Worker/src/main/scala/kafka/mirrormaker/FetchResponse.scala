@@ -13,20 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package kafka.scalaapi
-import kafka.api.FetchResponsePartitionData
+package kafka.mirrormaker
 
-import scala.collection.JavaConversions._
+import kafka.api.FetchResponsePartitionData
 import kafka.common.TopicAndPartition
 import kafka.message.{ByteBufferMessageSet, Message, NoCompressionCodec}
-
-import scala.collection.Seq
 import org.apache.kafka.common.record.Record
 import org.apache.kafka.common.utils.Utils
 
+import scala.collection.JavaConversions._
+import scala.collection.Seq
+
 class FetchResponse(private val underlying: org.apache.kafka.common.requests.FetchResponse) {
   def data(): Seq[(TopicAndPartition, FetchResponsePartitionData)] = {
-    var seq: Seq[(TopicAndPartition, FetchResponsePartitionData)] = Seq()
+    var data: Seq[(TopicAndPartition, FetchResponsePartitionData)] = Seq()
     for (entry <- underlying.responseData().entrySet()) {
       val topicAndPartition = entry.getKey
       val partitionData = entry.getValue
@@ -39,7 +39,7 @@ class FetchResponse(private val underlying: org.apache.kafka.common.requests.Fet
           var keyByteArr: Array[Byte] = null
           var valueByteArr: Array[Byte] = null
           if (record.key() != null) {
-            keyByteArr = record.value().array()
+            keyByteArr = Utils.toArray(record.key())
           }
           if (record.value() != null) {
             valueByteArr = Utils.toArray(record.value())
@@ -62,8 +62,8 @@ class FetchResponse(private val underlying: org.apache.kafka.common.requests.Fet
         topicAndPartition.topic(),
         topicAndPartition.partition()
       )
-      seq = seq :+ Tuple2(topicPartition, responseDataPartition)
+      data = data :+ (topicPartition, responseDataPartition)
     }
-    seq
+    data
   }
 }
