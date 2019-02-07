@@ -14,32 +14,50 @@
  * limitations under the License.
  */
 package kafka.scalaapi
+import kafka.api.FetchResponsePartitionData
+
 import scala.collection.JavaConversions._
 import kafka.common.TopicAndPartition
+import kafka.message.{ByteBufferMessageSet, Message, NoCompressionCodec}
 
 import scala.collection.Seq
-import org.slf4j.{Logger, LoggerFactory}
-import org.apache.kafka.common.protocol.Errors
-import org.apache.kafka.common.record.Records
-
-case class FetchResponsePartitionData2(error: Errors = Errors.NONE, hw: Long = -1L, messages: Records) {
-
-}
+import org.apache.kafka.common.record.Record
+import org.apache.kafka.common.utils.Utils
 
 class FetchResponse(private val underlying: org.apache.kafka.common.requests.FetchResponse) {
-  val logger1: Logger = LoggerFactory.getLogger(this.getClass)
-  def data(): Seq[(TopicAndPartition, FetchResponsePartitionData2)] = {
-    var seq: Seq[(TopicAndPartition, FetchResponsePartitionData2)] = Seq()
+  def data(): Seq[(TopicAndPartition, FetchResponsePartitionData)] = {
+    var seq: Seq[(TopicAndPartition, FetchResponsePartitionData)] = Seq()
     for (entry <- underlying.responseData().entrySet()) {
       val topicAndPartition = entry.getKey
       val partitionData = entry.getValue
 
-      val responseDataPartition = FetchResponsePartitionData2(
+      var messages: List[Message] = List()
+      var offsets: List[Long] = List()
+
+      partitionData.records.records().toSeq.foreach {
+        case record: Record =>
+          var keyByteArr: Array[Byte] = null
+          var valueByteArr: Array[Byte] = null
+          if (record.key() != null) {
+            keyByteArr = record.value().array()
+          }
+          if (record.value() != null) {
+            valueByteArr = Utils.toArray(record.value())
+          }
+          val msg = new Message(
+            valueByteArr,
+            keyByteArr,
+            record.timestamp(),
+            Message.CurrentMagicValue
+          )
+          messages = messages :+ msg
+          offsets = offsets :+ record.offset()
+      }
+      val responseDataPartition = FetchResponsePartitionData(
         partitionData.error,
         partitionData.highWatermark,
-        partitionData.records
+        new ByteBufferMessageSet(NoCompressionCodec, offsets, messages:_*)
       )
-
       val topicPartition = TopicAndPartition(
         topicAndPartition.topic(),
         topicAndPartition.partition()

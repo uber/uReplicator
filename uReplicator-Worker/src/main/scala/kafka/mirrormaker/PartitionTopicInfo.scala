@@ -18,7 +18,8 @@ package kafka.mirrormaker
 import java.util.concurrent._
 import java.util.concurrent.atomic._
 
-import kafka.consumer.FetchedDataChunk
+import kafka.consumer.{ConsumerTopicStatsRegistry, FetchedDataChunk}
+import kafka.message.ByteBufferMessageSet
 import kafka.utils.Logging
 
 /**
@@ -47,7 +48,10 @@ class PartitionTopicInfo(override val topic: String,
     fetchSize = fetchSize,
     clientId = clientId) with Logging {
 
+  private val consumerTopicStats = ConsumerTopicStatsRegistry.getConsumerTopicStat(clientId)
+
   val deleted: AtomicBoolean = new AtomicBoolean(false)
 
   def getDeleted() = deleted.get()
+
 }

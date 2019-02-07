@@ -24,7 +24,7 @@ if [ -z "$EXIST" ]
 fi
 
 # produce raw data
-#while sleep 1
-#do
-#  $BASE_DIR/deploy/kafka/bin/kafka-console-producer.sh < $BASE_DIR/bin/dummyTopicData.log --topic dummyTopic --broker $KAFKA_BROKER
-#done
+while sleep 1
+do
+  $BASE_DIR/deploy/kafka/bin/kafka-console-producer.sh < $BASE_DIR/bin/dummyTopicData.log --topic dummyTopic --broker $KAFKA_BROKER
+done
