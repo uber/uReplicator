@@ -20,30 +20,16 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.codahale.metrics.Counter;
 import com.uber.stream.kafka.mirrormaker.common.configuration.IuReplicatorConf;
-import com.uber.stream.kafka.mirrormaker.common.core.IHelixManager;
-import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
-import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
-import com.uber.stream.kafka.mirrormaker.common.core.TopicWorkload;
-import com.uber.stream.kafka.mirrormaker.common.core.WorkloadInfoRetriever;
+import com.uber.stream.kafka.mirrormaker.common.core.*;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixSetupUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.HttpClientUtils;
 import com.uber.stream.kafka.mirrormaker.manager.ManagerConf;
 import com.uber.stream.kafka.mirrormaker.manager.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import com.uber.stream.kafka.mirrormaker.manager.validation.SourceKafkaClusterValidationManager;
-
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantLock;
-
 import kafka.utils.ZKStringSerializer$;
 import org.I0Itec.zkclient.ZkClient;
-import org.apache.helix.HelixAdmin;
-import org.apache.helix.HelixManager;
-import org.apache.helix.HelixManagerFactory;
-import org.apache.helix.InstanceType;
-import org.apache.helix.LiveInstanceChangeListener;
+import org.apache.helix.*;
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.HelixConfigScope.ConfigScopeProperty;
 import org.apache.helix.model.IdealState;
@@ -55,7 +41,10 @@ import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.swing.text.html.Option;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Main logic for Helix Manager-Controller
@@ -71,7 +60,6 @@ public class ControllerHelixManager implements IHelixManager {
   private static final String SEPARATOR = "@";
 
   private final ManagerConf _conf;
-  private final boolean _enableRebalance;
   private final SourceKafkaClusterValidationManager _srcKafkaValidationManager;
   private final String _helixZkURL;
   private final String _helixClusterName;
@@ -119,7 +107,11 @@ public class ControllerHelixManager implements IHelixManager {
 
   private ZkClient _zkClient;
 
-  public ControllerHelixManager(SourceKafkaClusterValidationManager srcKafkaValidationManager,
+  private boolean _enableAutoScaling = true;
+  private boolean _enableRebalance;
+
+  public ControllerHelixManager(
+      SourceKafkaClusterValidationManager srcKafkaValidationManager,
       ManagerConf managerConf) {
     _conf = managerConf;
     _enableRebalance = managerConf.getEnableRebalance();
@@ -712,7 +704,7 @@ public class ControllerHelixManager implements IHelixManager {
     return _topicToPipelineInstanceMap.get(topicName);
   }
 
-  public synchronized void handleLiveInstanceChange(boolean onlyCheckOffline) throws Exception {
+  public synchronized void handleLiveInstanceChange(boolean onlyCheckOffline, boolean forceBalance) throws Exception {
     _lock.lock();
     try {
       LOGGER.info("handleLiveInstanceChange() wake up!");
@@ -843,7 +835,7 @@ public class ControllerHelixManager implements IHelixManager {
 
       // Check if any worker in route is down
       boolean routeWorkerDown = false;
-      if (_enableRebalance) {
+      if (_enableRebalance || forceBalance) {
         HelixManager workeManager = _workerHelixManager.getHelixManager();
         Map<String, Set<TopicPartition>> workerInstanceToTopicPartitionsMap = HelixUtils
             .getInstanceToTopicPartitionsMap(workeManager, null);
@@ -873,6 +865,8 @@ public class ControllerHelixManager implements IHelixManager {
 
           updateCurrentStatus();
         }
+      }  else {
+        LOGGER.info("AutoBalancing is disabled, do nothing");
       }
 
       if (onlyCheckOffline) {
@@ -885,7 +879,11 @@ public class ControllerHelixManager implements IHelixManager {
         updateCurrentStatus();
       }
 
-      rebalanceCurrentCluster();
+      if (_enableAutoScaling) {
+        scaleCurrentCluster();
+      } else {
+        LOGGER.info("AutoScaling is disabled, do nothing");
+      }
 
     } finally {
       _lock.unlock();
@@ -915,11 +913,11 @@ public class ControllerHelixManager implements IHelixManager {
     }
   }
 
-  public void rebalanceCurrentCluster() throws Exception {
+  public void scaleCurrentCluster() throws Exception {
     int oldTotalNumWorker = 0;
     int newTotalNumWorker = 0;
     for (String pipeline : _pipelineToInstanceMap.keySet()) {
-      LOGGER.info("Start rebalancing pipeline: {}", pipeline);
+      LOGGER.info("Start rescale pipeline: {}", pipeline);
       PriorityQueue<InstanceTopicPartitionHolder> newItphQueue = new PriorityQueue<>(1,
           InstanceTopicPartitionHolder.getTotalWorkloadComparator(_workloadInfoRetrieverMap.get(getSrc(pipeline)), null, false));
       // TODO: what if routeId is not continuous
@@ -1367,6 +1365,30 @@ public class ControllerHelixManager implements IHelixManager {
   private static String getSrc(String pipeline) {
     String[] srcDst = pipeline.split(SEPARATOR);
     return srcDst[1];
+  }
+
+  public void disableAutoScaling() {
+    _enableAutoScaling = false;
+  }
+
+  public void enableAutoScaling() {
+    _enableAutoScaling = true;
+  }
+
+  public boolean isAutoScalingEnabled() {
+    return _enableAutoScaling;
+  }
+
+  public void disableAutoBalancing() {
+    _enableRebalance = false;
+  }
+
+  public void enableAutoBalancing() {
+    _enableRebalance = true;
+  }
+
+  public boolean isAutoBalancingEnabled() {
+    return _enableRebalance;
   }
 
 }
