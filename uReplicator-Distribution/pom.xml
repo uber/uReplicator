@@ -31,10 +31,6 @@
       <artifactId>uReplicator-Manager</artifactId>
       <version>${project.parent.version}</version>
     </dependency>
-    <dependency>
-      <groupId>com.uber.uReplicator</groupId>
-      <artifactId>uReplicator-Manager</artifactId>
-    </dependency>
   </dependencies>
 
   <build>
