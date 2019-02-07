@@ -25,14 +25,18 @@ import kafka.api._
 import kafka.cluster.BrokerEndPoint
 import kafka.common.{ClientIdAndBroker, ErrorMapping, KafkaException, TopicAndPartition}
 import kafka.consumer.ConsumerConfig
-import kafka.message.{ByteBufferMessageSet, InvalidMessageException, MessageAndOffset}
+import kafka.message.{ByteBufferMessageSet, InvalidMessageException, Message, MessageAndOffset}
 import kafka.server.{ClientIdTopicPartition, FetcherLagStats, FetcherStats, PartitionFetchState}
 import kafka.utils.CoreUtils._
 import kafka.utils.ShutdownableThread
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.record.{Record, RecordBatch, Records}
 import org.apache.kafka.common.requests.FetchRequest
+import org.apache.kafka.common.utils.Utils
 
+import scala.collection.JavaConverters._
+import scala.collection.JavaConversions._
 import scala.collection.{Map, Set, mutable}
 
 /**
@@ -144,7 +148,7 @@ class CompactConsumerFetcherThread(name: String,
     }
 
     val pti = partitionInfoMap.get(topicAndPartition)
-//    info(s"testing456 $newOffset $pti")
+    info(s"testing456 $newOffset $pti")
     pti.resetFetchOffset(newOffset)
     pti.resetConsumeOffset(newOffset)
     newOffset
@@ -251,6 +255,29 @@ class CompactConsumerFetcherThread(name: String,
     }
   }
 
+  private def convertRecordstoByteBufferMessageSet(records: Records): ByteBufferMessageSet = {
+    var messages: List[Message] = List()
+    records.records().toSeq.foreach {
+      case record: RecordBatch =>
+        var keyByteArr : Array[Byte] = null
+        var valueByteArr : Array[Byte] = null
+        if (record.key() != null) {
+          keyByteArr = record.value().array()
+        }
+        if (record.value() != null) {
+          valueByteArr = Utils.toArray(record.value())
+        }
+        val msg = new Message(
+          valueByteArr,
+          keyByteArr,
+          record.timestamp(),
+          Message.CurrentMagicValue
+        )
+        messages = messages :+ msg
+    }
+    new ByteBufferMessageSet(messages:_*)
+  }
+
   private def processFetchRequest(fetchRequestBuilder: org.apache.kafka.common.requests.FetchRequest.Builder) {
     val partitionsWithError = new mutable.HashSet[TopicAndPartition]
     var response: kafka.scalaapi.FetchResponse = null
@@ -279,6 +306,9 @@ class CompactConsumerFetcherThread(name: String,
       inLock(partitionMapLock) {
         response.data().foreach {
           case (topicAndPartition, partitionData) =>
+            val pti = partitionInfoMap.get(topicAndPartition)
+            var a = pti.getFetchOffset()
+            logger.info(s"temp3.5251 $a")
             val topic = topicAndPartition.topic
             val partitionId = topicAndPartition.partition
             partitionMap.get(topicAndPartition).foreach(currentPartitionFetchState => {
@@ -292,31 +322,36 @@ class CompactConsumerFetcherThread(name: String,
                 partitionData.error.code() match {
                   case ErrorMapping.NoError =>
                     try {
-                      val messages = partitionData.messages.asInstanceOf[ByteBufferMessageSet]
-                      val validBytes = messages.validBytes
-                      // Check it!!!!!!!!!!!!
+                      a = pti.getFetchOffset()
+                      logger.info(s"temp3.5252 $a")
+                      val messages = partitionData.messages
                       var string1 = ""
                       var count = 0
-                      messages.shallowIterator.toSeq.foreach {
+                      messages.batches().toSeq.foreach {
                         case s =>
                           count = count + 1
-                          string1 += " " + s.nextOffset.toString
+                          string1 += " " + s.nextOffset().toString
                       }
-//                      info(s"sequence 12345: $count")
                       if (string1 != "") {
                         info(s"temp4: $string1")
                       }
-                      val newOffset = messages.shallowIterator.toSeq.lastOption match {
-                        case Some(m: MessageAndOffset) => m.nextOffset
+                      val newOffset = messages.batches().toSeq.lastOption match {
+                        case Some(m: RecordBatch) => m.nextOffset
                         case None => currentPartitionFetchState.fetchOffset
                       }
-//                      info(s"sequence1234: $newOffset")
                       partitionMap.put(topicAndPartition, new PartitionFetchState(newOffset))
                       fetcherLagStats.getAndMaybePut(topic, partitionId).lag = partitionData.hw - newOffset
+
+                      val messages1 = convertRecordstoByteBufferMessageSet(partitionData.messages)
+                      val validBytes = messages1.validBytes
                       fetcherStats.byteRate.mark(validBytes)
                       // Once we hand off the partition data to processPartitionData, we don't want to mess with it any more in this thread
-                      processPartitionData(topicAndPartition, currentPartitionFetchState.fetchOffset, partitionData)
-//                      debug("validBytes=%d, sizeInBytes=%d".format(messages.validBytes, messages.sizeInBytes))
+
+                      val partitionData2 = FetchResponsePartitionData(partitionData.error, partitionData.hw, messages1)
+                      a = pti.getFetchOffset()
+                      logger.info(s"temp3.5253 $a")
+                      processPartitionData(topicAndPartition, currentPartitionFetchState.fetchOffset, partitionData2)
+                      debug("validBytes=%d, sizeInBytes=%d".format(messages1.validBytes, messages1.sizeInBytes))
                       newMsgSize += validBytes
                     } catch {
                       // TODO: add stats tracking for invalid messages
@@ -326,9 +361,9 @@ class CompactConsumerFetcherThread(name: String,
                         // 2. If the message is corrupt due to a transient state in the log (truncation, partial writes can cause this), we simply continue and
                         // should get fixed in the subsequent fetches
                         logger.error("Found invalid messages during fetch for partition [" + topic + "," + partitionId + "] offset " + currentPartitionFetchState.fetchOffset + " error " + ime.getMessage)
-                      case e: Throwable =>
-                        throw new KafkaException("error processing data for partition [%s,%d] offset %d"
-                          .format(topic, partitionId, currentPartitionFetchState.fetchOffset), e)
+//                      case e: Throwable =>
+//                        throw new KafkaException("error processing data for partition [%s,%d] offset %d"
+//                          .format(topic, partitionId, currentPartitionFetchState.fetchOffset), e)
                     }
                   case ErrorMapping.OffsetOutOfRangeCode =>
                     try {
@@ -371,6 +406,7 @@ class CompactConsumerFetcherThread(name: String,
   }
 
   def addPartitions(partitionAndOffsets: Map[TopicAndPartition, Long]) {
+    info(s"add_partitions_called $partitionAndOffsets")
     inLock(updateMapLock) {
       for ((topicAndPartition, offset) <- partitionAndOffsets) {
         // If the partitionMap already has the topic/partition, then do not update the map with the old offset

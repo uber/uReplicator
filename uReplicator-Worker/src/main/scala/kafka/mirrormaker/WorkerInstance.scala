@@ -340,7 +340,6 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
 
   def maybeFlushAndCommitOffsets(forceCommit: Boolean) {
     val a = System.currentTimeMillis() - lastOffsetCommitMs
-    info(s"testing12345 $a $lastOffsetCommitMs $offsetCommitIntervalMs")
     if (forceCommit || System.currentTimeMillis() - lastOffsetCommitMs > offsetCommitIntervalMs) {
       info("Flushing producer.")
       flushLatency.time {

@@ -14,59 +14,30 @@
  * limitations under the License.
  */
 package kafka.scalaapi
-
-import kafka.message.{ByteBufferMessageSet, Message, NoCompressionCodec}
-import org.apache.kafka.common.utils.Utils
-
 import scala.collection.JavaConversions._
 import kafka.common.TopicAndPartition
-import kafka.api.FetchResponsePartitionData
 
 import scala.collection.Seq
-import org.apache.kafka.common.record.{CompressionType, LegacyRecord, TimestampType}
 import org.slf4j.{Logger, LoggerFactory}
+import org.apache.kafka.common.protocol.Errors
+import org.apache.kafka.common.record.Records
+
+case class FetchResponsePartitionData2(error: Errors = Errors.NONE, hw: Long = -1L, messages: Records) {
+
+}
 
 class FetchResponse(private val underlying: org.apache.kafka.common.requests.FetchResponse) {
   val logger1: Logger = LoggerFactory.getLogger(this.getClass)
-  def data(): Seq[(TopicAndPartition, FetchResponsePartitionData)] = {
-    var seq: Seq[(TopicAndPartition, FetchResponsePartitionData)] = Seq()
+  def data(): Seq[(TopicAndPartition, FetchResponsePartitionData2)] = {
+    var seq: Seq[(TopicAndPartition, FetchResponsePartitionData2)] = Seq()
     for (entry <- underlying.responseData().entrySet()) {
       val topicAndPartition = entry.getKey
       val partitionData = entry.getValue
 
-      var messages : List[Message] = List()
-
-      var count = 0
-      partitionData.records.records().foreach {
-        case (record) =>
-          var keyByteArr : Array[Byte] = null
-          var valueByteArr : Array[Byte] = null
-          if (record.key() != null) {
-            keyByteArr = record.value().array()
-          }
-          if (record.value() != null) {
-            valueByteArr = Utils.toArray(record.value())
-          }
-          val msg = new Message(
-            valueByteArr,
-            keyByteArr,
-            record.timestamp(),
-            TimestampType.CREATE_TIME,
-            NoCompressionCodec,
-            record.offset().toInt,
-            -1,
-            Message.CurrentMagicValue
-          )
-          messages = messages :+ msg
-          count = count + 1
-          val s = new String(valueByteArr)
-          logger1.info(s"temp3 fetchresponse $count $s")
-      }
-
-      val responseDataPartition = FetchResponsePartitionData(
+      val responseDataPartition = FetchResponsePartitionData2(
         partitionData.error,
         partitionData.highWatermark,
-        new ByteBufferMessageSet(messages:_*)
+        partitionData.records
       )
 
       val topicPartition = TopicAndPartition(
