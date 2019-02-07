@@ -339,7 +339,6 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
   }
 
   def maybeFlushAndCommitOffsets(forceCommit: Boolean) {
-    val a = System.currentTimeMillis() - lastOffsetCommitMs
     if (forceCommit || System.currentTimeMillis() - lastOffsetCommitMs > offsetCommitIntervalMs) {
       info("Flushing producer.")
       flushLatency.time {
@@ -449,13 +448,13 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
                   producer.send(record, data.partition, data.offset)
                 }
               }
-              maybeFlushAndCommitOffsets(true)
+              maybeFlushAndCommitOffsets(false)
             }
           } catch {
             case e: ConsumerTimeoutException =>
               trace("Caught ConsumerTimeoutException, continue iteration.")
           }
-          maybeFlushAndCommitOffsets(true)
+          maybeFlushAndCommitOffsets(false)
         }
       } catch {
         case t: Throwable =>

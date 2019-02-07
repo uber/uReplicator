@@ -154,17 +154,12 @@ class KafkaConnector(private val consumerIdString: String,
     // Commit all offsets to Zookeeper
     offsetsToCommit.foreach {
       case (topicAndPartition, offsetAndMetadata) =>
-        val offset = offsetAndMetadata.offset
-        commitOffsetToZooKeeper(topicAndPartition, offset)
+        commitOffsetToZooKeeper(topicAndPartition, offsetAndMetadata.offset)
     }
   }
 
   def commitOffsetToZooKeeper(topicPartition: TopicAndPartition, offset: Long) {
     // Check if the offsets need to be updated
-    val a = checkpointedZkOffsets.get(topicPartition)
-    val b = offset
-    val topicDirs = new ZKGroupTopicDirs(config.groupId, topicPartition.topic)
-    val path = topicDirs.consumerOffsetDir + "/" + topicPartition.partition
     if (checkpointedZkOffsets.get(topicPartition) != offset) {
       val topicDirs = new ZKGroupTopicDirs(config.groupId, topicPartition.topic)
       commitZkUtils.updatePersistentPath(topicDirs.consumerOffsetDir + "/" + topicPartition.partition, offset.toString)
