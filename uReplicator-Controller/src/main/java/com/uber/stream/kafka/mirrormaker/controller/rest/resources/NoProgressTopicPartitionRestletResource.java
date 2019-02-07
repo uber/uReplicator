@@ -34,7 +34,6 @@ import java.util.Map;
 
 public class NoProgressTopicPartitionRestletResource extends ServerResource {
   private final HelixMirrorMakerManager _helixMirrorMakerManager;
-  private final int MAX_SEARCH_TOPIC = 30;
 
   public NoProgressTopicPartitionRestletResource() {
     _helixMirrorMakerManager = (HelixMirrorMakerManager) getApplication().getContext()
