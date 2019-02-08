@@ -177,7 +177,7 @@ public class OffsetMonitor {
     if (((current - lastSucceedOffsetCheck) < 2 * refreshIntervalInSec * 1000)) {
       return true;
     } else {
-      logger.info("offset monitor not working property, last succeed execute : {}, current time {}, refresh interval",
+      logger.info("offset monitor not working properly, last successful execution : {}, current time {}, refresh interval {}",
           lastSucceedOffsetCheck,
           current,
           refreshIntervalInSec);
