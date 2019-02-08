@@ -22,15 +22,9 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -41,6 +35,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import kafka.api.PartitionOffsetRequestInfo;
 import kafka.cluster.BrokerEndPoint;
 import kafka.common.TopicAndPartition;
@@ -85,9 +80,10 @@ public class OffsetMonitor {
   private final Map<TopicAndPartition, TopicPartitionLag> noProgressMap;
   private final AtomicInteger numNoProgressTopicPartitions = new AtomicInteger();
   private final AtomicInteger offsetMonitorFailureCount = new AtomicInteger();
+  private long lastSucceedOffsetCheck = 0;
 
   public OffsetMonitor(final HelixMirrorMakerManager helixMirrorMakerManager,
-      ControllerConf controllerConf) {
+                       ControllerConf controllerConf) {
     this.numOffsetThread = controllerConf.getNumOffsetThread();
     this.helixMirrorMakerManager = helixMirrorMakerManager;
     this.srcBrokerList = new ArrayList<>();
@@ -157,6 +153,7 @@ public class OffsetMonitor {
           updateOffset();
           updateOffsetMetrics();
           counter.inc();
+          lastSucceedOffsetCheck = new Date().getTime();
         }
       }, delaySec, refreshIntervalInSec, TimeUnit.SECONDS);
       registerNoProgressMetric();
@@ -173,6 +170,19 @@ public class OffsetMonitor {
       consumer.close();
     }
     logger.info("OffsetMonitor closed");
+  }
+
+  public boolean isHealthy() {
+    long current = new Date().getTime();
+    if (((current - lastSucceedOffsetCheck) < 2 * refreshIntervalInSec * 1000)) {
+      return true;
+    } else {
+      logger.info("offset monitor not working properly, last successful execution : {}, current time {}, refresh interval {}",
+          lastSucceedOffsetCheck,
+          current,
+          refreshIntervalInSec);
+      return false;
+    }
   }
 
   private void updateTopicList() {
@@ -354,6 +364,7 @@ public class OffsetMonitor {
 
   /**
    * Expose the stuck partition map.
+   *
    * @return
    */
   public Map<TopicAndPartition, TopicPartitionLag> getNoProgressTopicToOffsetMap() {
