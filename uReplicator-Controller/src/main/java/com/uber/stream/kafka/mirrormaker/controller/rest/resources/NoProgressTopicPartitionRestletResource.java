@@ -32,9 +32,8 @@ import org.restlet.resource.ServerResource;
 import java.util.Map;
 
 
-public class NoProgressTopicPartitionRestletResource  extends ServerResource {
+public class NoProgressTopicPartitionRestletResource extends ServerResource {
   private final HelixMirrorMakerManager _helixMirrorMakerManager;
-  private final int MAX_SEARCH_TOPIC = 10;
 
   public NoProgressTopicPartitionRestletResource() {
     _helixMirrorMakerManager = (HelixMirrorMakerManager) getApplication().getContext()
@@ -44,35 +43,32 @@ public class NoProgressTopicPartitionRestletResource  extends ServerResource {
   @Override
   @Get
   public Representation get() {
-    Form queryParams = getRequest().getResourceRef().getQueryAsForm();
-    String maxSearchTopicStr = queryParams.getFirstValue("max_search_topic", true);
-    Integer maxSearchTopic = StringUtils.isNoneEmpty() ? Integer.parseInt(maxSearchTopicStr) : MAX_SEARCH_TOPIC;
-
     JSONObject responseJson = new JSONObject();
     OffsetMonitor offsetMonitor = _helixMirrorMakerManager.getOffsetMonitor();
     if (offsetMonitor.getNoProgressTopicToOffsetMap() == null || offsetMonitor.getNoProgressTopicToOffsetMap().keySet().size() == 0) {
       return new StringRepresentation(responseJson.toJSONString());
     }
     JSONArray jsonArray = new JSONArray();
-    int count = 0;
     for (TopicAndPartition info : offsetMonitor.getNoProgressTopicToOffsetMap().keySet()) {
 
       JSONObject node = new JSONObject();
       node.put("topic", info.topic());
-      node.put("partition",info.partition());
+      node.put("partition", info.partition());
 
-      if (count < maxSearchTopic) {
-        IdealState idealStateForTopic =
-            _helixMirrorMakerManager.getIdealStateForTopic(info.topic());
-        Map<String, String> idealStateMap = idealStateForTopic.getInstanceStateMap(String.valueOf(info.partition()));
-        ExternalView externalViewForTopic =
-            _helixMirrorMakerManager.getExternalViewForTopic(info.topic());
-        Map<String, String> stateMap = externalViewForTopic.getStateMap(String.valueOf(info.partition()));
-        node.put("idealStateMap", idealStateMap);
-        node.put("externalStateMap", stateMap);
+      IdealState idealStateForTopic =
+          _helixMirrorMakerManager.getIdealStateForTopic(info.topic());
+      Map<String, String> idealStateMap = idealStateForTopic.getInstanceStateMap(String.valueOf(info.partition()));
+      ExternalView externalViewForTopic =
+          _helixMirrorMakerManager.getExternalViewForTopic(info.topic());
+      Map<String, String> stateMap = externalViewForTopic.getStateMap(String.valueOf(info.partition()));
+      if (idealStateMap != null && idealStateMap.keySet().size() != 0) {
+        node.put("idealWorker", idealStateMap.keySet().iterator().next());
+      }
+      if (stateMap != null && stateMap.keySet().size() != 0) {
+        node.put("actualWorker", stateMap.keySet().iterator().next());
       }
       jsonArray.add(node);
-      count ++;
+
     }
     responseJson.put("topics", jsonArray);
 
