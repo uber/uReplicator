@@ -63,7 +63,7 @@ public class AdminRestletResource extends ServerResource {
     final String opt = (String) getRequest().getAttributes().get("opt");
     JSONObject responseJson = new JSONObject();
     if ("autoscaling".equalsIgnoreCase(opt)) {
-      responseJson.put("auto_scaling", _helixMirrorMakerManager.isAutoBalancingEnabled());
+      responseJson.put("auto_scaling", _helixMirrorMakerManager.isAutoScalingEnabled());
     } else if ("autobalancing".equalsIgnoreCase(opt)) {
       responseJson.put("auto_balancing", _helixMirrorMakerManager.isAutoBalancingEnabled());
     } else if ("controller_autobalancing".equalsIgnoreCase(opt)) {
@@ -88,12 +88,12 @@ public class AdminRestletResource extends ServerResource {
       _helixMirrorMakerManager.disableAutoScaling();
       LOGGER.info("Disabled autoscaling!");
       responseJson.put("opt", "disable_autoscaling");
-      responseJson.put("auto_scaling", _helixMirrorMakerManager.isAutoBalancingEnabled());
+      responseJson.put("auto_scaling", _helixMirrorMakerManager.isAutoScalingEnabled());
     } else if ("enable_autoscaling".equalsIgnoreCase(opt)) {
       _helixMirrorMakerManager.enableAutoScaling();
       LOGGER.info("Enabled autobalancing!");
       responseJson.put("opt", "enable_autobalancing");
-      responseJson.put("auto_scaling", _helixMirrorMakerManager.isAutoBalancingEnabled());
+      responseJson.put("auto_scaling", _helixMirrorMakerManager.isAutoScalingEnabled());
     } else if ("disable_autobalancing".equalsIgnoreCase(opt)) {
       _helixMirrorMakerManager.disableAutoBalancing();
       LOGGER.info("Disabled autobalancing!");

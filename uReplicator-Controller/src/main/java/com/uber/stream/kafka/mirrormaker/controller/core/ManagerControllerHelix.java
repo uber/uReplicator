@@ -16,12 +16,13 @@
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
+import com.uber.stream.kafka.mirrormaker.common.utils.Constants;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerInstance;
 import com.uber.stream.kafka.mirrormaker.controller.utils.HelixUtils;
-import org.apache.helix.HelixManager;
-import org.apache.helix.HelixManagerFactory;
-import org.apache.helix.InstanceType;
+import org.apache.helix.*;
+import org.apache.helix.model.InstanceConfig;
+import org.apache.helix.store.zk.ZkHelixPropertyStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +43,7 @@ public class ManagerControllerHelix {
   private final String _helixClusterName;
   private final String _helixZkURL;
   private final String _instanceId;
+  private final String _hostname;
   private HelixManager _helixZkManager;
 
   private final Object _handlerLock = new Object();
@@ -56,6 +58,7 @@ public class ManagerControllerHelix {
     _helixClusterName = MANAGER_CONTROLLER_HELIX_PREFIX + _controllerConf.getDeploymentName();
     _helixZkURL = HelixUtils.getAbsoluteZkPathForHelix(_controllerConf.getZkStr());
     _instanceId = controllerConf.getInstanceId();
+    _hostname = controllerConf.getHostname();
   }
 
   public synchronized void start() {
@@ -68,6 +71,14 @@ public class ManagerControllerHelix {
         new ControllerStateModelFactory(this));
     try {
       _helixZkManager.connect();
+      ZkHelixPropertyStore<ZNRecord> propertyStore = _helixZkManager.getHelixPropertyStore();
+      String resourcePath = Constants.PARTICIPATE_INSTANCE_ID_HOSTNAME_PROPERTY_KEY;
+      ZNRecord znRecord = propertyStore.get(resourcePath, null, AccessOption.PERSISTENT);
+      if (znRecord == null) {
+        znRecord = new ZNRecord(resourcePath);
+      }
+      znRecord.setSimpleField(_instanceId, _hostname);
+      propertyStore.set(resourcePath, znRecord, AccessOption.PERSISTENT);
     } catch (Exception e) {
       LOGGER.error("Failed to start ManagerControllerHelix " + _helixClusterName, e);
     }
@@ -157,7 +168,7 @@ public class ManagerControllerHelix {
       _currentControllerInstance.start();
     } catch (Exception e) {
       String msg = "Failed to start controller instance. Roll back.";
-      LOGGER.error(msg);
+      LOGGER.error(msg, e);
       if (_currentControllerInstance.stop()) {
         _currentControllerInstance = null;
       } else {
