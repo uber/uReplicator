@@ -30,7 +30,7 @@ public class TestAdminManagement extends RestTestBase {
     Response response = HTTP_CLIENT.handle(request);
     String responseString = response.getEntityAsText();
     Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
-    Assert.assertEquals(responseString, "{\"status\":200}");
+    Assert.assertEquals(responseString, "{\"opt\":\"force_rebalance\",\"status\":200}");
   }
 
   @Test
