@@ -25,7 +25,6 @@ import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolde
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicWorkload;
 import com.uber.stream.kafka.mirrormaker.common.core.WorkloadInfoRetriever;
-import com.uber.stream.kafka.mirrormaker.common.utils.Constants;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixSetupUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.HttpClientUtils;
@@ -41,6 +40,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import kafka.utils.ZKStringSerializer$;
 import org.I0Itec.zkclient.ZkClient;
+import org.apache.commons.lang.StringUtils;
 import org.apache.helix.*;
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.HelixConfigScope.ConfigScopeProperty;
@@ -53,8 +53,6 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.naming.OperationNotSupportedException;
 
 /**
  * Main logic for Helix Manager-Controller
@@ -260,11 +258,11 @@ public class ControllerHelixManager implements IHelixManager {
       Map<String, InstanceTopicPartitionHolder> instanceMap) {
     LOGGER.info("\n\nFor controller instanceToTopicPartitionsMap:");
 
-    ZNRecord znRecord = _helixPropertyStore.get(Constants.CONTROLLER_ID_HOSTNAME_PROPERTY_KEY, null, AccessOption.PERSISTENT);
-    Map<String, String> instanceIdAndNameMap = znRecord != null ? znRecord.getSimpleFields() : new HashMap<>();
+
+    Map<String, String> instanceIdAndNameMap = HelixUtils.getInstanceToHostnameMap(_helixManager);
     int validateWrongCount = 0;
     for (String instanceId : instanceToTopicPartitionsMap.keySet()) {
-      String hostname = instanceIdAndNameMap.containsKey(instanceId) ? instanceIdAndNameMap.get(instanceId) : instanceId;
+      String hostname = instanceIdAndNameMap.containsKey(instanceId) ? instanceIdAndNameMap.get(instanceId) : "";
       Set<TopicPartition> topicPartitions = instanceToTopicPartitionsMap.get(instanceId);
       Set<TopicPartition> routeSet = new HashSet<>();
       // TODO: one instance suppose to have only one route
@@ -284,8 +282,8 @@ public class ControllerHelixManager implements IHelixManager {
           }
         }
         validateWrongCount++;
-        LOGGER.error("Validate WRONG: Incorrect route found for InstanceName: {}, route: {}, pipelines: {}, #workers: {}, worker: {}",
-            hostname, routeSet, topicRouteSet, instanceMap.get(instanceId).getWorkerSet().size(), instanceMap.get(instanceId).getWorkerSet());
+        LOGGER.error("Validate WRONG: Incorrect route found for Hostname: {}, InstanceId: {}, route: {}, pipelines: {}, #workers: {}, worker: {}",
+            hostname, instanceId, routeSet, topicRouteSet, instanceMap.get(instanceId).getWorkerSet().size(), instanceMap.get(instanceId).getWorkerSet());
       } else {
         int partitionCount = 0;
         Set<TopicPartition> mismatchTopicPartition = new HashSet<>();
@@ -300,8 +298,8 @@ public class ControllerHelixManager implements IHelixManager {
             }
           }
         }
-        if (mismatchTopicPartition.isEmpty()) {
-          LOGGER.info("Validate OK: InstanceName: {}, route: {}, #topics: {}, #partitions: {}, #workers: {}, worker: {}", hostname, routeSet,
+        if (mismatchTopicPartition.isEmpty() && StringUtils.isNotEmpty(hostname)) {
+          LOGGER.info("Validate OK: Hostname: {}, InstanceId: {}, route: {}, #topics: {}, #partitions: {}, #workers: {}, worker: {}", hostname, instanceId, routeSet,
               topicPartitions.size() - 1, partitionCount, instanceMap.get(instanceId).getWorkerSet().size(), instanceMap.get(instanceId).getWorkerSet());
 
           try {
@@ -332,12 +330,12 @@ public class ControllerHelixManager implements IHelixManager {
 
             if (topicOnlyInManager.size() > 1 || (topicOnlyInManager.size() == 1 && !topicOnlyInManager.iterator().next().startsWith(SEPARATOR))) {
               validateWrongCount++;
-              LOGGER.error("Validate WRONG: InstanceName: {}, route: {}, topic only in manager: {}", hostname, routeSet, topicOnlyInManager);
+              LOGGER.error("Validate WRONG: Hostname: {}, InstanceId: {}, route: {}, topic only in manager: {}", hostname, instanceId, routeSet, topicOnlyInManager);
             }
 
             if (!controllerTopics.isEmpty()) {
               validateWrongCount++;
-              LOGGER.error("Validate WRONG: InstanceName: {}, route: {}, topic only in controller: {}", hostname, routeSet, controllerTopics);
+              LOGGER.error("Validate WRONG: Hostname: {}, InstanceId: {}, route: {}, topic only in controller: {}", hostname, instanceId, routeSet, controllerTopics);
             }
           } catch (Exception e) {
             validateWrongCount++;
@@ -368,22 +366,25 @@ public class ControllerHelixManager implements IHelixManager {
 
             if (!workerOnlyInManager.isEmpty()) {
               validateWrongCount++;
-              LOGGER.error("Validate WRONG: InstanceName: {}, route: {}, worker only in manager: {}", hostname, routeSet, workerOnlyInManager);
+              LOGGER.error("Validate WRONG: Hostname: {}, InstanceId: {}, route: {}, worker only in manager: {}", hostname, instanceId, routeSet, workerOnlyInManager);
             }
 
             if (!controllerWorkers.isEmpty()) {
               validateWrongCount++;
-              LOGGER.error("Validate WRONG: InstanceName: {}, route: {}, worker only in controller: {}", hostname, routeSet, controllerWorkers);
+              LOGGER.error("Validate WRONG: Hostname: {}, InstanceId: {}, route: {}, worker only in controller: {}", hostname, instanceId, routeSet, controllerWorkers);
             }
           } catch (Exception e) {
             validateWrongCount++;
             LOGGER.error("Validate WRONG: Get workers error when connecting to {} for route {}", hostname, routeSet, e);
           }
 
+        } else if (StringUtils.isEmpty(hostname)) {
+          validateWrongCount++;
+          LOGGER.error("Validate WRONG: Trying to get hostname for InstanceId: {} failed ", instanceId);
         } else {
           validateWrongCount++;
-          LOGGER.error("Validate WRONG: mismatch route found for InstanceName: {}, route: {}, mismatch: {}, #workers: {}, worker: {}",
-              hostname, routeSet, mismatchTopicPartition, instanceMap.get(instanceId).getWorkerSet().size(), instanceMap.get(instanceId).getWorkerSet());
+          LOGGER.error("Validate WRONG: mismatch route found for Hostname: {}, InstanceId: {}, route: {}, mismatch: {}, #workers: {}, worker: {}",
+              hostname, instanceId, routeSet, mismatchTopicPartition, instanceMap.get(instanceId).getWorkerSet().size(), instanceMap.get(instanceId).getWorkerSet());
         }
       }
     }

@@ -16,7 +16,6 @@
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
-import com.uber.stream.kafka.mirrormaker.common.utils.Constants;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerInstance;
 import com.uber.stream.kafka.mirrormaker.controller.utils.HelixUtils;
@@ -28,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Helix between uReplicator Manager and Controllers.
+ *
  * @author Zhenmin Li
  */
 public class ManagerControllerHelix {
@@ -73,14 +73,9 @@ public class ManagerControllerHelix {
       _helixZkManager.connect();
       InstanceConfig instanceConfig = new InstanceConfig(_instanceId);
       instanceConfig.setHostName(_hostname);
-      ZkHelixPropertyStore<ZNRecord> propertyStore = _helixZkManager.getHelixPropertyStore();
-      String resourcePath = Constants.CONTROLLER_ID_HOSTNAME_PROPERTY_KEY;
-      ZNRecord znRecord = propertyStore.get(resourcePath, null, AccessOption.PERSISTENT);
-      if (znRecord == null) {
-        znRecord = new ZNRecord(resourcePath);
-      }
-      znRecord.setSimpleField(_instanceId, _hostname);
-      propertyStore.set(resourcePath, znRecord, AccessOption.PERSISTENT);
+      instanceConfig.setInstanceEnabled(true);
+      _helixZkManager.getConfigAccessor().setInstanceConfig(_helixClusterName, _instanceId,
+          instanceConfig);
     } catch (Exception e) {
       LOGGER.error("Failed to start ManagerControllerHelix " + _helixClusterName, e);
     }
@@ -144,14 +139,14 @@ public class ManagerControllerHelix {
     }
 
     // set corresponding zkpath for src and dst clusters
-    String srcKafkaZkPath = (String)_controllerConf.getProperty(CONFIG_KAFKA_CLUSTER_KEY_PREFIX + srcCluster);
+    String srcKafkaZkPath = (String) _controllerConf.getProperty(CONFIG_KAFKA_CLUSTER_KEY_PREFIX + srcCluster);
     if (srcKafkaZkPath == null) {
       String msg = "Failed to find configuration of ZooKeeper path for source cluster " + srcCluster;
       LOGGER.error(msg);
       throw new IllegalArgumentException(msg);
     }
     _controllerConf.setSrcKafkaZkPath(srcKafkaZkPath);
-    String destKafkaZkPath = (String)_controllerConf.getProperty(CONFIG_KAFKA_CLUSTER_KEY_PREFIX + dstCluster);
+    String destKafkaZkPath = (String) _controllerConf.getProperty(CONFIG_KAFKA_CLUSTER_KEY_PREFIX + dstCluster);
     if (destKafkaZkPath == null) {
       String msg = "Failed to find configuration of ZooKeeper path for destination cluster " + dstCluster;
       LOGGER.error(msg);
