@@ -90,7 +90,7 @@ services:
         --producer.config example/example-producer.properties \
         --helix.config example/example-helix-3.properties \
         --topic.mappings example/example-topicmapping.properties \
-        --cluster.config  example/example-cluster.properties"
+        --cluster.config example/example-cluster.properties"
     depends_on:
     - controller
     links:

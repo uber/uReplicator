@@ -16,5 +16,5 @@
 package com.uber.stream.kafka.mirrormaker.common.utils;
 
 public class Constants {
-  public static final String PARTICIPATE_INSTANCE_ID_HOSTNAME_PROPERTY_KEY = "/PARTICIPATE_INSTANCE_ID_HOSTNAME_PROPERTY_KEY";
+  public static final String CONTROLLER_ID_HOSTNAME_PROPERTY_KEY = "/CONTROLLER_ID_HOSTNAME_PROPERTY_KEY";
 }

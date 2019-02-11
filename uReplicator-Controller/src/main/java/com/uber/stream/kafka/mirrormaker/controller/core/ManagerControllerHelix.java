@@ -71,8 +71,10 @@ public class ManagerControllerHelix {
         new ControllerStateModelFactory(this));
     try {
       _helixZkManager.connect();
+      InstanceConfig instanceConfig = new InstanceConfig(_instanceId);
+      instanceConfig.setHostName(_hostname);
       ZkHelixPropertyStore<ZNRecord> propertyStore = _helixZkManager.getHelixPropertyStore();
-      String resourcePath = Constants.PARTICIPATE_INSTANCE_ID_HOSTNAME_PROPERTY_KEY;
+      String resourcePath = Constants.CONTROLLER_ID_HOSTNAME_PROPERTY_KEY;
       ZNRecord znRecord = propertyStore.get(resourcePath, null, AccessOption.PERSISTENT);
       if (znRecord == null) {
         znRecord = new ZNRecord(resourcePath);

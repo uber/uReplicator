@@ -260,7 +260,7 @@ public class ControllerHelixManager implements IHelixManager {
       Map<String, InstanceTopicPartitionHolder> instanceMap) {
     LOGGER.info("\n\nFor controller instanceToTopicPartitionsMap:");
 
-    ZNRecord znRecord = _helixPropertyStore.get(Constants.PARTICIPATE_INSTANCE_ID_HOSTNAME_PROPERTY_KEY, null, AccessOption.PERSISTENT);
+    ZNRecord znRecord = _helixPropertyStore.get(Constants.CONTROLLER_ID_HOSTNAME_PROPERTY_KEY, null, AccessOption.PERSISTENT);
     Map<String, String> instanceIdAndNameMap = znRecord != null ? znRecord.getSimpleFields() : new HashMap<>();
     int validateWrongCount = 0;
     for (String instanceId : instanceToTopicPartitionsMap.keySet()) {

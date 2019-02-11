@@ -62,9 +62,9 @@ public class AdminRestletResource extends ServerResource {
   public Representation get() {
     final String opt = (String) getRequest().getAttributes().get("opt");
     JSONObject responseJson = new JSONObject();
-    if ("autoscaling".equalsIgnoreCase(opt)) {
+    if ("autoscaling_status".equalsIgnoreCase(opt)) {
       responseJson.put("auto_scaling", _helixMirrorMakerManager.isAutoScalingEnabled());
-    } else if ("autobalancing".equalsIgnoreCase(opt)) {
+    } else if ("autobalancing_status".equalsIgnoreCase(opt)) {
       responseJson.put("auto_balancing", _helixMirrorMakerManager.isAutoBalancingEnabled());
     } else if ("controller_autobalancing".equalsIgnoreCase(opt)) {
       AdminHelper helper = new AdminHelper(_helixMirrorMakerManager);
