@@ -21,6 +21,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
 import com.uber.stream.kafka.mirrormaker.manager.core.ControllerHelixManager;
 import com.uber.stream.kafka.mirrormaker.manager.core.WorkerHelixManager;
+import kafka.admin.AdminUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.restlet.data.Form;
 import org.restlet.data.MediaType;
@@ -62,10 +63,10 @@ public class AdminRestletResource extends ServerResource {
   public Representation get() {
     final String opt = (String) getRequest().getAttributes().get("opt");
     JSONObject responseJson = new JSONObject();
-    if ("autoscaling".equalsIgnoreCase(opt)) {
-      responseJson.put("auto_scaling", _helixMirrorMakerManager.isAutoBalancingEnabled());
-    } else if ("autobalancing".equalsIgnoreCase(opt)) {
-      responseJson.put("auto_balancing", _helixMirrorMakerManager.isAutoBalancingEnabled());
+    if ("autoscaling_status".equalsIgnoreCase(opt)) {
+      responseJson.put(opt, _helixMirrorMakerManager.isAutoScalingEnabled());
+    } else if ("autobalancing_status".equalsIgnoreCase(opt)) {
+      responseJson.put(opt, _helixMirrorMakerManager.isAutoBalancingEnabled());
     } else if ("controller_autobalancing".equalsIgnoreCase(opt)) {
       AdminHelper helper = new AdminHelper(_helixMirrorMakerManager);
       return new StringRepresentation(helper.getControllerAutobalancingStatus(null, null)
@@ -84,26 +85,23 @@ public class AdminRestletResource extends ServerResource {
     // TODO: separate manager and controller operation
     final String opt = (String) getRequest().getAttributes().get("opt");
     JSONObject responseJson = new JSONObject();
+    responseJson.put("opt", opt);
     if ("disable_autoscaling".equalsIgnoreCase(opt)) {
       _helixMirrorMakerManager.disableAutoScaling();
       LOGGER.info("Disabled autoscaling!");
-      responseJson.put("opt", "disable_autoscaling");
-      responseJson.put("auto_scaling", _helixMirrorMakerManager.isAutoBalancingEnabled());
+      responseJson.put("autoscaling_status", _helixMirrorMakerManager.isAutoScalingEnabled());
     } else if ("enable_autoscaling".equalsIgnoreCase(opt)) {
       _helixMirrorMakerManager.enableAutoScaling();
-      LOGGER.info("Enabled autobalancing!");
-      responseJson.put("opt", "enable_autobalancing");
-      responseJson.put("auto_scaling", _helixMirrorMakerManager.isAutoBalancingEnabled());
+      LOGGER.info("Enabled autoscaling!");
+      responseJson.put("autoscaling_status", _helixMirrorMakerManager.isAutoScalingEnabled());
     } else if ("disable_autobalancing".equalsIgnoreCase(opt)) {
       _helixMirrorMakerManager.disableAutoBalancing();
       LOGGER.info("Disabled autobalancing!");
-      responseJson.put("opt", "disable_autobalancing");
-      responseJson.put("auto_balancing", _helixMirrorMakerManager.isAutoBalancingEnabled());
+      responseJson.put("autobalancing_status", _helixMirrorMakerManager.isAutoBalancingEnabled());
     } else if ("enable_autobalancing".equalsIgnoreCase(opt)) {
       _helixMirrorMakerManager.enableAutoBalancing();
       LOGGER.info("Enabled autobalancing!");
-      responseJson.put("opt", "enableAutoBalancing");
-      responseJson.put("auto_balancing", _helixMirrorMakerManager.isAutoBalancingEnabled());
+      responseJson.put("autobalancing_status", _helixMirrorMakerManager.isAutoBalancingEnabled());
     } else if ("controller_autobalancing".equalsIgnoreCase(opt)) {
       Form queryParams = getRequest().getResourceRef().getQueryAsForm();
       String srcCluster = ENABLE_PER_ROUTE_CHANGE ? queryParams.getFirstValue("srcCluster", true) : "";

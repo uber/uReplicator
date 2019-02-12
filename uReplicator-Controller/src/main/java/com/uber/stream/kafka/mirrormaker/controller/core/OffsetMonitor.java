@@ -174,7 +174,7 @@ public class OffsetMonitor {
 
   public boolean isHealthy() {
     long current = new Date().getTime();
-    if (((current - lastSucceedOffsetCheck) < 2 * refreshIntervalInSec * 1000)) {
+    if (refreshIntervalInSec > 0 && ((current - lastSucceedOffsetCheck) < 2 * refreshIntervalInSec * 1000)) {
       return true;
     } else {
       logger.info("offset monitor not working properly, last successful execution : {}, current time {}, refresh interval {}",
