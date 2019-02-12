@@ -54,6 +54,7 @@ public class WorkloadInfoRetriever {
 
   private final String _c3Host;
   private final int _c3Port;
+  private final boolean isController;
 
   private static final long DEFAULT_WORKLOAD_WINDOW_MILLIS = TimeUnit.MINUTES.toMillis(10);
   private static final long DEFAULT_WORKLOAD_COARSE_WINDOW_MILLIS = TimeUnit.HOURS.toMillis(3);
@@ -70,16 +71,19 @@ public class WorkloadInfoRetriever {
     _refreshPeriodInSeconds = 300;
     _c3Host = "";
     _c3Port = 0;
-  }
-  public WorkloadInfoRetriever(IHelixManager helixMirrorMakerManager) {
-    this(helixMirrorMakerManager, helixMirrorMakerManager.getConf().getSrcKafkaZkPath());
+    isController = false;
   }
 
-  public WorkloadInfoRetriever(IHelixManager helixMirrorMakerManager, String srcKafkaZkPath) {
+  public WorkloadInfoRetriever(IHelixManager helixMirrorMakerManager, boolean isController) {
+    this(helixMirrorMakerManager, isController, helixMirrorMakerManager.getConf().getSrcKafkaZkPath());
+  }
+
+  public WorkloadInfoRetriever(IHelixManager helixMirrorMakerManager, boolean isController, String srcKafkaZkPath) {
     this._helixMirrorMakerManager = helixMirrorMakerManager;
     this._refreshPeriodInSeconds = helixMirrorMakerManager.getConf().getWorkloadRefreshPeriodInSeconds();
     this._c3Host = helixMirrorMakerManager.getConf().getC3Host();
     this._c3Port = helixMirrorMakerManager.getConf().getC3Port();
+    this.isController = isController;
     this._defaultTopicWorkload = new TopicWorkload(helixMirrorMakerManager.getConf().getBytesPerSecondDefault(),
         helixMirrorMakerManager.getConf().getMsgsPerSecondDefault());
     if (srcKafkaZkPath == null) {
@@ -147,7 +151,7 @@ public class WorkloadInfoRetriever {
     TopicWorkload maxTw = null;
     long current = System.currentTimeMillis();
     long lookbackWindow = _maxValidTimeMillis;
-    if (tws.stream().anyMatch( topicWorkload -> {
+    if (tws.stream().anyMatch(topicWorkload -> {
       return current - topicWorkload.getLastUpdate() < _estimationLookBackWindow;
     })) {
       lookbackWindow = _estimationLookBackWindow;
@@ -167,6 +171,7 @@ public class WorkloadInfoRetriever {
     _defaultTopicWorkload = defaultWorkload;
   }
 
+
   public void refreshWorkloads() throws IOException {
     long current = System.currentTimeMillis();
     if (_lastRefreshTimeMillis + _minRefreshIntervalMillis > current) {
@@ -177,53 +182,13 @@ public class WorkloadInfoRetriever {
     _lastRefreshTimeMillis = current;
 
     List<String> topics = _helixMirrorMakerManager.getTopicLists();
-    Map<String, Integer> topicsPartitions = new HashMap<>();
-    for (String topic : topics) {
-      IdealState idealState = _helixMirrorMakerManager.getIdealStateForTopic(topic);
-      /*if (idealState != null) {
-        int partitions = idealState.getNumPartitions();
-        if (partitions > 0) {
-          topicsPartitions.put(topic, partitions);
-        }
-      }*/
-      // TODO: make it compatible with controller
-      if (idealState != null) {
-        Iterator<String> iter = idealState.getPartitionSet().iterator();
-        while (iter.hasNext()) {
-          String route = iter.next();
-          if (route.substring(1).startsWith(_simpleSrcKafkaCluster)) {
-            topicsPartitions.put(topic, idealState.getNumPartitions());
-            break;
-          }
-        }
-      }
-    }
+    Map<String, Integer> topicsPartitions = getTopicsPartitions(topics);
     retrieveWorkload(current, DEFAULT_WORKLOAD_WINDOW_MILLIS, topicsPartitions);
   }
 
   public void initializeWorkloads() throws IOException {
     List<String> topics = _helixMirrorMakerManager.getTopicLists();
-    Map<String, Integer> topicsPartitions = new HashMap<>();
-    for (String topic : topics) {
-      IdealState idealState = _helixMirrorMakerManager.getIdealStateForTopic(topic);
-      /*if (idealState != null) {
-        int partitions = idealState.getNumPartitions();
-        if (partitions > 0) {
-          topicsPartitions.put(topic, partitions);
-        }
-      }*/
-      // TODO: make it compatible with controller
-      if (idealState != null) {
-        Iterator<String> iter = idealState.getPartitionSet().iterator();
-        while (iter.hasNext()) {
-          String route = iter.next();
-          if (route.substring(1).startsWith(_simpleSrcKafkaCluster)) {
-            topicsPartitions.put(topic, idealState.getNumPartitions());
-            break;
-          }
-        }
-      }
-    }
+    Map<String, Integer> topicsPartitions = getTopicsPartitions(topics);
     // use coarse granularity for the time windows older than 1 hour
     long current = System.currentTimeMillis();
     long fromMs = current - _maxValidTimeMillis;
@@ -235,7 +200,7 @@ public class WorkloadInfoRetriever {
     }
     // use fine granularity for the last hour
     for (long tsInMs = toCoarseMs + DEFAULT_WORKLOAD_WINDOW_MILLIS; tsInMs <= current;
-        tsInMs += DEFAULT_WORKLOAD_WINDOW_MILLIS) {
+         tsInMs += DEFAULT_WORKLOAD_WINDOW_MILLIS) {
       retrieveWorkload(tsInMs, DEFAULT_WORKLOAD_WINDOW_MILLIS, topicsPartitions);
     }
     LOGGER.info("Finished initializing workload for source " + _srcKafkaCluster);
@@ -269,5 +234,31 @@ public class WorkloadInfoRetriever {
         }
       }
     }
+  }
+
+  private Map<String, Integer> getTopicsPartitions(List<String> topics) {
+    Map<String, Integer> topicsPartitions = new HashMap<>();
+    for (String topic : topics) {
+      IdealState idealState = _helixMirrorMakerManager.getIdealStateForTopic(topic);
+      // TODO: make it compatible with controller
+      if (idealState != null) {
+        if (isController) {
+          int partitions = idealState.getNumPartitions();
+          if (partitions > 0) {
+            topicsPartitions.put(topic, partitions);
+          }
+        } else {
+          Iterator<String> iter = idealState.getPartitionSet().iterator();
+          while (iter.hasNext()) {
+            String route = iter.next();
+            if (route.substring(1).startsWith(_simpleSrcKafkaCluster)) {
+              topicsPartitions.put(topic, idealState.getNumPartitions());
+              break;
+            }
+          }
+        }
+      }
+    }
+    return topicsPartitions;
   }
 }

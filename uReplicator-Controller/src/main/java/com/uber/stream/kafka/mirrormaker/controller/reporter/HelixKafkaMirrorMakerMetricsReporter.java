@@ -25,6 +25,8 @@ import com.google.common.io.Closeables;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
+
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 /**
@@ -46,7 +48,7 @@ public class HelixKafkaMirrorMakerMetricsReporter {
   // Exposed for tests. Call Metrics.get() instead.
   HelixKafkaMirrorMakerMetricsReporter(ControllerConf config) {
     final String environment = config.getEnvironment();
-    final String clientId = config.getInstanceId();
+    final String clientId = StringUtils.isNotEmpty(config.getHostname()) ? config.getHostname() : config.getInstanceId();
     String[] dcNenv = parse(environment);
     if (dcNenv == null) {
       LOGGER.error("Error parsing environment info");
@@ -93,16 +95,7 @@ public class HelixKafkaMirrorMakerMetricsReporter {
 
     Runtime.getRuntime().addShutdownHook(new Thread() {
       public void run() {
-        try {
-          if (enabledJmxReporting) {
-            Closeables.close(_jmxReporter, true);
-          }
-          if (enabledGraphiteReporting) {
-            Closeables.close(_graphiteReporter, true);
-          }
-        } catch (Exception e) {
-          LOGGER.error("Error while closing Jmx and Graphite reporters.", e);
-        }
+        stop();
       }
     });
   }
@@ -143,6 +136,25 @@ public class HelixKafkaMirrorMakerMetricsReporter {
     }
     METRICS_REPORTER_INSTANCE = new HelixKafkaMirrorMakerMetricsReporter(config);
     DID_INIT = true;
+  }
+
+  /**
+   * reset metrics report
+   */
+  public static synchronized void stop() {
+    try {
+      if (METRICS_REPORTER_INSTANCE._jmxReporter != null) {
+        Closeables.close(METRICS_REPORTER_INSTANCE._jmxReporter, true);
+      }
+      if (METRICS_REPORTER_INSTANCE._graphiteReporter != null) {
+        Closeables.close(METRICS_REPORTER_INSTANCE._graphiteReporter, true);
+      }
+    } catch (Exception e) {
+      LOGGER.error("Error while closing Jmx and Graphite reporters.", e);
+    }
+    DID_INIT = false;
+
+    METRICS_REPORTER_INSTANCE = null;
   }
 
   public static HelixKafkaMirrorMakerMetricsReporter get() {

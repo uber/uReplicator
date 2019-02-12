@@ -219,6 +219,9 @@ public class ControllerInstance {
       success = false;
     }
 
+    LOGGER.info("stopping metrics reporter");
+    HelixKafkaMirrorMakerMetricsReporter.stop();
+
     if (_clusterInfoBackupManager != null) {
       LOGGER.info("stopping cluster info backup manager");
       _clusterInfoBackupManager.stop();

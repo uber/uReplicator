@@ -1,0 +1,97 @@
+version: '3'
+#
+# Copyright (C) 2015-2017 Uber Technologies, Inc. (streaming-data@uber.com)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+services:
+  devenv:
+    build: devenv/.
+    ports:
+    - "2181:2181"
+    - "9093:9093"
+    - "9094:9094"
+    healthcheck:
+      test: ["CMD", "./prepare-zk.sh", "devenv", "5"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+  manager:
+    build: .
+    ports:
+    - "8100:8100"
+    command: "manager \
+       -config example/example-cluster.properties \
+       -srcClusters cluster1 \
+       -destClusters cluster2 \
+       -deployment ureplicator-example \
+       -env deployment \
+       -enableRebalance true \
+       -zookeeper devenv:2181/ureplicator-example \
+       -managerPort 8100 \
+       -controllerPort 9000 \
+       -initMaxNumWorkersPerRoute 5 \
+       -maxNumWorkersPerRoute 10"
+    depends_on:
+    - devenv
+    deploy:
+      restart_policy:
+        condition: on-failure
+    links:
+    - devenv
+    healthcheck:
+      test: ["CMD", "./wait-for-it.sh", "manager:8100", "60"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+  controller:
+    image: ureplicator_manager
+    ports:
+    - "9000:9000"
+    command: "controller \
+          -config example/example-cluster.properties \
+          -enableFederated true \
+          -deploymentName ureplicator-example \
+          -srcClusters cluster1 \
+          -destClusters cluster2 \
+          -helixClusterName ureplicator \
+          -mode customized \
+          -zookeeper devenv:2181/ureplicator-example \
+          -port 9000 \
+          -instanceId 1 \
+          -hostname controller \
+          -offsetRefreshIntervalInSec 0 \
+          -enableAutoWhitelist false
+          "
+    depends_on:
+    - devenv
+    links:
+    - devenv
+    healthcheck:
+      test: ["CMD", "./wait-for-it.sh", "controller:9000", "60"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+  worker_1:
+    image: ureplicator_manager
+    command:  "worker \
+        --consumer.config example/example-consumer.properties \
+        --producer.config example/example-producer.properties \
+        --helix.config example/example-helix-3.properties \
+        --topic.mappings example/example-topicmapping.properties \
+        --cluster.config example/example-cluster.properties"
+    depends_on:
+    - controller
+    links:
+    - controller

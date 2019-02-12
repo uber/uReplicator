@@ -20,6 +20,8 @@ import java.net.UnknownHostException;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
+
+import com.uber.stream.kafka.mirrormaker.common.configuration.IuReplicatorConf;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.apache.commons.configuration.ConfigurationException;
@@ -31,7 +33,7 @@ import org.apache.commons.configuration.PropertiesConfiguration;
  *
  * @author xiangfu
  */
-public class ControllerConf extends PropertiesConfiguration {
+public class ControllerConf extends PropertiesConfiguration implements IuReplicatorConf {
 
   private static final String CONFIG_FILE = "config.file";
   private static final String FEDERATED_ENABLED = "federated.enabled";
@@ -144,6 +146,14 @@ public class ControllerConf extends PropertiesConfiguration {
   private static final int DEFAULT_MOVE_STUCK_PARTITION_AFTER_MINUTES = 20;
 
   private static final String defaultLocal = "/var/log/kafka-mirror-maker-controller";
+
+  private static final String HOSTNAME = "controller.hostname";
+
+  private static final String BYTES_PER_SECOND_DEFAULT = "controller.bytes.per.second.default";
+  private static final double DEFAULT_BYTES_PER_SECOND_DEFAULT = 1000.0;
+
+  private static final String MSGS_PER_SECOND_DEFAULT = "controller.msgs.per.second.default";
+  private static final double DEFAULT_MSGS_PER_SECOND_DEFAULT = 1;
 
   public ControllerConf() {
     super();
@@ -331,6 +341,22 @@ public class ControllerConf extends PropertiesConfiguration {
     setProperty(MOVE_STUCK_PARTITION_AFTER_MINUTES, Integer.parseInt(moveStuckPartitionAfterMinutes));
   }
 
+  public void setHostname(String hostname) {
+    setProperty(HOSTNAME, hostname);
+  }
+
+  public String getHostname() {
+    if (containsKey(HOSTNAME)) {
+      return (String) getProperty(HOSTNAME);
+    } else {
+      try {
+        return InetAddress.getLocalHost().getHostName();
+      } catch (UnknownHostException ex) {
+        return "localhost";
+      }
+    }
+  }
+
   public String getConfigFile() {
     if (!containsKey(CONFIG_FILE)) {
       return "";
@@ -374,7 +400,7 @@ public class ControllerConf extends PropertiesConfiguration {
     if (!containsKey(FEDERATED_ENABLED)) {
       return false;
     }
-    return ((String)getProperty(FEDERATED_ENABLED)).equalsIgnoreCase("true");
+    return ((String) getProperty(FEDERATED_ENABLED)).equalsIgnoreCase("true");
   }
 
   public String getDeploymentName() {
@@ -442,6 +468,11 @@ public class ControllerConf extends PropertiesConfiguration {
 
   public String getSrcKafkaZkPath() {
     return (String) getProperty(SRC_KAFKA_ZK_PATH);
+  }
+
+  @Override
+  public Integer getClusterPrefixLength() {
+    return 0;
   }
 
   public String getDestKafkaZkPath() {
@@ -547,6 +578,24 @@ public class ControllerConf extends PropertiesConfiguration {
     }
   }
 
+  @Override
+  public Double getBytesPerSecondDefault() {
+    if (containsKey(BYTES_PER_SECOND_DEFAULT)) {
+      return (Double) getProperty(BYTES_PER_SECOND_DEFAULT);
+    } else {
+      return DEFAULT_BYTES_PER_SECOND_DEFAULT;
+    }
+  }
+
+  @Override
+  public Double getMsgsPerSecondDefault() {
+    if (containsKey(MSGS_PER_SECOND_DEFAULT)) {
+      return (Double) getProperty(MSGS_PER_SECOND_DEFAULT);
+    } else {
+      return DEFAULT_MSGS_PER_SECOND_DEFAULT;
+    }
+  }
+
   public Double getMaxDedicatedLaggingInstancesRatio() {
     if (containsKey(MAX_DEDICATED_LAGGING_INSTANCES_RATIO)) {
       return (Double) getProperty(MAX_DEDICATED_LAGGING_INSTANCES_RATIO);
@@ -643,7 +692,7 @@ public class ControllerConf extends PropertiesConfiguration {
   private Set<String> parseList(String key, String delim) {
     Set<String> clusters = new HashSet<>();
     if (containsKey(key)) {
-      String[] values = ((String)getProperty(key)).split(delim);
+      String[] values = ((String) getProperty(key)).split(delim);
       for (String value : values) {
         String cluster = value.trim();
         if (!cluster.isEmpty()) {
@@ -726,7 +775,8 @@ public class ControllerConf extends PropertiesConfiguration {
         .addOption("backUpToGit", true, "Backup controller metadata to git (true) or local file (false)")
         .addOption("remoteBackupRepo", true, "Remote Backup Repo to store cluster state")
         .addOption("localGitRepoClonePath", true, "Clone location of the remote git backup repo")
-        .addOption("localBackupFilePath", true, "Local backup file location");
+        .addOption("localBackupFilePath", true, "Local backup file location")
+        .addOption("hostname", true, "hostname for this host");
     return controllerOptions;
   }
 
@@ -935,6 +985,11 @@ public class ControllerConf extends PropertiesConfiguration {
     if (cmd.hasOption("groupId")) {
       controllerConf.setGroupId(cmd.getOptionValue("groupId"));
     }
+
+    if (cmd.hasOption("hostname")) {
+      controllerConf.setHostname(cmd.getOptionValue("hostname"));
+    }
+
     if (cmd.hasOption("backUpToGit")) {
       controllerConf.setBackUpToGit(cmd.getOptionValue("backUpToGit"));
       if (controllerConf.getBackUpToGit()) {

@@ -2,11 +2,11 @@ package com.uber.stream.kafka.mirrormaker.controller.rest.resources;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.kafka.mirrormaker.controller.core.AutoTopicWhitelistingManager;
 import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
 import com.uber.stream.kafka.mirrormaker.controller.core.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.controller.core.ManagerControllerHelix;
-import com.uber.stream.kafka.mirrormaker.controller.core.TopicPartition;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
