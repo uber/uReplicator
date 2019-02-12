@@ -147,6 +147,8 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
 
   private static final String defaultLocal = "/var/log/kafka-mirror-maker-controller";
 
+  private static final String HOSTNAME = "controller.hostname";
+
   private static final String BYTES_PER_SECOND_DEFAULT = "controller.bytes.per.second.default";
   private static final double DEFAULT_BYTES_PER_SECOND_DEFAULT = 1000.0;
 
@@ -339,6 +341,22 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
     setProperty(MOVE_STUCK_PARTITION_AFTER_MINUTES, Integer.parseInt(moveStuckPartitionAfterMinutes));
   }
 
+  public void setHostname(String hostname) {
+    setProperty(HOSTNAME, hostname);
+  }
+
+  public String getHostname() {
+    if (containsKey(HOSTNAME)) {
+      return (String) getProperty(HOSTNAME);
+    } else {
+      try {
+        return InetAddress.getLocalHost().getHostName();
+      } catch (UnknownHostException ex) {
+        return "localhost";
+      }
+    }
+  }
+
   public String getConfigFile() {
     if (!containsKey(CONFIG_FILE)) {
       return "";
@@ -382,7 +400,7 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
     if (!containsKey(FEDERATED_ENABLED)) {
       return false;
     }
-    return ((String)getProperty(FEDERATED_ENABLED)).equalsIgnoreCase("true");
+    return ((String) getProperty(FEDERATED_ENABLED)).equalsIgnoreCase("true");
   }
 
   public String getDeploymentName() {
@@ -674,7 +692,7 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
   private Set<String> parseList(String key, String delim) {
     Set<String> clusters = new HashSet<>();
     if (containsKey(key)) {
-      String[] values = ((String)getProperty(key)).split(delim);
+      String[] values = ((String) getProperty(key)).split(delim);
       for (String value : values) {
         String cluster = value.trim();
         if (!cluster.isEmpty()) {
@@ -757,7 +775,8 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
         .addOption("backUpToGit", true, "Backup controller metadata to git (true) or local file (false)")
         .addOption("remoteBackupRepo", true, "Remote Backup Repo to store cluster state")
         .addOption("localGitRepoClonePath", true, "Clone location of the remote git backup repo")
-        .addOption("localBackupFilePath", true, "Local backup file location");
+        .addOption("localBackupFilePath", true, "Local backup file location")
+        .addOption("hostname", true, "hostname for this host");
     return controllerOptions;
   }
 
@@ -966,6 +985,11 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
     if (cmd.hasOption("groupId")) {
       controllerConf.setGroupId(cmd.getOptionValue("groupId"));
     }
+
+    if (cmd.hasOption("hostname")) {
+      controllerConf.setHostname(cmd.getOptionValue("hostname"));
+    }
+
     if (cmd.hasOption("backUpToGit")) {
       controllerConf.setBackUpToGit(cmd.getOptionValue("backUpToGit"));
       if (controllerConf.getBackUpToGit()) {

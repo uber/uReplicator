@@ -19,14 +19,15 @@ import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerInstance;
 import com.uber.stream.kafka.mirrormaker.controller.utils.HelixUtils;
-import org.apache.helix.HelixManager;
-import org.apache.helix.HelixManagerFactory;
-import org.apache.helix.InstanceType;
+import org.apache.helix.*;
+import org.apache.helix.model.InstanceConfig;
+import org.apache.helix.store.zk.ZkHelixPropertyStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Helix between uReplicator Manager and Controllers.
+ *
  * @author Zhenmin Li
  */
 public class ManagerControllerHelix {
@@ -42,6 +43,7 @@ public class ManagerControllerHelix {
   private final String _helixClusterName;
   private final String _helixZkURL;
   private final String _instanceId;
+  private final String _hostname;
   private HelixManager _helixZkManager;
 
   private final Object _handlerLock = new Object();
@@ -56,6 +58,7 @@ public class ManagerControllerHelix {
     _helixClusterName = MANAGER_CONTROLLER_HELIX_PREFIX + _controllerConf.getDeploymentName();
     _helixZkURL = HelixUtils.getAbsoluteZkPathForHelix(_controllerConf.getZkStr());
     _instanceId = controllerConf.getInstanceId();
+    _hostname = controllerConf.getHostname();
   }
 
   public synchronized void start() {
@@ -68,6 +71,11 @@ public class ManagerControllerHelix {
         new ControllerStateModelFactory(this));
     try {
       _helixZkManager.connect();
+      InstanceConfig instanceConfig = new InstanceConfig(_instanceId);
+      instanceConfig.setHostName(_hostname);
+      instanceConfig.setInstanceEnabled(true);
+      _helixZkManager.getConfigAccessor().setInstanceConfig(_helixClusterName, _instanceId,
+          instanceConfig);
     } catch (Exception e) {
       LOGGER.error("Failed to start ManagerControllerHelix " + _helixClusterName, e);
     }
@@ -131,14 +139,14 @@ public class ManagerControllerHelix {
     }
 
     // set corresponding zkpath for src and dst clusters
-    String srcKafkaZkPath = (String)_controllerConf.getProperty(CONFIG_KAFKA_CLUSTER_KEY_PREFIX + srcCluster);
+    String srcKafkaZkPath = (String) _controllerConf.getProperty(CONFIG_KAFKA_CLUSTER_KEY_PREFIX + srcCluster);
     if (srcKafkaZkPath == null) {
       String msg = "Failed to find configuration of ZooKeeper path for source cluster " + srcCluster;
       LOGGER.error(msg);
       throw new IllegalArgumentException(msg);
     }
     _controllerConf.setSrcKafkaZkPath(srcKafkaZkPath);
-    String destKafkaZkPath = (String)_controllerConf.getProperty(CONFIG_KAFKA_CLUSTER_KEY_PREFIX + dstCluster);
+    String destKafkaZkPath = (String) _controllerConf.getProperty(CONFIG_KAFKA_CLUSTER_KEY_PREFIX + dstCluster);
     if (destKafkaZkPath == null) {
       String msg = "Failed to find configuration of ZooKeeper path for destination cluster " + dstCluster;
       LOGGER.error(msg);
@@ -157,7 +165,7 @@ public class ManagerControllerHelix {
       _currentControllerInstance.start();
     } catch (Exception e) {
       String msg = "Failed to start controller instance. Roll back.";
-      LOGGER.error(msg);
+      LOGGER.error(msg, e);
       if (_currentControllerInstance.stop()) {
         _currentControllerInstance = null;
       } else {

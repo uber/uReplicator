@@ -25,6 +25,8 @@ import com.google.common.io.Closeables;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
+
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 /**
@@ -46,7 +48,7 @@ public class HelixKafkaMirrorMakerMetricsReporter {
   // Exposed for tests. Call Metrics.get() instead.
   HelixKafkaMirrorMakerMetricsReporter(ControllerConf config) {
     final String environment = config.getEnvironment();
-    final String clientId = config.getInstanceId();
+    final String clientId = StringUtils.isNotEmpty(config.getHostname()) ? config.getHostname() : config.getInstanceId();
     String[] dcNenv = parse(environment);
     if (dcNenv == null) {
       LOGGER.error("Error parsing environment info");

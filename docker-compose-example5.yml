@@ -69,7 +69,9 @@ services:
           -mode customized \
           -zookeeper devenv:2181/ureplicator-example \
           -port 9000 \
-          -instanceId mirrormaker-controller \
+          -instanceId 1 \
+          -hostname controller \
+          -offsetRefreshIntervalInSec 0 \
           -enableAutoWhitelist false
           "
     depends_on:
@@ -87,7 +89,8 @@ services:
         --consumer.config example/example-consumer.properties \
         --producer.config example/example-producer.properties \
         --helix.config example/example-helix-3.properties \
-        --topic.mappings example/example-topicmapping.properties"
+        --topic.mappings example/example-topicmapping.properties \
+        --cluster.config example/example-cluster.properties"
     depends_on:
     - controller
     links:
