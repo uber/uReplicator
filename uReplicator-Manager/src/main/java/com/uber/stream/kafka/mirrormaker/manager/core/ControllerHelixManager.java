@@ -542,21 +542,21 @@ public class ControllerHelixManager implements IHelixManager {
       currAvailableControllerList.addAll(liveInstances);
 
       int assignedControllerCount = 0;
-      for (String instanceName : instanceToTopicPartitionsMap.keySet()) {
-        Set<TopicPartition> topicPartitions = instanceToTopicPartitionsMap.get(instanceName);
+      for (String instanceId : instanceToTopicPartitionsMap.keySet()) {
+        Set<TopicPartition> topicPartitions = instanceToTopicPartitionsMap.get(instanceId);
         // TODO: one instance suppose to have only one route
         for (TopicPartition tp : topicPartitions) {
           String topicName = tp.getTopic();
           if (topicName.startsWith(SEPARATOR)) {
             currPipelineToInstanceMap.putIfAbsent(topicName, new PriorityQueue<>(1,
                 InstanceTopicPartitionHolder.getTotalWorkloadComparator(_workloadInfoRetrieverMap.get(getSrc(topicName)), null, false)));
-            InstanceTopicPartitionHolder itph = new InstanceTopicPartitionHolder(instanceName, tp);
+            InstanceTopicPartitionHolder itph = new InstanceTopicPartitionHolder(instanceId, tp);
             if (workerRouteToInstanceMap.get(tp) != null) {
               itph.addWorkers(workerRouteToInstanceMap.get(tp));
             }
             currPipelineToInstanceMap.get(topicName).add(itph);
-            instanceMap.put(instanceName, itph);
-            currAvailableControllerList.remove(instanceName);
+            instanceMap.put(instanceId, itph);
+            currAvailableControllerList.remove(instanceId);
             assignedControllerCount++;
           }
         }
@@ -564,11 +564,11 @@ public class ControllerHelixManager implements IHelixManager {
         for (TopicPartition tp : topicPartitions) {
           String topicName = tp.getTopic();
           if (!topicName.startsWith(SEPARATOR)) {
-            if (instanceMap.containsKey(instanceName)) {
-              instanceMap.get(instanceName).addTopicPartition(tp);
+            if (instanceMap.containsKey(instanceId)) {
+              instanceMap.get(instanceId).addTopicPartition(tp);
               currTopicToPipelineInstanceMap.putIfAbsent(topicName, new ConcurrentHashMap<>());
               currTopicToPipelineInstanceMap.get(tp.getTopic()).put(getPipelineFromRoute(tp.getPipeline()),
-                  instanceMap.get(instanceName));
+                  instanceMap.get(instanceId));
             }
           }
         }
