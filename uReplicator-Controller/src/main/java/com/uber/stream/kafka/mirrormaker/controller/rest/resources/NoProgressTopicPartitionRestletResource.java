@@ -29,6 +29,7 @@ import org.restlet.representation.StringRepresentation;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
 
+import java.util.List;
 import java.util.Map;
 
 
@@ -44,12 +45,12 @@ public class NoProgressTopicPartitionRestletResource extends ServerResource {
   @Get
   public Representation get() {
     JSONObject responseJson = new JSONObject();
-    OffsetMonitor offsetMonitor = _helixMirrorMakerManager.getOffsetMonitor();
-    if (offsetMonitor.getNoProgressTopicToOffsetMap() == null || offsetMonitor.getNoProgressTopicToOffsetMap().keySet().size() == 0) {
+    List<TopicAndPartition> noProgressTopicPartition = _helixMirrorMakerManager.getOffsetMonitor().getNoProgessTopicPartitions();
+    if (noProgressTopicPartition == null || noProgressTopicPartition.size() == 0) {
       return new StringRepresentation(responseJson.toJSONString());
     }
     JSONArray jsonArray = new JSONArray();
-    for (TopicAndPartition info : offsetMonitor.getNoProgressTopicToOffsetMap().keySet()) {
+    for (TopicAndPartition info : noProgressTopicPartition) {
 
       JSONObject node = new JSONObject();
       node.put("topic", info.topic());
