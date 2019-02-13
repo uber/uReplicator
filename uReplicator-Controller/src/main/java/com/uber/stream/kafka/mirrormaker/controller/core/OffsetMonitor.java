@@ -362,12 +362,7 @@ public class OffsetMonitor {
     return "OffsetMonitorLag." + tp.topic().replace('.', '_') + "." + tp.partition();
   }
 
-  /**
-   * Expose the stuck partition map.
-   *
-   * @return
-   */
-  public Map<TopicAndPartition, TopicPartitionLag> getNoProgressTopicToOffsetMap() {
+  protected Map<TopicAndPartition, TopicPartitionLag> getNoProgressTopicToOffsetMap() {
     return noProgressMap;
   }
 
@@ -438,7 +433,12 @@ public class OffsetMonitor {
     }
   }
 
-  private List<TopicAndPartition> getNoProgessTopicPartitions() {
+  /**
+   * Expose stuck partition list.
+   *
+   * @return list of topic partition currently stuck
+   */
+  public List<TopicAndPartition> getNoProgessTopicPartitions() {
     List<TopicAndPartition> tps = new ArrayList<>();
     for (Map.Entry<TopicAndPartition, TopicPartitionLag> entry : noProgressMap.entrySet()) {
       TopicPartitionLag currentLag = topicPartitionToOffsetMap.get(entry.getKey());
