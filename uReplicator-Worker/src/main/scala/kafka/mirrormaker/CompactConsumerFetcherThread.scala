@@ -20,6 +20,7 @@ import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 
 import com.google.common.collect.ImmutableMap
 import com.uber.kafka.consumer.NewSimpleConsumerConfig
+import com.uber.kafka.scalaapi.consumer.{FetchResponse, NewSimpleConsumer}
 import kafka.api._
 import kafka.cluster.BrokerEndPoint
 import kafka.common._
