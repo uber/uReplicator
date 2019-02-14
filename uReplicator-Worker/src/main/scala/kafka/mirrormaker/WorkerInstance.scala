@@ -569,11 +569,11 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
    * If message.handler.args is specified. A constructor that takes in a String as argument must exist.
    */
   trait MirrorMakerMessageHandler {
-    def handle(record: MessageAndMetadata[Array[Byte], Array[Byte]]): util.List[ProducerRecord[Array[Byte], Array[Byte]]]
+    def handle(record: RecordAndMetadata[Array[Byte], Array[Byte]]): util.List[ProducerRecord[Array[Byte], Array[Byte]]]
   }
 
   private object defaultMirrorMakerMessageHandler extends MirrorMakerMessageHandler {
-    override def handle(record: MessageAndMetadata[Array[Byte], Array[Byte]]): util.List[ProducerRecord[Array[Byte], Array[Byte]]] = {
+    override def handle(record: RecordAndMetadata[Array[Byte], Array[Byte]]): util.List[ProducerRecord[Array[Byte], Array[Byte]]] = {
       // rewrite topic between consuming side and producing side
       val topic = topicMappings.getOrElse(record.topic, record.topic)
       var partitionCount = 0

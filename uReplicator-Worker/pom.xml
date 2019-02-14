@@ -39,6 +39,17 @@
       <artifactId>scalatest_${kafka.scala.version}</artifactId>
       <version>${scalatest.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.uber.kafka</groupId>
+      <artifactId>newsimpleconsumer</artifactId>
+      <version>1.1</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.kafka</groupId>
+          <artifactId>kafka_2.12</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
   </dependencies>
 
   <pluginRepositories>

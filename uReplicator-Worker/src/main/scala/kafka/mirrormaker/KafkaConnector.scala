@@ -41,7 +41,7 @@ class KafkaConnector(private val consumerIdString: String,
 
 
   private val zkClient: ZkClient = ZkUtils.createZkClient(config.zkConnect, config.zkSessionTimeoutMs, config.zkConnectionTimeoutMs)
-  private val queue: LinkedBlockingQueue[FetchedDataChunk] = new LinkedBlockingQueue[FetchedDataChunk](config.queuedMaxMessages)
+  private val queue: LinkedBlockingQueue[FetchedRecordsDataChunk] = new LinkedBlockingQueue[FetchedRecordsDataChunk](config.queuedMaxMessages)
   private val decoder: DefaultDecoder = new DefaultDecoder()
   private val fetcherManager: CompactConsumerFetcherManager = new CompactConsumerFetcherManager(consumerIdString, config, zkClient, brokerListStr)
 
@@ -92,8 +92,8 @@ class KafkaConnector(private val consumerIdString: String,
     }
   }
 
-  def getStream(): KafkaStream[Array[Byte], Array[Byte]] = {
-    val stream = new KafkaStream(queue, config.consumerTimeoutMs, decoder, decoder, config.clientId)
+  def getStream(): KafkaRecordStream[Array[Byte], Array[Byte]] = {
+    val stream = new KafkaRecordStream(queue, config.consumerTimeoutMs, decoder, decoder, config.clientId)
     stream
   }
 
@@ -111,7 +111,7 @@ class KafkaConnector(private val consumerIdString: String,
     info("Fetched offset : %d, for topic: %s , partition %d".format(offset, topic, partition))
     val consumedOffset = new AtomicLong(offset)
     val fetchedOffset = new AtomicLong(offset)
-    val partTopicInfo: PartitionTopicInfo = new PartitionTopicInfo(topic,
+    val partTopicInfo: PartitionTopicInfo2 = new PartitionTopicInfo2(topic,
       partition,
       queue,
       consumedOffset,
