@@ -434,9 +434,9 @@ public class OffsetMonitor {
   }
 
   /**
-   * Expose stuck partition list.
+   * Gets stuck partitions list.
    *
-   * @return list of topic partition currently stuck
+   * @return list of topic partitions currently stuck
    */
   public List<TopicAndPartition> getNoProgessTopicPartitions() {
     List<TopicAndPartition> tps = new ArrayList<>();
