@@ -80,8 +80,8 @@ class CompactConsumerFetcherThread(name: String,
   )
   val newSimpleConsumerConfig = new NewSimpleConsumerConfig(consumerProperties)
 
-  private var simpleConsumer: NewSimpleConsumer = null
-  initSimpleConsumer()
+  private val simpleConsumer : NewSimpleConsumer = new NewSimpleConsumer(sourceBroker.host, sourceBroker.port, newSimpleConsumerConfig)
+  simpleConsumer.connect()
 
   private val metricId = new ClientIdAndBroker(clientId, sourceBroker.host, sourceBroker.port)
   val fetcherStats = new FetcherStats(metricId)
@@ -96,11 +96,6 @@ class CompactConsumerFetcherThread(name: String,
 
   var isOOM = false
   private final val OUT_OF_MEMORY_ERROR = "java.lang.OutOfMemoryError"
-
-  def initSimpleConsumer(): Unit = {
-    simpleConsumer = new NewSimpleConsumer(sourceBroker.host, sourceBroker.port, newSimpleConsumerConfig)
-    simpleConsumer.connect()
-  }
 
   def isValidTopicPartition(tp: TopicAndPartition): Boolean = {
     val pti = partitionInfoMap.get(tp)
@@ -262,17 +257,16 @@ class CompactConsumerFetcherThread(name: String,
 
   private def processFetchRequest(fetchRequestBuilder: FetchRequest.Builder) {
     val partitionsWithError = new mutable.HashSet[TopicAndPartition]
-    var response: org.apache.kafka.common.requests.FetchResponse = null
+    var response: FetchResponse = null
     try {
       trace("Issuing to broker %d of fetch request builder %s".format(sourceBroker.id, fetchRequestBuilder))
       response = simpleConsumer.fetch(fetchRequestBuilder)
     } catch {
-      case e: ConnectionFailedException =>
+      case _: ConnectionFailedException =>
         try {
-          simpleConsumer.close()
-          warn("Issue with new simple consumer connection")
-          initSimpleConsumer()
+          warn("Issue with new simple consumer connection. Retrying...")
           trace("Issuing to broker %d of fetch request builder %s".format(sourceBroker.id, fetchRequestBuilder))
+          simpleConsumer.reconnect()
           response = simpleConsumer.fetch(fetchRequestBuilder)
         } catch {
           case t: Throwable =>

@@ -82,12 +82,6 @@ class KafkaStreamIterator[K, V](private val channel: BlockingQueue[FetchedRecord
 
         current.set(localCurrent)
       }
-//      // TODO: WTF is valid bytes in messages
-//      // if we just updated the current chunk and it is empty that means the fetch size is too small!
-//      if(currentDataChunk.records.validBytes == 0)
-//        throw new MessageSizeTooLargeException("Found a message larger than the maximum fetch size of this consumer on topic " +
-//          "%s partition %d at fetch offset %d. Increase the fetch size, or decrease the maximum message size the broker will allow."
-//            .format(currentDataChunk.topicInfo.topic, currentDataChunk.topicInfo.partitionId, currentDataChunk.fetchOffset))
     }
     var record = localCurrent.next()
     // reject the messages that have already been consumed
@@ -98,6 +92,7 @@ class KafkaStreamIterator[K, V](private val channel: BlockingQueue[FetchedRecord
 
     record.ensureValid() // validate checksum of message to ensure it is valid
 
+    // TODO: replace the timestamp create type with a valid timestamp type from records.
     new RecordAndMetadata(currentTopicInfo.topic,
       currentTopicInfo.partitionId,
       record,
