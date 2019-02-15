@@ -79,7 +79,7 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
       public void run() {
         tryToRefreshCache();
       }
-    }, 0, _refreshTimeIntervalInMillis, TimeUnit.SECONDS);
+    }, 0, _refreshTimeIntervalInMillis, TimeUnit.MILLISECONDS);
   }
 
   private void registerMetric() {
