@@ -609,14 +609,24 @@ public class ControllerHelixManager implements IHelixManager {
     return result;
   }
 
+  private String getHostname(String instanceId) {
+    Map<String, String> instanceIdAndNameMap = HelixUtils.getInstanceToHostnameMap(_helixManager);
+    String hostname =  instanceIdAndNameMap.containsKey(instanceId) ? instanceIdAndNameMap.get(instanceId) : "";
+    if (StringUtils.isEmpty(hostname)) {
+      throw new InternalError(String.format("Failed to find hostname for instanceId %s", instanceId));
+    }
+    return hostname;
+  }
+
   public JSONObject getTopicInfoFromController(String topicName) {
     JSONObject resultJson = new JSONObject();
     Map<String, InstanceTopicPartitionHolder> pipelineToInstanceMap = _topicToPipelineInstanceMap.get(topicName);
     for (String pipeline : pipelineToInstanceMap.keySet()) {
       InstanceTopicPartitionHolder itph = pipelineToInstanceMap.get(pipeline);
       try {
+        String hostname = getHostname(itph.getInstanceName());
         String topicResponseBody = HttpClientUtils.getData(_httpClient, _requestConfig,
-            itph.getInstanceName(), _controllerPort, "/topics/" + topicName);
+            hostname, _controllerPort, "/topics/" + topicName);
         JSONObject topicsInfoInJson = JSON.parseObject(topicResponseBody);
         resultJson.put(itph.getRouteString(), topicsInfoInJson);
       } catch (Exception e) {
@@ -1251,8 +1261,9 @@ public class ControllerHelixManager implements IHelixManager {
       JSONObject entity = new JSONObject();
       entity.put("topic", topicName);
       entity.put("numPartitions", newNumPartitions);
+      String hostname = getHostname(itph.getInstanceName());
       int respCode = HttpClientUtils.putData(_httpClient, _requestConfig,
-          itph.getInstanceName(), _controllerPort, "/topics", entity);
+          hostname, _controllerPort, "/topics", entity);
       if (respCode != 200) {
         LOGGER.info("Got error from controller {} when expanding topic {} with respCode {}",
             itph.getInstanceName(), topicName, respCode);
