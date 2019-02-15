@@ -50,7 +50,7 @@ import scala.collection.{Map, Set, mutable}
 class CompactConsumerFetcherThread(name: String,
                                    val config: ConsumerConfig,
                                    sourceBroker: BrokerEndPoint,
-                                   partitionInfoMap: ConcurrentHashMap[TopicAndPartition, PartitionTopicInfo2],
+                                   partitionInfoMap: ConcurrentHashMap[TopicAndPartition, PartitionTopicInfo],
                                    consumerFetcherManager: CompactConsumerFetcherManager)
   extends ShutdownableThread(name, isInterruptible = true) {
   private val clientId = config.clientId
@@ -395,7 +395,7 @@ class CompactConsumerFetcherThread(name: String,
         if (!partitionAddMap.containsKey(topicAndPartition)) {
           partitionAddMap.put(
             topicAndPartition,
-            if (PartitionTopicInfo2.isOffsetInvalid(offset)) new PartitionFetchState(handleOffsetOutOfRange(topicAndPartition, offset))
+            if (PartitionTopicInfo.isOffsetInvalid(offset)) new PartitionFetchState(handleOffsetOutOfRange(topicAndPartition, offset))
             else new PartitionFetchState(offset)
           )
         }

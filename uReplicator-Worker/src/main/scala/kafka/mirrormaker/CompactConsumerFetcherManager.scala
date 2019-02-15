@@ -58,8 +58,8 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
   private val mapLock = new Object
   this.logIdent = "[" + name + "] "
 
-  private var partitionInfoMap = new ConcurrentHashMap[TopicAndPartition, PartitionTopicInfo2]()
-  private val partitionAddMap = new ConcurrentHashMap[TopicAndPartition, PartitionTopicInfo2]
+  private var partitionInfoMap = new ConcurrentHashMap[TopicAndPartition, PartitionTopicInfo]()
+  private val partitionAddMap = new ConcurrentHashMap[TopicAndPartition, PartitionTopicInfo]
   private val partitionDeleteMap = new ConcurrentHashMap[TopicAndPartition, Boolean]
   private val partitionNewLeaderMap = new ConcurrentHashMap[TopicAndPartition, Boolean]
   private val updateMapLock = new ReentrantLock
@@ -197,7 +197,7 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
     }
   }
 
-  def startConnections(topicInfos: Iterable[PartitionTopicInfo2]) {
+  def startConnections(topicInfos: Iterable[PartitionTopicInfo]) {
     inLock(updateMapLock) {
       topicInfos.foreach(tpi => partitionAddMap.put(TopicAndPartition(tpi.topic, tpi.partitionId), tpi))
     }
@@ -242,7 +242,7 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
     }
   }
 
-  def addTopicPartition(pti: PartitionTopicInfo2): Unit = {
+  def addTopicPartition(pti: PartitionTopicInfo): Unit = {
     info("adding new topic-partition %s - %d".format(pti.topic, pti.partitionId))
     val topicAndPartition = TopicAndPartition(pti.topic, pti.partitionId)
     inLock(updateMapLock) {
@@ -255,7 +255,7 @@ class CompactConsumerFetcherManager(private val consumerIdString: String,
     }
   }
 
-  def removeTopicPartition(pti: PartitionTopicInfo2): Unit = {
+  def removeTopicPartition(pti: PartitionTopicInfo): Unit = {
     info("Deleting topic-partition %s - %d".format(pti.topic, pti.partitionId))
     val topicAndPartition = TopicAndPartition(pti.topic, pti.partitionId)
     inLock(updateMapLock) {

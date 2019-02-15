@@ -35,7 +35,7 @@ class KafkaStreamIterator[K, V](private val channel: BlockingQueue[FetchedRecord
 
   private val shutdownCommand: FetchedRecordsDataChunk = new FetchedRecordsDataChunk(null, null, -1L)
   private val current: AtomicReference[Iterator[Record]] = new AtomicReference(null)
-  private var currentTopicInfo: PartitionTopicInfo2 = null
+  private var currentTopicInfo: PartitionTopicInfo = null
   private var consumedOffset: Long = -1L
   private val consumerTopicStats = ConsumerTopicStatsRegistry.getConsumerTopicStat(clientId)
 
