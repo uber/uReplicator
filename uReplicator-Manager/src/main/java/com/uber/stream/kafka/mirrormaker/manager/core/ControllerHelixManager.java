@@ -613,7 +613,7 @@ public class ControllerHelixManager implements IHelixManager {
     Map<String, String> instanceIdAndNameMap = HelixUtils.getInstanceToHostnameMap(_helixManager);
     String hostname =  instanceIdAndNameMap.containsKey(instanceId) ? instanceIdAndNameMap.get(instanceId) : "";
     if (StringUtils.isEmpty(hostname)) {
-      throw new InternalError(String.format("Failed to find hostname for instantceId %s", instanceId));
+      throw new InternalError(String.format("Failed to find hostname for instanceId %s", instanceId));
     }
     return hostname;
   }
