@@ -52,7 +52,7 @@ class KafkaConnector(private val consumerIdString: String,
   else null
   private val commitZkUtils = if (commitZkClient != null) ZkUtils.apply(commitZkClient, false) else zkUtils
   // Using a concurrent hash map for efficiency. Without this we will need a lock
-  val topicRegistry = new ConcurrentHashMap[TopicAndPartition, PartitionTopicInfo]()
+  val topicRegistry = new ConcurrentHashMap[TopicAndPartition, PartitionTopicInfo2]()
   private val checkpointedZkOffsets = new Pool[TopicAndPartition, Long]
   private val isShuttingDown = new AtomicBoolean(false)
 

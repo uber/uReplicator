@@ -324,11 +324,9 @@ class CompactConsumerFetcherThread(name: String,
                   case ErrorMapping.NoError =>
                     try {
                       val records = partitionData.records
-                      // TODO: fix this
-                      val validBytes = records.validBytes
-                      // TODO: what to do with the shallow iterator??
+                      val validBytes = records.sizeInBytes()
                       val newOffset = records.batches().asScala.lastOption match {
-                        case Some(m: RecordBatch) => m.lastOffset()
+                        case Some(m: RecordBatch) => m.lastOffset() + 1
                         case None => currentPartitionFetchState.fetchOffset
                       }
                       partitionMap.put(topicAndPartition, new PartitionFetchState(newOffset))
