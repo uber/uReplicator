@@ -282,8 +282,8 @@ public class TopicManagementRestletResource extends ServerResource {
 
         return new StringRepresentation(responseJson.toJSONString());
       } catch (Exception e) {
-        LOGGER.info("Failed to expand the topic {} in pipeline {} to {} partitions due to exception {}",
-            topicName, pipeline, newNumPartitions, e);
+        LOGGER.error(String.format("Failed to expand the topic %s in pipeline %s to %s partitions due to exception",
+            topicName, pipeline, newNumPartitions) , e);
 
         JSONObject responseJson = new JSONObject();
         responseJson.put("status", Status.CLIENT_ERROR_NOT_FOUND.getCode());
