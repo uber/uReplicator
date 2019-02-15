@@ -326,7 +326,7 @@ class CompactConsumerFetcherThread(name: String,
                       val records = partitionData.records
                       val validBytes = records.sizeInBytes()
                       val newOffset = records.batches().asScala.lastOption match {
-                        case Some(m: RecordBatch) => m.lastOffset() + 1
+                        case Some(m: RecordBatch) => m.nextOffset()
                         case None => currentPartitionFetchState.fetchOffset
                       }
                       partitionMap.put(topicAndPartition, new PartitionFetchState(newOffset))

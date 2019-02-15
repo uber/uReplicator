@@ -65,7 +65,7 @@ class PartitionTopicInfo2(val topic: String,
   def enqueue(records: Records) {
     val size = records.sizeInBytes
     if(size > 0) {
-      val next = records.batches().iterator().asScala.toSeq.last.lastOffset()
+      val next = records.batches().iterator().asScala.toSeq.last.nextOffset()
       trace("Updating fetch offset = " + fetchedOffset.get + " to " + next)
       chunkQueue.put(new FetchedRecordsDataChunk(records, this, fetchedOffset.get))
       fetchedOffset.set(next)
