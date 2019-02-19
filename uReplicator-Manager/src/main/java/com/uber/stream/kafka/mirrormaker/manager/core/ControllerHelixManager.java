@@ -106,6 +106,7 @@ public class ControllerHelixManager implements IHelixManager {
   private static final Counter _availableWorker = new Counter();
   private static final Counter _nonParityTopic = new Counter();
   private static final Counter _validateWrongCount = new Counter();
+  private static final Counter _lowUrgencyValidateWrongCount = new Counter();
   private static final Counter _assignedControllerCount = new Counter();
 
   private ReentrantLock _lock = new ReentrantLock();
@@ -214,6 +215,8 @@ public class ControllerHelixManager implements IHelixManager {
           _nonParityTopic);
       HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("validate.wrong.counter",
           _validateWrongCount);
+      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("validate.wrong.low.urgency.counter",
+          _lowUrgencyValidateWrongCount);
       HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("controller.assigned.counter",
           _assignedControllerCount);
     } catch (Exception e) {
@@ -261,6 +264,7 @@ public class ControllerHelixManager implements IHelixManager {
 
     Map<String, String> instanceIdAndNameMap = HelixUtils.getInstanceToHostnameMap(_helixManager);
     int validateWrongCount = 0;
+    int lowUrgencyValidateWrongCount = 0;
     for (String instanceId : instanceToTopicPartitionsMap.keySet()) {
       String hostname = instanceIdAndNameMap.containsKey(instanceId) ? instanceIdAndNameMap.get(instanceId) : "";
       Set<TopicPartition> topicPartitions = instanceToTopicPartitionsMap.get(instanceId);
@@ -365,8 +369,8 @@ public class ControllerHelixManager implements IHelixManager {
             }
 
             if (!workerOnlyInManager.isEmpty()) {
-              validateWrongCount++;
-              LOGGER.error("Validate WRONG: Hostname: {}, InstanceId: {}, route: {}, worker only in manager: {}", hostname, instanceId, routeSet, workerOnlyInManager);
+              lowUrgencyValidateWrongCount++;
+              LOGGER.warn("Validate WRONG: Hostname: {}, InstanceId: {}, route: {}, worker only in manager: {}", hostname, instanceId, routeSet, workerOnlyInManager);
             }
 
             if (!controllerWorkers.isEmpty()) {
@@ -455,6 +459,7 @@ public class ControllerHelixManager implements IHelixManager {
     }
     if (_helixManager.isLeader()) {
       _validateWrongCount.inc(validateWrongCount - _validateWrongCount.getCount());
+      _lowUrgencyValidateWrongCount.inc(lowUrgencyValidateWrongCount - _lowUrgencyValidateWrongCount.getCount());
       updateMetrics(instanceToTopicPartitionsMap, instanceMap);
     }
   }
