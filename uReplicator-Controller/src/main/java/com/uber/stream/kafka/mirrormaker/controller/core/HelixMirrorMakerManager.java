@@ -17,11 +17,13 @@ package com.uber.stream.kafka.mirrormaker.controller.core;
 
 import com.uber.stream.kafka.mirrormaker.common.configuration.IuReplicatorConf;
 import com.uber.stream.kafka.mirrormaker.common.core.IHelixManager;
+import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.kafka.mirrormaker.common.core.WorkloadInfoRetriever;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixSetupUtils;
+import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
-import com.uber.stream.kafka.mirrormaker.controller.utils.HelixUtils;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -83,7 +85,7 @@ public class HelixMirrorMakerManager implements IHelixManager {
     _instanceId = controllerConf.getInstanceId();
     _workloadInfoRetriever = new WorkloadInfoRetriever(this, true);
     _currentServingInstance = new PriorityQueue<>(1,
-        InstanceTopicPartitionHolder.getTotalWorkloadComparator(_workloadInfoRetriever, null));
+        InstanceTopicPartitionHolder.getTotalWorkloadComparator(_workloadInfoRetriever, null, true));
     _offsetMonitor = new OffsetMonitor(this, controllerConf);
   }
 

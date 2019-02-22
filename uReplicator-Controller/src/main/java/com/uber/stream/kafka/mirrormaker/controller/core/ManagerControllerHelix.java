@@ -16,12 +16,11 @@
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
+import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerInstance;
-import com.uber.stream.kafka.mirrormaker.controller.utils.HelixUtils;
 import org.apache.helix.*;
 import org.apache.helix.model.InstanceConfig;
-import org.apache.helix.store.zk.ZkHelixPropertyStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

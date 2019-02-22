@@ -2,11 +2,11 @@ package com.uber.stream.kafka.mirrormaker.controller.rest.resources;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.kafka.mirrormaker.common.core.WorkloadInfoRetriever;
 import com.uber.stream.kafka.mirrormaker.controller.core.AutoRebalanceLiveInstanceChangeListener;
 import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
-import com.uber.stream.kafka.mirrormaker.controller.core.InstanceTopicPartitionHolder;
 
 import java.util.Iterator;
 import java.util.PriorityQueue;
