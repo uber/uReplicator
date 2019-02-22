@@ -19,12 +19,15 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
 import com.codahale.metrics.Timer.Context;
+import com.uber.stream.kafka.mirrormaker.common.core.ITopicWorkloadWeighter;
+import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicWorkload;
 import com.uber.stream.kafka.mirrormaker.common.core.WorkloadInfoRetriever;
+import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
-import com.uber.stream.kafka.mirrormaker.controller.utils.HelixUtils;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -381,7 +384,7 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     // find the corresponding stuck instances
     Set<TopicPartition> stuckPartitionsToMove = new HashSet<>();
     TreeSet<InstanceTopicPartitionHolder> nonStuckInstances = new TreeSet<>(InstanceTopicPartitionHolder
-        .getTotalWorkloadComparator(_helixMirrorMakerManager.getWorkloadInfoRetriever(), null));
+        .getTotalWorkloadComparator(_helixMirrorMakerManager.getWorkloadInfoRetriever(), null, true));
     long now = System.currentTimeMillis();
     for (InstanceTopicPartitionHolder itph : instances) {
       boolean isStuckInstance = false;
@@ -475,7 +478,7 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
       }
     };
     TreeSet<InstanceTopicPartitionHolder> instancesSortedByLag = new TreeSet<>(InstanceTopicPartitionHolder
-        .getTotalWorkloadComparator(_helixMirrorMakerManager.getWorkloadInfoRetriever(), laggingPartitionWeighter));
+        .getTotalWorkloadComparator(_helixMirrorMakerManager.getWorkloadInfoRetriever(), laggingPartitionWeighter, true));
     instancesSortedByLag.addAll(instances);
     List<TopicPartition> reassignedLaggingPartitions = removeOverloadedParitions(instancesSortedByLag,
         laggingPartitions, null, true, laggingPartitionWeighter);
@@ -488,7 +491,7 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     // dedicated instances serve only lagging partitions
     int maxDedicated = (int) (instances.size() * _maxDedicatedInstancesRatio);
     TreeSet<InstanceTopicPartitionHolder> orderedInstances = new TreeSet<>(InstanceTopicPartitionHolder
-        .getTotalWorkloadComparator(_helixMirrorMakerManager.getWorkloadInfoRetriever(), null));
+        .getTotalWorkloadComparator(_helixMirrorMakerManager.getWorkloadInfoRetriever(), null, true));
     // instancesSortedByLag are sorted by lags, so the instances with lags appear after the instances with non-lags only
     List<InstanceTopicPartitionHolder> dedicatedInstances = new ArrayList<>();
     for (InstanceTopicPartitionHolder instance : instancesSortedByLag) {
