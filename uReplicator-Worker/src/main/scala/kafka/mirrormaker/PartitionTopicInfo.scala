@@ -30,6 +30,8 @@ object PartitionTopicInfo {
   def isOffsetInvalid(offset: Long) = offset < 0L
 }
 
+// This file is taken from https://github.com/apache/kafka/blob/1.1/core/src/main/scala/kafka/consumer/PartitionTopicInfo.scala
+// This replaces FetchedDataChunk with FetchedRecordsDataChunk which helps us to use java Records instead of ByteBufferMessageSet
 class PartitionTopicInfo(val topic: String,
                          val partitionId: Int,
                          private val chunkQueue: BlockingQueue[FetchedRecordsDataChunk],

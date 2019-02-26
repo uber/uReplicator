@@ -17,6 +17,8 @@ package kafka.mirrormaker
 
 import org.apache.kafka.common.record.Records
 
+// This file is taken from https://github.com/apache/kafka/blob/1.1/core/src/main/scala/kafka/consumer/FetchedDataChunk.scala
+// This helps to replace the scala based ByteBufferMessageSet with java Records.
 case class FetchedRecordsDataChunk(records: Records,
                                    topicInfo: PartitionTopicInfo,
                                    fetchOffset: Long)

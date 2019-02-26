@@ -63,7 +63,4 @@ out
 *.iws
 *.iml
 
-publish-to-artifactory.sh
-recover.sh
-
 bin/pkg/**

@@ -73,12 +73,12 @@ class CompactConsumerFetcherThread(name: String,
   private val partitionMapLock = new ReentrantLock
   private val partitionMapCond = partitionMapLock.newCondition()
 
-  val consumerProperties : java.util.Map[String, Object] = ImmutableMap.of(
+  private val consumerProperties : java.util.Map[String, Object] = ImmutableMap.of(
     CommonClientConfigs.CLIENT_ID_CONFIG, clientId,
     NewSimpleConsumerConfig.CLIENT_SOCKET_RECEIVE_BUFFER_CONFIG, socketBufferSize.toString,
     NewSimpleConsumerConfig.CLIENT_CONNECTION_TIMEOUT_CONFIG, socketTimeout.toString
   )
-  val newSimpleConsumerConfig = new NewSimpleConsumerConfig(consumerProperties)
+  private val newSimpleConsumerConfig = new NewSimpleConsumerConfig(consumerProperties)
 
   private val simpleConsumer : NewSimpleConsumer = new NewSimpleConsumer(sourceBroker.host, sourceBroker.port, newSimpleConsumerConfig)
   simpleConsumer.connect()
@@ -308,11 +308,8 @@ class CompactConsumerFetcherThread(name: String,
             val topicAndPartition = TopicAndPartition(topic, partitionId)
           partitionMap.get(topicAndPartition).foreach(currentPartitionFetchState => {
               // we append to the log if the current offset is defined and it is the same as the offset requested during fetch
-              var requestOffset = -1L
               val requestPartitionData = fetchRequestBuilder.fetchData.get(new TopicPartition(topic, partitionId))
-              if (requestPartitionData != null) {
-                requestOffset = requestPartitionData.fetchOffset
-              }
+              val requestOffset = if (requestPartitionData != null) requestPartitionData.fetchOffset else -1
               if (requestOffset == currentPartitionFetchState.fetchOffset) {
                 partitionData.error.code() match {
                   case ErrorMapping.NoError =>

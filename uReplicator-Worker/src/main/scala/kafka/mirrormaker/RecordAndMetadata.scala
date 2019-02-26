@@ -20,6 +20,8 @@ import kafka.serializer.Decoder
 import org.apache.kafka.common.record.{Record, TimestampType}
 import org.apache.kafka.common.utils.Utils
 
+// This file is taken from https://github.com/apache/kafka/blob/1.1/core/src/main/scala/kafka/message/MessageAndMetadata.scala
+// This helps to replace the scala based ByteBufferMessageSet with java Records.
 case class RecordAndMetadata[K, V](topic: String,
                               partition: Int,
                               private val record: Record,
