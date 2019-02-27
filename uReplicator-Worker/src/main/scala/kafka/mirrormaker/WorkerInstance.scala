@@ -433,7 +433,7 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
       try {
         // Creating one stream per each connector instance
         val stream = connector.getStream()
-        val iter = stream.iterator()
+        val iter = stream.iterator
 
         while (!exitingOnSendFailure && !shuttingDown) {
           try {

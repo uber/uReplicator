@@ -24,10 +24,12 @@ import kafka.serializer.Decoder
 import kafka.utils.{IteratorTemplate, Logging}
 import org.apache.kafka.common.record.{Record, TimestampType}
 
+import scala.collection.JavaConverters.asScalaIteratorConverter
+
 
 // This class is taken from https://github.com/apache/kafka/blob/1.1/core/src/main/scala/kafka/consumer/ConsumerIterator.scala
 // This replaces FetchedDataChunk with FetchedRecordsDataChunk which helps us to use java Records instead of ByteBufferMessageSet
-private class KafkaStreamIterator[K, V](private val channel: BlockingQueue[FetchedRecordsDataChunk],
+class KafkaStreamIterator[K, V](private val channel: BlockingQueue[FetchedRecordsDataChunk],
                                 consumerTimeoutMs: Int,
                                 private val keyDecoder: Decoder[K],
                                 private val valueDecoder: Decoder[V],
