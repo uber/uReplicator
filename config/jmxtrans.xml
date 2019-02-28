@@ -1,0 +1,144 @@
+<jmxtrans-agent>
+  <queries>
+    <!-- JVM -->
+    <query objectName="java.lang:type=Memory" attribute="HeapMemoryUsage" key="used" resultAlias="jvm.heapMemoryUsage.used"/>
+    <query objectName="java.lang:type=Memory" attribute="HeapMemoryUsage" key="committed" resultAlias="jvm.heapMemoryUsage.committed"/>
+    <query objectName="java.lang:type=Memory" attribute="NonHeapMemoryUsage" key="used" resultAlias="jvm.nonHeapMemoryUsage.used"/>
+    <query objectName="java.lang:type=Memory" attribute="NonHeapMemoryUsage" key="committed" resultAlias="jvm.nonHeapMemoryUsage.committed"/>
+    <query objectName="java.lang:type=ClassLoading" attribute="LoadedClassCount" resultAlias="jvm.loadedClasses"/>
+    <query objectName="java.lang:type=Threading" attribute="ThreadCount" resultAlias="jvm.thread"/>
+    <query objectName="java.lang:type=GarbageCollector,name=*" attribute="CollectionTime" resultAlias="jvm.gc.%name%.time"/>
+
+    <!-- Kafka Consumer -->
+    <query objectName="kafka.consumer:type=ConsumerFetcherManager,name=*,clientId=*" attribute="Value" resultAlias="kafka.consumer.ConsumerFetcherManager.%name%.%clientId%.Value"/>
+    <query objectName="kafka.mirrormaker:type=CompactConsumerFetcherManager,name=*,clientId=*" attribute="Value" resultAlias="kafka.mirrormaker.CompactConsumerFetcherManager.%name%.%clientId%.Value"/>
+    <query objectName="kafka.consumer:type=ConsumerTopicMetrics,name=*,clientId=*" attribute="Count" resultAlias="kafka.consumer.ConsumerTopicMetrics.%name%.%clientId%.Count"/>
+    <query objectName="kafka.consumer:type=ConsumerTopicMetrics,name=*,clientId=*" attribute="MeanRate" resultAlias="kafka.consumer.ConsumerTopicMetrics.%name%.%clientId%.MeanRate"/>
+    <query objectName="kafka.consumer:type=ConsumerTopicMetrics,name=*,clientId=*" attribute="OneMinuteRate" resultAlias="kafka.consumer.ConsumerTopicMetrics.%name%.%clientId%.OneMinuteRate"/>
+    <query objectName="kafka.consumer:type=ConsumerTopicMetrics,name=*,clientId=*" attribute="FiveMinuteRate" resultAlias="kafka.consumer.ConsumerTopicMetrics.%name%.%clientId%.FiveMinuteRate"/>
+    <query objectName="kafka.consumer:type=ConsumerTopicMetrics,name=*,clientId=*" attribute="FifteenMinuteRate" resultAlias="kafka.consumer.ConsumerTopicMetrics.%name%.%clientId%.FifteenMinuteRate"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=FetchQueueSize,clientId=*,topic=*,threadId=*" attribute="Value" resultAlias="kafka.consumer.ZookeeperConsumerConnector.FetchQueueSize.%clientId%.%topic%.%threadId%.Value"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=KafkaCommitsPerSec,clientId=*" attribute="Count" resultAlias="kafka.consumer.ZookeeperConsumerConnector.KafkaCommitsPerSec.%clientId%.Count"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=KafkaCommitsPerSec,clientId=*" attribute="MeanRate" resultAlias="kafka.consumer.ZookeeperConsumerConnector.KafkaCommitsPerSec.%clientId%.MeanRate"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=KafkaCommitsPerSec,clientId=*" attribute="OneMinuteRate" resultAlias="kafka.consumer.ZookeeperConsumerConnector.KafkaCommitsPerSec.%clientId%.OneMinuteRate"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=KafkaCommitsPerSec,clientId=*" attribute="FiveMinuteRate" resultAlias="kafka.consumer.ZookeeperConsumerConnector.KafkaCommitsPerSec.%clientId%.FiveMinuteRate"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=KafkaCommitsPerSec,clientId=*" attribute="FifteenMinuteRate" resultAlias="kafka.consumer.ZookeeperConsumerConnector.KafkaCommitsPerSec.%clientId%.FifteenMinuteRate"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=OwnedPartitionsCount,clientId=*,groupId=*" attribute="Value" resultAlias="kafka.consumer.ZookeeperConsumerConnector.OwnedPartitionsCount.%clientId%.%groupId%.Value"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=RebalanceRateAndTime,clientId=*" attribute="Count" resultAlias="kafka.consumer.ZookeeperConsumerConnector.RebalanceRateAndTime.%clientId%.Count"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=RebalanceRateAndTime,clientId=*" attribute="MeanRate" resultAlias="kafka.consumer.ZookeeperConsumerConnector.RebalanceRateAndTime.%clientId%.MeanRate"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=RebalanceRateAndTime,clientId=*" attribute="OneMinuteRate" resultAlias="kafka.consumer.ZookeeperConsumerConnector.RebalanceRateAndTime.%clientId%.OneMinuteRate"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=RebalanceRateAndTime,clientId=*" attribute="FiveMinuteRate" resultAlias="kafka.consumer.ZookeeperConsumerConnector.RebalanceRateAndTime.%clientId%.FiveMinuteRate"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=RebalanceRateAndTime,clientId=*" attribute="FifteenMinuteRate" resultAlias="kafka.consumer.ZookeeperConsumerConnector.RebalanceRateAndTime.%clientId%.FifteenMinuteRate"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=RebalanceRateAndTime,clientId=*" attribute="Mean" resultAlias="kafka.consumer.ZookeeperConsumerConnector.RebalanceRateAndTime.%clientId%.Mean"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=RebalanceRateAndTime,clientId=*" attribute="Min" resultAlias="kafka.consumer.ZookeeperConsumerConnector.RebalanceRateAndTime.%clientId%.Min"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=RebalanceRateAndTime,clientId=*" attribute="Max" resultAlias="kafka.consumer.ZookeeperConsumerConnector.RebalanceRateAndTime.%clientId%.Max"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=RebalanceRateAndTime,clientId=*" attribute="StdDev" resultAlias="kafka.consumer.ZookeeperConsumerConnector.RebalanceRateAndTime.%clientId%.StdDev"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=RebalanceRateAndTime,clientId=*" attribute="50thPercentile" resultAlias="kafka.consumer.ZookeeperConsumerConnector.RebalanceRateAndTime.%clientId%.50thPercentile"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=RebalanceRateAndTime,clientId=*" attribute="75thPercentile" resultAlias="kafka.consumer.ZookeeperConsumerConnector.RebalanceRateAndTime.%clientId%.75thPercentile"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=RebalanceRateAndTime,clientId=*" attribute="95thPercentile" resultAlias="kafka.consumer.ZookeeperConsumerConnector.RebalanceRateAndTime.%clientId%.95thPercentile"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=RebalanceRateAndTime,clientId=*" attribute="98thPercentile" resultAlias="kafka.consumer.ZookeeperConsumerConnector.RebalanceRateAndTime.%clientId%.98thPercentile"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=RebalanceRateAndTime,clientId=*" attribute="99thPercentile" resultAlias="kafka.consumer.ZookeeperConsumerConnector.RebalanceRateAndTime.%clientId%.99thPercentile"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=RebalanceRateAndTime,clientId=*" attribute="999thPercentile" resultAlias="kafka.consumer.ZookeeperConsumerConnector.RebalanceRateAndTime.%clientId%.999thPercentile"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=RebalanceRateAndTime,clientId=*" attribute="LatencyUnit" resultAlias="kafka.consumer.ZookeeperConsumerConnector.RebalanceRateAndTime.%clientId%.LatencyUnit"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=ZooKeeperCommitsPerSec,clientId=*" attribute="Count" resultAlias="kafka.consumer.ZookeeperConsumerConnector.ZooKeeperCommitsPerSec.%clientId%.Count"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=ZooKeeperCommitsPerSec,clientId=*" attribute="MeanRate" resultAlias="kafka.consumer.ZookeeperConsumerConnector.ZooKeeperCommitsPerSec.%clientId%.MeanRate"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=ZooKeeperCommitsPerSec,clientId=*" attribute="OneMinuteRate" resultAlias="kafka.consumer.ZookeeperConsumerConnector.ZooKeeperCommitsPerSec.%clientId%.OneMinuteRate"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=ZooKeeperCommitsPerSec,clientId=*" attribute="FiveMinuteRate" resultAlias="kafka.consumer.ZookeeperConsumerConnector.ZooKeeperCommitsPerSec.%clientId%.FiveMinuteRate"/>
+    <query objectName="kafka.consumer:type=ZookeeperConsumerConnector,name=ZooKeeperCommitsPerSec,clientId=*" attribute="FifteenMinuteRate" resultAlias="kafka.consumer.ZookeeperConsumerConnector.ZooKeeperCommitsPerSec.%clientId%.FifteenMinuteRate"/>
+    <query objectName="kafka.mirrormaker:type=KafkaConnector,name=KafkaCommitsPerSec,clientId=*" attribute="Count" resultAlias="kafka.mirrormaker.KafkaConnector.KafkaCommitsPerSec.%clientId%.Count"/>
+    <query objectName="kafka.mirrormaker:type=KafkaConnector,name=KafkaCommitsPerSec,clientId=*" attribute="MeanRate" resultAlias="kafka.mirrormaker.KafkaConnector.KafkaCommitsPerSec.%clientId%.MeanRate"/>
+    <query objectName="kafka.mirrormaker:type=KafkaConnector,name=KafkaCommitsPerSec,clientId=*" attribute="OneMinuteRate" resultAlias="kafka.mirrormaker.KafkaConnector.KafkaCommitsPerSec.%clientId%.OneMinuteRate"/>
+    <query objectName="kafka.mirrormaker:type=KafkaConnector,name=KafkaCommitsPerSec,clientId=*" attribute="FiveMinuteRate" resultAlias="kafka.mirrormaker.KafkaConnector.KafkaCommitsPerSec.%clientId%.FiveMinuteRate"/>
+    <query objectName="kafka.mirrormaker:type=KafkaConnector,name=KafkaCommitsPerSec,clientId=*" attribute="FifteenMinuteRate" resultAlias="kafka.mirrormaker.KafkaConnector.KafkaCommitsPerSec.%clientId%.FifteenMinuteRate"/>
+    <query objectName="kafka.mirrormaker:type=KafkaConnector,name=TotalBlockingQueueSize,clientId=*" attribute="Value" resultAlias="kafka.mirrormaker.KafkaConnector.TotalBlockingQueueSize.%clientId%.Value"/>
+    <query objectName="kafka.mirrormaker:type=CompactConsumerFetcherManager,name=OwnedPartitionsCount,clientId=*,groupId=*" attribute="Value" resultAlias="kafka.mirrormaker.CompactConsumerFetcherManager.OwnedPartitionsCount.%clientId%.%groupId%.Value"/>
+    <query objectName="kafka.mirrormaker:type=KafkaConnector,name=ZooKeeperCommitsPerSec,clientId=*" attribute="Count" resultAlias="kafka.mirrormaker.KafkaConnector.ZooKeeperCommitsPerSec.%clientId%.Count"/>
+    <query objectName="kafka.mirrormaker:type=KafkaConnector,name=ZooKeeperCommitsPerSec,clientId=*" attribute="MeanRate" resultAlias="kafka.mirrormaker.KafkaConnector.ZooKeeperCommitsPerSec.%clientId%.MeanRate"/>
+    <query objectName="kafka.mirrormaker:type=KafkaConnector,name=ZooKeeperCommitsPerSec,clientId=*" attribute="OneMinuteRate" resultAlias="kafka.mirrormaker.KafkaConnector.ZooKeeperCommitsPerSec.%clientId%.OneMinuteRate"/>
+    <query objectName="kafka.mirrormaker:type=KafkaConnector,name=ZooKeeperCommitsPerSec,clientId=*" attribute="FiveMinuteRate" resultAlias="kafka.mirrormaker.KafkaConnector.ZooKeeperCommitsPerSec.%clientId%.FiveMinuteRate"/>
+    <query objectName="kafka.mirrormaker:type=KafkaConnector,name=ZooKeeperCommitsPerSec,clientId=*" attribute="FifteenMinuteRate" resultAlias="kafka.mirrormaker.KafkaConnector.ZooKeeperCommitsPerSec.%clientId%.FifteenMinuteRate"/>
+
+    <!-- Kafka Lag Metrics -->
+    <query objectName="kafka.server:type=FetcherLagMetrics,name=ConsumerLag,clientId=*,topic=*,partition=*" attribute="Value" resultAlias="kafka.server.FetcherLagMetrics.ConsumerLag.%clientId%.%topic%.%partition%.Value"/>
+
+    <!-- Mirror Maker Metrics -->
+    <query objectName="kafka.mirrormaker:type=WorkerInstance,name=MirrorMaker-numDroppedMessages,clientId=*" attribute="Value" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-numDroppedMessages.%clientId%.Value"/>
+    <query objectName="kafka.mirrormaker:type=WorkerInstance,name=MirrorMaker-flushLatencyMs,clientId=*" attribute="99thPercentile" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-flushLatencyMs.%clientId%.99thPercentile"/>
+    <query objectName="kafka.mirrormaker:type=WorkerInstance,name=MirrorMaker-flushLatencyMs,clientId=*" attribute="95thPercentile" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-flushLatencyMs.%clientId%.95thPercentile"/>
+    <query objectName="kafka.mirrormaker:type=WorkerInstance,name=MirrorMaker-flushLatencyMs,clientId=*" attribute="75thPercentile" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-flushLatencyMs.%clientId%.75thPercentile"/>
+    <query objectName="kafka.mirrormaker:type=WorkerInstance,name=MirrorMaker-flushLatencyMs,clientId=*" attribute="50thPercentile" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-flushLatencyMs.%clientId%.50thPercentile"/>
+    <query objectName="kafka.mirrormaker:type=WorkerInstance,name=MirrorMaker-flushLatencyMs,clientId=*" attribute="OneMinuteRate" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-flushLatencyMs.%clientId%.OneMinuteRate"/>
+    <query objectName="kafka.mirrormaker:type=WorkerInstance,name=MirrorMaker-commitLatencyMs,clientId=*" attribute="99thPercentile" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-commitLatencyMs.%clientId%.99thPercentile"/>
+    <query objectName="kafka.mirrormaker:type=WorkerInstance,name=MirrorMaker-commitLatencyMs,clientId=*" attribute="95thPercentile" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-commitLatencyMs.%clientId%.95thPercentile"/>
+    <query objectName="kafka.mirrormaker:type=WorkerInstance,name=MirrorMaker-commitLatencyMs,clientId=*" attribute="75thPercentile" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-commitLatencyMs.%clientId%.75thPercentile"/>
+    <query objectName="kafka.mirrormaker:type=WorkerInstance,name=MirrorMaker-commitLatencyMs,clientId=*" attribute="50thPercentile" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-commitLatencyMs.%clientId%.50thPercentile"/>
+    <query objectName="kafka.mirrormaker:type=WorkerInstance,name=MirrorMaker-commitLatencyMs,clientId=*" attribute="OneMinuteRate" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-commitLatencyMs.%clientId%.OneMinuteRate"/>
+    <query objectName="kafka.mirrormaker:type=WorkerInstance,name=MirrorMaker-startPerSec,clientId=*" attribute="OneMinuteRate" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-startPerSec.%clientId%.OneMinuteRate"/>
+    <query objectName="kafka.mirrormaker:type=WorkerInstance,name=MirrorMaker-mapFailurePerSec,clientId=*" attribute="OneMinuteRate" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-mapFailurePerSec.%clientId%.OneMinuteRate"/>
+
+    <!-- Mirror Maker Metrics -->
+    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-numDroppedMessages,clientId=*" attribute="Value" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-numDroppedMessages.%clientId%.Value"/>
+    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-flushLatencyMs,clientId=*" attribute="99thPercentile" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-flushLatencyMs.%clientId%.99thPercentile"/>
+    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-flushLatencyMs,clientId=*" attribute="95thPercentile" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-flushLatencyMs.%clientId%.95thPercentile"/>
+    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-flushLatencyMs,clientId=*" attribute="75thPercentile" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-flushLatencyMs.%clientId%.75thPercentile"/>
+    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-flushLatencyMs,clientId=*" attribute="50thPercentile" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-flushLatencyMs.%clientId%.50thPercentile"/>
+    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-flushLatencyMs,clientId=*" attribute="OneMinuteRate" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-flushLatencyMs.%clientId%.OneMinuteRate"/>
+    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-commitLatencyMs,clientId=*" attribute="99thPercentile" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-commitLatencyMs.%clientId%.99thPercentile"/>
+    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-commitLatencyMs,clientId=*" attribute="95thPercentile" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-commitLatencyMs.%clientId%.95thPercentile"/>
+    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-commitLatencyMs,clientId=*" attribute="75thPercentile" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-commitLatencyMs.%clientId%.75thPercentile"/>
+    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-commitLatencyMs,clientId=*" attribute="50thPercentile" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-commitLatencyMs.%clientId%.50thPercentile"/>
+    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-commitLatencyMs,clientId=*" attribute="OneMinuteRate" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-commitLatencyMs.%clientId%.OneMinuteRate"/>
+    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-startPerSec,clientId=*" attribute="OneMinuteRate" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-startPerSec.%clientId%.OneMinuteRate"/>
+    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-mapFailurePerSec,clientId=*" attribute="OneMinuteRate" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-mapFailurePerSec.%clientId%.OneMinuteRate"/>
+    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-filterFailurePerSec,clientId=*" attribute="OneMinuteRate" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-filterFailurePerSec.%clientId%.OneMinuteRate"/>
+    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-filterFailurePerSec,clientId=*,topic=*" attribute="OneMinuteRate" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-filterFailurePerSec.%clientId%.%topic%.OneMinuteRate"/>
+    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-duplicatedMessagePerSec,clientId=*" attribute="OneMinuteRate" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-duplicatedMessagePerSec.%clientId%.OneMinuteRate"/>
+    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-duplicatedMessagePerSec,clientId=*,topic=*" attribute="OneMinuteRate" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-duplicatedMessagePerSec.%clientId%.%topic%.OneMinuteRate"/>
+    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-bloomFilterSize,clientId=*" attribute="Value" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-bloomFilterSize.%clientId%.Value"/>
+
+    <!-- Kafka Producer -->
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="batch-size-avg" resultAlias="kafka.producer.%type%.%client-id%.batch-size-avg"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="batch-size-max" resultAlias="kafka.producer.%type%.%client-id%.batch-size-max"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="buffer-available-bytes" resultAlias="kafka.producer.%type%.%client-id%.buffer-available-bytes"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="buffer-total-bytes" resultAlias="kafka.producer.%type%.%client-id%.buffer-total-bytes"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="bufferpool-wait-ratio" resultAlias="kafka.producer.%type%.%client-id%.bufferpool-wait-ratio"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="compression-rate-avg" resultAlias="kafka.producer.%type%.%client-id%.compression-rate-avg"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="connection-close-rate" resultAlias="kafka.producer.%type%.%client-id%.connection-close-rate"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="connection-count" resultAlias="kafka.producer.%type%.%client-id%.connection-count"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="connection-creation-rate" resultAlias="kafka.producer.%type%.%client-id%.connection-creation-rate"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="incoming-byte-rate" resultAlias="kafka.producer.%type%.%client-id%.incoming-byte-rate"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="io-ratio" resultAlias="kafka.producer.%type%.%client-id%.io-ratio"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="io-time-ns-avg" resultAlias="kafka.producer.%type%.%client-id%.io-time-ns-avg"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="io-wait-ratio" resultAlias="kafka.producer.%type%.%client-id%.io-wait-ratio"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="io-wait-time-ns-avg" resultAlias="kafka.producer.%type%.%client-id%.io-wait-time-ns-avg"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="metadata-age" resultAlias="kafka.producer.%type%.%client-id%.metadata-age"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="incoming-byte-rate" resultAlias="kafka.producer.%type%.%client-id%.incoming-byte-rate"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="network-io-rate" resultAlias="kafka.producer.%type%.%client-id%.network-io-rate"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="outgoing-byte-rate" resultAlias="kafka.producer.%type%.%client-id%.outgoing-byte-rate"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="record-error-rate" resultAlias="kafka.producer.%type%.%client-id%.record-error-rate"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="record-queue-time-avg" resultAlias="kafka.producer.%type%.%client-id%.record-queue-time-avg"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="record-queue-time-max" resultAlias="kafka.producer.%type%.%client-id%.record-queue-time-max"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="record-retry-rate" resultAlias="kafka.producer.%type%.%client-id%.record-retry-rate"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="record-send-rate" resultAlias="kafka.producer.%type%.%client-id%.record-send-rate"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="record-size-avg" resultAlias="kafka.producer.%type%.%client-id%.record-size-avg"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="record-size-max" resultAlias="kafka.producer.%type%.%client-id%.record-size-max"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="records-per-request-avg" resultAlias="kafka.producer.%type%.%client-id%.records-per-request-avg"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="request-latency-avg" resultAlias="kafka.producer.%type%.%client-id%.request-latency-avg"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="request-latency-max" resultAlias="kafka.producer.%type%.%client-id%.request-latency-max"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="request-rate" resultAlias="kafka.producer.%type%.%client-id%.request-rate"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="request-size-avg" resultAlias="kafka.producer.%type%.%client-id%.request-size-avg"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="request-size-max" resultAlias="kafka.producer.%type%.%client-id%.request-size-max"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="requests-in-flight" resultAlias="kafka.producer.%type%.%client-id%.requests-in-flight"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="response-rate" resultAlias="kafka.producer.%type%.%client-id%.response-rate"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="select-rate" resultAlias="kafka.producer.%type%.%client-id%.select-rate"/>
+    <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="waiting-threads" resultAlias="kafka.producer.%type%.%client-id%.waiting-threads"/>
+
+  </queries>
+  <outputWriter class="org.jmxtrans.agent.GraphitePlainTextTcpOutputWriter">
+    <host>localhost</host>
+    <port>4756</port>
+    <namePrefix>stats.##DC##.counter.ureplicator2-worker.##ENV##.##HOST##.</namePrefix>
+  </outputWriter>
+
+  <collectIntervalInSeconds>60</collectIntervalInSeconds>
+</jmxtrans-agent>
