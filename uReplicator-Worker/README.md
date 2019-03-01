@@ -14,3 +14,5 @@ Option                      Description
 --dstzk.config              If you want to enable 1:1 partition mapping, use this property, please see config/dstzk.properties
 --topic.mappings            Produce to a different topic in dst cluster, please see config/topicmapping.properties
 ```
+
+Worker metrics can be found in `config/jmxtrans.xml` and enabled through `-javaagent:./bin/libs/jmxtrans-agent-1.2.4.jar=config/jmxtrans.xml`
