@@ -68,6 +68,9 @@ public class ControllerRestApplication extends Application {
     router.attach("/offset/{topic}/{partition}/", TopicParitionOffsetRestletResource.class);
     router.attach("/noprogress", NoProgressTopicPartitionRestletResource.class);
 
+    // TopicPartition Blacklist Servlet
+    router.attach("/blacklist", TopicPartitionBlacklistRestletResource.class);
+
     return router;
   }
 }

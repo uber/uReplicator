@@ -18,13 +18,12 @@ package com.uber.stream.kafka.mirrormaker.controller.core;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
-import java.util.ArrayList;
-import java.util.HashMap;
+
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.IdealState;
 import org.restlet.representation.StringRepresentation;
@@ -117,61 +116,9 @@ public class ClusterInfoBackupManager {
     for (String topicName : topicLists) {
       IdealState idealStateForTopic = _helixMirrorMakerManager.getIdealStateForTopic(topicName);
       ExternalView externalViewForTopic = _helixMirrorMakerManager.getExternalViewForTopic(topicName);
-      JSONObject resultJson = new JSONObject();
-      resultJson.put("topic", topicName);
-      JSONObject externalViewPartitionToServerMappingJson = new JSONObject();
-      if (externalViewForTopic != null) {
-        for (String partition : externalViewForTopic.getPartitionSet()) {
-          Map<String, String> stateMap = externalViewForTopic.getStateMap(partition);
-          for (String server : stateMap.keySet()) {
-            if (!externalViewPartitionToServerMappingJson.containsKey(partition)) {
-              externalViewPartitionToServerMappingJson.put(partition, new JSONArray());
-            }
-            externalViewPartitionToServerMappingJson.getJSONArray(partition).add(server);
-          }
-        }
-      }
-
-      resultJson.put("externalView", externalViewPartitionToServerMappingJson);
-
-      JSONObject idealStatePartitionToServerMappingJson = new JSONObject();
-      for (String partition : idealStateForTopic.getPartitionSet()) {
-        Map<String, String> stateMap = idealStateForTopic.getInstanceStateMap(partition);
-        if (stateMap != null) {
-          for (String server : stateMap.keySet()) {
-            if (!idealStatePartitionToServerMappingJson.containsKey(partition)) {
-              idealStatePartitionToServerMappingJson.put(partition, new JSONArray());
-            }
-            idealStatePartitionToServerMappingJson.getJSONArray(partition).add(server);
-          }
-        }
-      }
-
-      resultJson.put("idealStateMapping", idealStatePartitionToServerMappingJson);
-      Map<String, List<String>> serverToPartitionMapping = new HashMap<String, List<String>>();
-      JSONObject serverToPartitionMappingJson = new JSONObject();
-      JSONObject serverToNumPartitionsMappingJson = new JSONObject();
-
-      if (externalViewForTopic != null) {
-        for (String partition : externalViewForTopic.getPartitionSet()) {
-          Map<String, String> stateMap = externalViewForTopic.getStateMap(partition);
-          for (String server : stateMap.keySet()) {
-            if (stateMap.get(server).equals("ONLINE")) {
-              if (!serverToPartitionMapping.containsKey(server)) {
-                serverToPartitionMapping.put(server, new ArrayList<String>());
-                serverToPartitionMappingJson.put(server, new JSONArray());
-                serverToNumPartitionsMappingJson.put(server, 0);
-              }
-              serverToPartitionMapping.get(server).add(partition);
-              serverToPartitionMappingJson.getJSONArray(server).add(partition);
-              serverToNumPartitionsMappingJson.put(server, serverToNumPartitionsMappingJson.getInteger(server) + 1);
-            }
-          }
-        }
-      }
-      resultJson.put("serverToPartitionMapping", serverToPartitionMappingJson);
-      resultJson.put("serverToNumPartitionsMapping", serverToNumPartitionsMappingJson);
-      resultList.add(resultJson);
+      JSONObject responseJson = TopicAssignmentViewBuilder.build(
+          topicName, idealStateForTopic, externalViewForTopic);
+      resultList.add(responseJson);
     }
 
     partitionAssignment.append(new StringRepresentation(resultList.toJSONString()));

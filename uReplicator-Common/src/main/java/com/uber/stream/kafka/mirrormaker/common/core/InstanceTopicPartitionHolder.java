@@ -160,8 +160,12 @@ public class InstanceTopicPartitionHolder {
 
   @Override
   public String toString() {
-    return String.format("{%s,%s,topics:%s,workers:%s}",
-        _instanceName, getRouteString(), _topicPartitionSet, _workerSet);
+    if (_route == null) {
+      return String.format("{%s=%s}", _instanceName, _topicPartitionSet);
+    } else {
+      return String.format("{%s,%s,topics:%s,workers:%s}",
+          _instanceName, getRouteString(), _topicPartitionSet, _workerSet);
+    }
   }
 
   @Override

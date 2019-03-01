@@ -15,6 +15,7 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
+import com.uber.stream.kafka.mirrormaker.common.Constants;
 import com.uber.stream.kafka.mirrormaker.common.configuration.IuReplicatorConf;
 import com.uber.stream.kafka.mirrormaker.common.core.IHelixManager;
 import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
@@ -27,10 +28,12 @@ import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
+
 import org.apache.helix.HelixAdmin;
 import org.apache.helix.HelixDataAccessor;
 import org.apache.helix.HelixManager;
@@ -187,6 +190,60 @@ public class HelixMirrorMakerManager implements IHelixManager {
               _helixAdmin.getResourceIdealState(_helixClusterName, topicName), topicName,
               newNumTopicPartitions, _controllerConf, _currentServingInstance));
     }
+  }
+
+  public Set<TopicPartition> getTopicPartitionBlacklist() {
+    Set<TopicPartition> topicPartitionBlacklist = new HashSet<>();
+    List<String> topicList = _helixAdmin.getResourcesInCluster(_helixClusterName);
+    for (String topic : topicList) {
+      IdealState is = _helixAdmin.getResourceIdealState(_helixClusterName, topic);
+      int numPartitions = is.getNumPartitions();
+      for (int i = 0; i < numPartitions; i++) {
+        Map<String, String> stateMap = is.getInstanceStateMap(String.valueOf(i));
+        if (stateMap != null && stateMap.values().iterator().hasNext() &&
+            stateMap.values().iterator().next().equalsIgnoreCase(Constants.HELIX_OFFLINE_STATE)) {
+          topicPartitionBlacklist.add(new TopicPartition(topic, i));
+        }
+      }
+    }
+    return topicPartitionBlacklist;
+  }
+
+  public synchronized void updateTopicPartitionStateInMirrorMaker(String topicName, int partition, String state) {
+    updateCurrentServingInstance();
+    if (!Constants.HELIX_OFFLINE_STATE.equalsIgnoreCase(state) && !Constants.HELIX_ONLINE_STATE.equalsIgnoreCase(state)) {
+      throw new IllegalArgumentException(String.format("Failed to update topic %s, partition %d to invalid state %s.",
+          topicName, partition, state));
+    }
+
+    IdealState idealState = _helixAdmin.getResourceIdealState(_helixClusterName, topicName);
+    String partitionName = String.valueOf(partition);
+    if (idealState == null ||
+        partition >= idealState.getNumPartitions()) {
+      throw new IllegalArgumentException(String.format("Topic %s, partition %d not exists in current route.",
+          topicName, partition));
+    }
+
+    String instanceName;
+    if (idealState.getInstanceStateMap(partitionName).keySet().isEmpty()) {
+      if (Constants.HELIX_OFFLINE_STATE.equalsIgnoreCase(state)) {
+        throw new IllegalArgumentException(String.format("Topic %s, partition %d not exists in current route.",
+            topicName, partition));
+      } else if (_currentServingInstance.isEmpty()) {
+        throw new InternalError("No available worker");
+      }
+      instanceName = _currentServingInstance.poll().getInstanceName();
+    } else {
+      instanceName = idealState.getInstanceStateMap(partitionName).keySet().iterator().next();
+      String oldState = idealState.getInstanceStateMap(partitionName).get(instanceName);
+      if (oldState.equalsIgnoreCase(state)) {
+        throw new IllegalArgumentException(String.format("Topic %s, partition %d already set %s",
+            idealState.getResourceName(), partition, state));
+      }
+    }
+
+    idealState.setPartitionState(partitionName, instanceName, state);
+    _helixAdmin.setResourceIdealState(_helixClusterName, topicName, idealState);
   }
 
   public synchronized void deleteTopicInMirrorMaker(String topicName) {

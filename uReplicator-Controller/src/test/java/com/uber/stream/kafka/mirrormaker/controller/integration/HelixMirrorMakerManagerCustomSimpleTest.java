@@ -89,7 +89,7 @@ public class HelixMirrorMakerManagerCustomSimpleTest {
         }
         fakeInstances.get(i / 2).start();
       }
-      Thread.sleep(30000);
+      Thread.sleep(3000);
     }
 
     helixMirrorMakerManager.stop();

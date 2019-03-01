@@ -70,7 +70,7 @@ public class ControllerStarterTest extends RestTestBase {
     Assert.assertEquals(jsonObject.getJSONObject("serverToPartitionMapping").size(), 2);
     for (String server : jsonObject.getJSONObject("serverToPartitionMapping").keySet()) {
       Assert.assertEquals(
-          jsonObject.getJSONObject("serverToPartitionMapping").getJSONArray(server).size(), 4);
+          jsonObject.getJSONObject("serverToPartitionMapping").getJSONObject(server).size(), 4);
     }
     Assert.assertEquals(jsonObject.getString("topic"), "testTopic0");
 

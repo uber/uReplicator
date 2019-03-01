@@ -1,18 +1,32 @@
+/*
+ * Copyright (C) 2015-2017 Uber Technologies, Inc. (streaming-data@uber.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.uber.stream.kafka.mirrormaker.controller.rest.resources;
 
-import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.kafka.mirrormaker.controller.core.AutoTopicWhitelistingManager;
 import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
 import com.uber.stream.kafka.mirrormaker.controller.core.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.controller.core.ManagerControllerHelix;
+
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+
+import com.uber.stream.kafka.mirrormaker.controller.core.TopicAssignmentViewBuilder;
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.IdealState;
 import org.restlet.data.Form;
@@ -80,65 +94,8 @@ public class TopicManagementRestletResource extends ServerResource {
             _helixMirrorMakerManager.getIdealStateForTopic(topicName);
         ExternalView externalViewForTopic =
             _helixMirrorMakerManager.getExternalViewForTopic(topicName);
-        JSONObject responseJson = new JSONObject();
-        responseJson.put("topic", topicName);
-        JSONObject externalViewPartitionToServerMappingJson = new JSONObject();
-        if (externalViewForTopic == null) {
-          LOGGER.info("External view for topic " + topicName + " is NULL");
-        } else {
-          for (String partition : externalViewForTopic.getPartitionSet()) {
-            Map<String, String> stateMap = externalViewForTopic.getStateMap(partition);
-            for (String server : stateMap.keySet()) {
-              if (!externalViewPartitionToServerMappingJson.containsKey(partition)) {
-                externalViewPartitionToServerMappingJson.put(partition, new JSONArray());
-              }
-              externalViewPartitionToServerMappingJson.getJSONArray(partition).add(server);
-            }
-          }
-        }
-        responseJson.put("externalView", externalViewPartitionToServerMappingJson);
-
-        JSONObject idealStatePartitionToServerMappingJson = new JSONObject();
-        if (idealStateForTopic == null) {
-          LOGGER.info("Ideal state for topic " + topicName + " is NULL");
-        } else {
-          for (String partition : idealStateForTopic.getPartitionSet()) {
-            Map<String, String> stateMap = idealStateForTopic.getInstanceStateMap(partition);
-            if (stateMap != null) {
-              for (String server : stateMap.keySet()) {
-                if (!idealStatePartitionToServerMappingJson.containsKey(partition)) {
-                  idealStatePartitionToServerMappingJson.put(partition, new JSONArray());
-                }
-                idealStatePartitionToServerMappingJson.getJSONArray(partition).add(server);
-              }
-            }
-          }
-        }
-        responseJson.put("idealState", idealStatePartitionToServerMappingJson);
-        Map<String, List<String>> serverToPartitionMapping = new HashMap<String, List<String>>();
-        JSONObject serverToPartitionMappingJson = new JSONObject();
-        JSONObject serverToNumPartitionsMappingJson = new JSONObject();
-
-        if (externalViewForTopic != null) {
-          for (String partition : externalViewForTopic.getPartitionSet()) {
-            Map<String, String> stateMap = externalViewForTopic.getStateMap(partition);
-            for (String server : stateMap.keySet()) {
-              if (stateMap.get(server).equals("ONLINE")) {
-                if (!serverToPartitionMapping.containsKey(server)) {
-                  serverToPartitionMapping.put(server, new ArrayList<String>());
-                  serverToPartitionMappingJson.put(server, new JSONArray());
-                  serverToNumPartitionsMappingJson.put(server, 0);
-                }
-                serverToPartitionMapping.get(server).add(partition);
-                serverToPartitionMappingJson.getJSONArray(server).add(partition);
-                serverToNumPartitionsMappingJson.put(server,
-                    serverToNumPartitionsMappingJson.getInteger(server) + 1);
-              }
-            }
-          }
-        }
-        responseJson.put("serverToPartitionMapping", serverToPartitionMappingJson);
-        responseJson.put("serverToNumPartitionsMapping", serverToNumPartitionsMappingJson);
+        JSONObject responseJson = TopicAssignmentViewBuilder.build(
+            topicName, idealStateForTopic, externalViewForTopic);
         return new StringRepresentation(responseJson.toJSONString());
       } else {
         getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);

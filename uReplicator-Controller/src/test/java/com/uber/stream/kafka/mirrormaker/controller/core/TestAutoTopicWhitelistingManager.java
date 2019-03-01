@@ -16,6 +16,7 @@
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
+import com.uber.stream.kafka.mirrormaker.controller.utils.ControllerTestUtils;
 import com.uber.stream.kafka.mirrormaker.controller.utils.KafkaStarterUtils;
 import com.uber.stream.kafka.mirrormaker.controller.utils.ZkStarter;
 import kafka.server.KafkaServerStartable;
@@ -45,21 +46,13 @@ public class TestAutoTopicWhitelistingManager {
             KafkaStarterUtils.DEFAULT_ZK_STR, KafkaStarterUtils.getDefaultKafkaConfiguration());
 
     try {
-      Thread.sleep(2000);
+      Thread.sleep(1000);
     } catch (Exception e) {
     }
     kafkaBrokerTopicObserver =
         new KafkaBrokerTopicObserver("broker0", KafkaStarterUtils.DEFAULT_ZK_STR, 1);
 
-    ControllerConf controllerConf = new ControllerConf();
-    controllerConf.setControllerPort("9090");
-    controllerConf.setHelixClusterName("TestAutoTopicWhitelistingManager");
-    controllerConf.setDeploymentName("TestAutoTopicWhitelistingDeployment");
-    controllerConf.setInstanceId("controller-0");
-    controllerConf.setControllerMode("customized");
-    controllerConf.setZkStr(ZkStarter.DEFAULT_ZK_STR);
-    controllerConf.setBackUpToGit("false");
-    controllerConf.setAutoRebalanceDelayInSeconds("1");
+    ControllerConf controllerConf = ControllerTestUtils.initControllerConf("TestAutoTopicWhitelistingManager");
 
     helixMirrorMakerManager = new HelixMirrorMakerManager(controllerConf);
     helixMirrorMakerManager.start();
@@ -85,7 +78,7 @@ public class TestAutoTopicWhitelistingManager {
       // Create Kafka topic
       KafkaStarterUtils.createTopic(topicName, KafkaStarterUtils.DEFAULT_ZK_STR);
       try {
-        Thread.sleep(5000);
+        Thread.sleep(1000);
       } catch (Exception e) {
       }
       Assert.assertEquals(kafkaBrokerTopicObserver.getNumTopics(), 1 + i);

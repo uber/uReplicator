@@ -15,10 +15,21 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.utils;
 
+import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
+import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
+import org.apache.helix.model.ExternalView;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testng.Assert;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ControllerTestUtils {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(ControllerTestUtils.class);
 
   public static List<FakeInstance> addFakeDataInstancesToAutoJoinHelixCluster(
       String helixClusterName, String zkServer, int numInstances, int base) throws Exception {
@@ -32,4 +43,58 @@ public class ControllerTestUtils {
     return ret;
   }
 
+  public static ControllerConf initControllerConf(String clusterName) {
+    ControllerConf controllerConf = new ControllerConf();
+    controllerConf.setControllerPort("9090");
+    controllerConf.setHelixClusterName(clusterName);
+    controllerConf.setDeploymentName("Deployment" + clusterName);
+    controllerConf.setInstanceId("controller-0");
+    controllerConf.setControllerMode("customized");
+    controllerConf.setZkStr(ZkStarter.DEFAULT_ZK_STR);
+    controllerConf.setBackUpToGit("false");
+    controllerConf.setAutoRebalanceDelayInSeconds("1");
+    controllerConf.setWorkloadRefreshPeriodInSeconds("5");
+    return controllerConf;
+  }
+
+  public static Map<String, Integer> assertServerPartitionCount(
+      HelixMirrorMakerManager helixMirrorMakerManager,
+      int numTotalPartitions) {
+    Map<String, Integer> serverToPartitionMapping = new HashMap<>();
+    int assginedPartitions = 0;
+    for (String topicName : helixMirrorMakerManager.getTopicLists()) {
+      ExternalView externalViewForTopic =
+          helixMirrorMakerManager.getExternalViewForTopic(topicName);
+      LOGGER.info("ExternalView: " + externalViewForTopic.toString());
+      for (String partition : externalViewForTopic.getPartitionSet()) {
+        String instanceName =
+            externalViewForTopic.getStateMap(partition).keySet().iterator().next();
+        if (!serverToPartitionMapping.containsKey(instanceName)) {
+          serverToPartitionMapping.put(instanceName, 0);
+        }
+        serverToPartitionMapping.put(instanceName, serverToPartitionMapping.get(instanceName) + 1);
+        assginedPartitions++;
+      }
+    }
+    Assert.assertEquals(assginedPartitions, numTotalPartitions, "assignedPartitions not match with numTotalPartitions");
+    return serverToPartitionMapping;
+  }
+
+  public static void assertInstanceOwnedTopicPartitionsBalanced(
+      HelixMirrorMakerManager helixMirrorMakerManager,
+      int numInstances,
+      int numTotalPartitions) {
+    Map<String, Integer> serverToPartitionMapping = assertServerPartitionCount(helixMirrorMakerManager, numTotalPartitions);
+    int expectedLowerBound = (int) Math.floor((double) numTotalPartitions / (double) numInstances);
+    int expectedUpperBound = (int) Math.ceil((double) numTotalPartitions / (double) numInstances);
+    for (String instanceName : serverToPartitionMapping.keySet()) {
+      // May not be perfect balancing.
+      LOGGER.info("Current {} serving {} partitions, expected [{}, {}]", instanceName,
+          serverToPartitionMapping.get(instanceName), expectedLowerBound,
+          expectedUpperBound);
+      int serverPartitions = serverToPartitionMapping.get(instanceName);
+      Assert.assertTrue(serverPartitions >= expectedLowerBound, String.format("serverPartitions %d less than expected lower bound %d", serverPartitions, expectedLowerBound));
+      Assert.assertTrue(serverPartitions <= expectedUpperBound, String.format("serverPartitions %d greater than expected upper bound %d", serverPartitions, expectedUpperBound));
+    }
+  }
 }
