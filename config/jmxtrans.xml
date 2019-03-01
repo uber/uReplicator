@@ -76,26 +76,6 @@
     <query objectName="kafka.mirrormaker:type=WorkerInstance,name=MirrorMaker-startPerSec,clientId=*" attribute="OneMinuteRate" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-startPerSec.%clientId%.OneMinuteRate"/>
     <query objectName="kafka.mirrormaker:type=WorkerInstance,name=MirrorMaker-mapFailurePerSec,clientId=*" attribute="OneMinuteRate" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-mapFailurePerSec.%clientId%.OneMinuteRate"/>
 
-    <!-- Mirror Maker Metrics -->
-    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-numDroppedMessages,clientId=*" attribute="Value" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-numDroppedMessages.%clientId%.Value"/>
-    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-flushLatencyMs,clientId=*" attribute="99thPercentile" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-flushLatencyMs.%clientId%.99thPercentile"/>
-    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-flushLatencyMs,clientId=*" attribute="95thPercentile" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-flushLatencyMs.%clientId%.95thPercentile"/>
-    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-flushLatencyMs,clientId=*" attribute="75thPercentile" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-flushLatencyMs.%clientId%.75thPercentile"/>
-    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-flushLatencyMs,clientId=*" attribute="50thPercentile" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-flushLatencyMs.%clientId%.50thPercentile"/>
-    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-flushLatencyMs,clientId=*" attribute="OneMinuteRate" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-flushLatencyMs.%clientId%.OneMinuteRate"/>
-    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-commitLatencyMs,clientId=*" attribute="99thPercentile" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-commitLatencyMs.%clientId%.99thPercentile"/>
-    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-commitLatencyMs,clientId=*" attribute="95thPercentile" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-commitLatencyMs.%clientId%.95thPercentile"/>
-    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-commitLatencyMs,clientId=*" attribute="75thPercentile" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-commitLatencyMs.%clientId%.75thPercentile"/>
-    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-commitLatencyMs,clientId=*" attribute="50thPercentile" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-commitLatencyMs.%clientId%.50thPercentile"/>
-    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-commitLatencyMs,clientId=*" attribute="OneMinuteRate" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-commitLatencyMs.%clientId%.OneMinuteRate"/>
-    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-startPerSec,clientId=*" attribute="OneMinuteRate" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-startPerSec.%clientId%.OneMinuteRate"/>
-    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-mapFailurePerSec,clientId=*" attribute="OneMinuteRate" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-mapFailurePerSec.%clientId%.OneMinuteRate"/>
-    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-filterFailurePerSec,clientId=*" attribute="OneMinuteRate" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-filterFailurePerSec.%clientId%.OneMinuteRate"/>
-    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-filterFailurePerSec,clientId=*,topic=*" attribute="OneMinuteRate" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-filterFailurePerSec.%clientId%.%topic%.OneMinuteRate"/>
-    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-duplicatedMessagePerSec,clientId=*" attribute="OneMinuteRate" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-duplicatedMessagePerSec.%clientId%.OneMinuteRate"/>
-    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-duplicatedMessagePerSec,clientId=*,topic=*" attribute="OneMinuteRate" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-duplicatedMessagePerSec.%clientId%.%topic%.OneMinuteRate"/>
-    <query objectName="com.uber.ureplicator2.worker:type=InternalWorkerInstance,name=MirrorMaker-bloomFilterSize,clientId=*" attribute="Value" resultAlias="kafka.mirrormaker.MirrorMakerWorker.MirrorMaker-bloomFilterSize.%clientId%.Value"/>
-
     <!-- Kafka Producer -->
     <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="batch-size-avg" resultAlias="kafka.producer.%type%.%client-id%.batch-size-avg"/>
     <query objectName="kafka.producer:type=producer-metrics,client-id=*" attribute="batch-size-max" resultAlias="kafka.producer.%type%.%client-id%.batch-size-max"/>
@@ -137,7 +117,7 @@
   <outputWriter class="org.jmxtrans.agent.GraphitePlainTextTcpOutputWriter">
     <host>localhost</host>
     <port>4756</port>
-    <namePrefix>stats.##DC##.counter.ureplicator2-worker.##ENV##.##HOST##.</namePrefix>
+    <namePrefix>##YOUR_PREFIX##</namePrefix>
   </outputWriter>
 
   <collectIntervalInSeconds>60</collectIntervalInSeconds>
