@@ -16,6 +16,7 @@
 package com.uber.stream.kafka.mirrormaker.common.utils;
 
 import com.google.common.collect.ImmutableList;
+import com.uber.stream.kafka.mirrormaker.common.Constants;
 import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
 import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.common.core.OnlineOfflineStateModel;
@@ -163,7 +164,8 @@ public class HelixUtils {
   }
 
   public static Map<String, IdealState> getIdealStatesFromAssignment(
-      Set<InstanceTopicPartitionHolder> newAssignment) {
+      Set<InstanceTopicPartitionHolder> newAssignment,
+      Set<TopicPartition> blacklistedTopicPartitions) {
     Map<String, CustomModeISBuilder> idealStatesBuilderMap = new HashMap<>();
     for (InstanceTopicPartitionHolder instance : newAssignment) {
       for (TopicPartition tpi : instance.getServingTopicPartitionSet()) {
@@ -178,9 +180,13 @@ public class HelixUtils {
 
           idealStatesBuilderMap.put(topicName, customModeIdealStateBuilder);
         }
+        String state = Constants.HELIX_ONLINE_STATE;
+        if (blacklistedTopicPartitions.contains(tpi)) {
+          state = Constants.HELIX_OFFLINE_STATE;
+        }
         idealStatesBuilderMap.get(topicName).assignInstanceAndState(partition,
             instance.getInstanceName(),
-            "ONLINE");
+            state);
       }
     }
     Map<String, IdealState> idealStatesMap = new HashMap<>();

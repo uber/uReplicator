@@ -59,6 +59,22 @@ public class ControllerRequestURLBuilder {
     return request;
   }
 
+  public Request getBlacklistRequestUrl() {
+    String requestUrl = StringUtils.join(new String[]{
+        _baseUrl, "/blacklist"
+    });
+    Request request = new Request(Method.GET, requestUrl);
+    return request;
+  }
+
+  public Request postBlacklistRequestUrl(String topic, String partition, String opt) {
+    String requestUrl = StringUtils.join(new String[]{
+        _baseUrl, String.format("/blacklist?topic=%s&partition=%s&opt=%s", topic, partition, opt)
+    });
+    Request request = new Request(Method.POST, requestUrl);
+    return request;
+  }
+
   public Request getTopicCreationRequestUrl(String topic, int numPartitions) {
     Request request = new Request(Method.POST, _baseUrl + "/topics/");
     TopicPartition topicPartitionInfo = new TopicPartition(topic, numPartitions);

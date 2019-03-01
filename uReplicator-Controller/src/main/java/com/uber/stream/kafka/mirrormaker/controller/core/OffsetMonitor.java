@@ -15,6 +15,7 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
+import com.alibaba.fastjson.JSONObject;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
@@ -33,7 +34,6 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import kafka.api.PartitionOffsetRequestInfo;
@@ -47,9 +47,6 @@ import kafka.javaapi.consumer.SimpleConsumer;
 import kafka.utils.ZKStringSerializer$;
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.commons.lang3.StringUtils;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -137,13 +134,12 @@ public class OffsetMonitor {
 
             ZkClient zkClient = new ZkClient(srcZkString, 30000, 30000, ZKStringSerializer$.MODULE$);
             List<String> brokerIdList = zkClient.getChildren("/brokers/ids");
-            JSONParser parser = new JSONParser();
 
             for (String id : brokerIdList) {
               try {
-                JSONObject json = (JSONObject) parser.parse(zkClient.readData("/brokers/ids/" + id).toString());
+                JSONObject json = JSONObject.parseObject(zkClient.readData("/brokers/ids/" + id).toString());
                 srcBrokerList.add(String.valueOf(json.get("host")) + ":" + String.valueOf(json.get("port")));
-              } catch (ParseException e) {
+              } catch (Exception e) {
                 logger.warn("Failed to get broker", e);
               }
             }
