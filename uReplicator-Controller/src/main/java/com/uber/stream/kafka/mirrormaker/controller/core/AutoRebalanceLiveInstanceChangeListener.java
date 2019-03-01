@@ -42,6 +42,7 @@ import java.util.TreeSet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
 import kafka.common.TopicAndPartition;
 import org.apache.helix.HelixAdmin;
 import org.apache.helix.HelixManager;
@@ -223,8 +224,9 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
         LOGGER.info("No topic got assigned yet, do nothing!");
         return;
       }
+      Set<TopicPartition> blacklistedTopicPartitions = _helixMirrorMakerManager.getTopicPartitionBlacklist();
       Set<InstanceTopicPartitionHolder> newAssignment = rescaleInstanceToTopicPartitionMap(liveInstances,
-          excludedInstances, instanceToTopicPartitionMap, unassignedTopicPartitions, checkInstanceChange, forced);
+          excludedInstances, instanceToTopicPartitionMap, unassignedTopicPartitions, blacklistedTopicPartitions, checkInstanceChange, forced);
       if (newAssignment == null) {
         LOGGER.info("No assignment got changed, do nothing!");
         return;
@@ -232,7 +234,7 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
       LOGGER.info("New assignment: " + newAssignment);
       _lastRebalanceTimeMillis = System.currentTimeMillis();
       Map<String, IdealState> idealStatesFromAssignment =
-          HelixUtils.getIdealStatesFromAssignment(newAssignment);
+          HelixUtils.getIdealStatesFromAssignment(newAssignment, blacklistedTopicPartitions);
       LOGGER.info("Trying to assign new IdealStatesMap!");
       assignIdealStates(_helixManager, idealStatesFromAssignment);
 
@@ -243,9 +245,14 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     }
   }
 
-  private Set<InstanceTopicPartitionHolder> rescaleInstanceToTopicPartitionMap(List<LiveInstance> liveInstances,
-      List<String> excludedInstances, Map<String, Set<TopicPartition>> instanceToTopicPartitionMap,
-      Set<TopicPartition> unassignedTopicPartitions, boolean checkInstanceChange, boolean forced) {
+  private Set<InstanceTopicPartitionHolder> rescaleInstanceToTopicPartitionMap(
+      List<LiveInstance> liveInstances,
+      List<String> excludedInstances,
+      Map<String, Set<TopicPartition>> instanceToTopicPartitionMap,
+      Set<TopicPartition> unassignedTopicPartitions,
+      Set<TopicPartition> blacklistedTopicPartitions,
+      boolean checkInstanceChange,
+      boolean forced) {
     Set<String> liveInstanceNames = getLiveInstanceName(liveInstances, excludedInstances);
     // removedInstances contains the excludedInstances that currently have workload too
     Set<String> removedInstances = getRemovedInstanceSet(liveInstanceNames, instanceToTopicPartitionMap.keySet());
@@ -333,7 +340,7 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
       }
     }
 
-    if (balancePartitions(instances, tpiNeedsToBeAssigned, forced)) {
+    if (balancePartitions(instances, tpiNeedsToBeAssigned, blacklistedTopicPartitions, forced)) {
       assignmentChanged = true;
     }
 
@@ -433,8 +440,11 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     return stuckPartitionsToMove;
   }
 
-  private boolean balancePartitions(Set<InstanceTopicPartitionHolder> instances,
-      List<TopicPartition> partitionsToBeAssigned, boolean forced) {
+  private boolean balancePartitions(
+      Set<InstanceTopicPartitionHolder> instances,
+      List<TopicPartition> partitionsToBeAssigned,
+      Set<TopicPartition> blacklistedTopicPartitions,
+      boolean forced) {
     if (instances.isEmpty()) {
       LOGGER.error("No workers to take " + partitionsToBeAssigned.size() + " partitions");
       return false;
@@ -452,6 +462,11 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     List<TopicPartition> laggingPartitions = new ArrayList<>();
     List<TopicPartition> nonLaggingPartitions = new ArrayList<>();
     for (TopicPartition tp : partitionsToBeAssigned) {
+      if (blacklistedTopicPartitions.contains(tp)) {
+        LOGGER.info("%s in blacklist, skip assignment", tp.toString());
+        continue;
+      }
+
       long lag = getLagTime(tp);
       if (lag > 0) {
         lagTimeMap.put(tp, lag);
@@ -665,7 +680,7 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
 
     TopicWorkload maxWorkload = (forced && _overloadedRatioThreshold > 1.0) ? averageWorkload
         : new TopicWorkload(averageWorkload.getBytesPerSecond() * _overloadedRatioThreshold,
-            averageWorkload.getMsgsPerSecond() * _overloadedRatioThreshold);
+        averageWorkload.getMsgsPerSecond() * _overloadedRatioThreshold);
 
     List<InstanceTopicPartitionHolder> processedInstances = new ArrayList<>();
     while (!orderedInstances.isEmpty()) {

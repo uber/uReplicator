@@ -109,7 +109,7 @@ public class WorkloadInfoRetriever {
 
     if (_refreshPeriodInSeconds > 0) {
       // delay initialization for 0-5 minutes
-      int delaySec = new Random().nextInt(300);
+      int delaySec = new Random().nextInt((int)_refreshPeriodInSeconds);
       LOGGER.info("Schedule periodical refreshing workload at rate {} seconds with delay {} seconds",
           _refreshPeriodInSeconds, delaySec);
       _periodicalScheduler.scheduleWithFixedDelay(new Runnable() {

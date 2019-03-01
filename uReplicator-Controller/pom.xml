@@ -27,11 +27,6 @@
       <artifactId>uReplicator-Common</artifactId>
       <version>${project.parent.version}</version>
     </dependency>
-    <dependency>
-      <groupId>com.googlecode.json-simple</groupId>
-      <artifactId>json-simple</artifactId>
-      <version>${googlecode.json.simple.version}</version>
-    </dependency>
   </dependencies>
 
   <build>

@@ -25,6 +25,8 @@ import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
+import java.util.Random;
+
 public class TestKafkaBrokerTopicObserver {
 
   private static final Logger LOGGER =
@@ -43,14 +45,10 @@ public class TestKafkaBrokerTopicObserver {
 
     // Create Kafka topic
     KafkaStarterUtils.createTopic("testTopic0", KafkaStarterUtils.DEFAULT_ZK_STR);
-    try {
-      Thread.sleep(2000);
-    } catch (Exception e) {
-    }
     kafkaBrokerTopicObserver =
         new KafkaBrokerTopicObserver("broker0", KafkaStarterUtils.DEFAULT_ZK_STR, 1);
     try {
-      Thread.sleep(3000);
+      Thread.sleep(1000);
     } catch (Exception e) {
     }
   }
@@ -67,21 +65,26 @@ public class TestKafkaBrokerTopicObserver {
   public void testKafkaBrokerTopicObserver() {
     Assert.assertEquals(kafkaBrokerTopicObserver.getNumTopics(), 1);
     Assert.assertEquals(kafkaBrokerTopicObserver.getTopicPartition("testTopic0").getPartition(), 1);
+    Random random = new Random();
 
-    for (int i = 1; i < 10; ++i) {
+    int topicCount = 3 + random.nextInt(5);
+    for (int i = 1; i < topicCount; ++i) {
       String topicName = "testTopic" + i;
       // Create Kafka topic
       KafkaStarterUtils.createTopic(topicName, KafkaStarterUtils.DEFAULT_ZK_STR);
-      try {
-        Thread.sleep(5000);
-      } catch (Exception e) {
-      }
-      Assert.assertEquals(kafkaBrokerTopicObserver.getNumTopics(), 1 + i);
-      for (int j = 0; j <= i; ++j) {
-        Assert.assertTrue(kafkaBrokerTopicObserver.getAllTopics().contains("testTopic" + j));
-        Assert.assertEquals(
-            kafkaBrokerTopicObserver.getTopicPartition("testTopic" + j).getPartition(), 1);
-      }
+    }
+
+    try {
+      Thread.sleep(1000);
+    } catch (Exception e) {
+    }
+
+    Assert.assertEquals(kafkaBrokerTopicObserver.getNumTopics(), topicCount);
+    for (int j = 0; j < topicCount; ++j) {
+      String expectTopicName = "testTopic" + j;
+      Assert.assertTrue(kafkaBrokerTopicObserver.getAllTopics().contains(expectTopicName), "failed to find topic: "  + expectTopicName);
+      Assert.assertEquals(
+          kafkaBrokerTopicObserver.getTopicPartition("testTopic" + j).getPartition(), 1);
     }
   }
 }
