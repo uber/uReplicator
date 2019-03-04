@@ -41,7 +41,7 @@ public class TestTopicPartitionBlacklist {
   private final String helixClusterName = "TestAutoTopicWhitelistingManager";
 
   @BeforeTest
-  public void setup() {
+  public void setup() throws InterruptedException {
     LOGGER.info("Trying to setup");
     ZkStarter.startLocalZkServer();
     kafkaStarter =
@@ -50,8 +50,7 @@ public class TestTopicPartitionBlacklist {
             KafkaStarterUtils.DEFAULT_ZK_STR, KafkaStarterUtils.getDefaultKafkaConfiguration());
     ControllerConf controllerConf = ControllerTestUtils.initControllerConf(helixClusterName);
     controllerConf.setAutoRebalanceWorkloadRatioThreshold("0");
-    controllerConf.setOffsetRefreshIntervalInSec("1");
-    controllerConf.setWorkloadRefreshPeriodInSeconds("1");
+    controllerConf.setWorkloadRefreshPeriodInSeconds("5");
     controllerConf.setSrcKafkaZkPath("localhost:2181/uReplicator/testDeployment");
 
     helixMirrorMakerManager = new HelixMirrorMakerManager(controllerConf);
@@ -76,61 +75,68 @@ public class TestTopicPartitionBlacklist {
     String topicName = "testTopic";
     helixMirrorMakerManager.addTopicToMirrorMaker(topicName, 8);
 
-    Thread.sleep(1000);
     Random ran = new Random();
     int partition = ran.nextInt(8);
+    assertIdealStateOnce(topicName, partition, "ONLINE");
+    assertExternalView(topicName, partition, "ONLINE");
+
     helixMirrorMakerManager.updateTopicPartitionStateInMirrorMaker(topicName, partition, Constants.HELIX_OFFLINE_STATE);
 
-    IdealState idealStateForTopic =
-        helixMirrorMakerManager.getIdealStateForTopic(topicName);
-    ExternalView externalViewForTopic =
-        helixMirrorMakerManager.getExternalViewForTopic(topicName);
-    String idealState =
-        idealStateForTopic.getInstanceStateMap(String.valueOf(partition)).values().iterator().next();
-    String externalState =
-        externalViewForTopic.getStateMap(String.valueOf(partition)).values().iterator().next();
-    Assert.assertEquals(idealState, "OFFLINE", "externalState idealState");
-    Assert.assertEquals(externalState, "ONLINE", "unexpected externalState");
-
-
-    Thread.sleep(3000);
-    externalViewForTopic =
-        helixMirrorMakerManager.getExternalViewForTopic(topicName);
-    externalState =
-        externalViewForTopic.getStateMap(String.valueOf(partition)).values().iterator().next();
-    Assert.assertEquals(externalState, "OFFLINE", "unexpected externalState");
+    assertIdealStateOnce(topicName, partition, "OFFLINE");
+    assertExternalViewOnce(topicName, partition, "ONLINE");
+    assertExternalView(topicName, partition, "OFFLINE");
 
     helixMirrorMakerManager.getRebalancer().triggerRebalanceCluster();
 
-    Thread.sleep(6000);
-    idealStateForTopic =
-        helixMirrorMakerManager.getIdealStateForTopic(topicName);
-    idealState =
-        idealStateForTopic.getInstanceStateMap(String.valueOf(partition)).values().iterator().next();
-    Assert.assertEquals(idealState, "OFFLINE", "unexpected idealState");
-    externalViewForTopic =
-        helixMirrorMakerManager.getExternalViewForTopic(topicName);
-    externalState =
-        externalViewForTopic.getStateMap(String.valueOf(partition)).values().iterator().next();
-    Assert.assertEquals(externalState, "OFFLINE", "unexpected externalState");
+    assertIdealStateOnce(topicName, partition, "OFFLINE");
+    assertExternalView(topicName, partition, "OFFLINE");
 
     helixMirrorMakerManager.updateTopicPartitionStateInMirrorMaker(topicName, partition, Constants.HELIX_ONLINE_STATE);
-    idealStateForTopic =
-        helixMirrorMakerManager.getIdealStateForTopic(topicName);
-    externalViewForTopic =
-        helixMirrorMakerManager.getExternalViewForTopic(topicName);
-    idealState =
-        idealStateForTopic.getInstanceStateMap(String.valueOf(partition)).values().iterator().next();
-    externalState =
-        externalViewForTopic.getStateMap(String.valueOf(partition)).values().iterator().next();
-    Assert.assertEquals(idealState, "ONLINE", "unexpected idealState");
-    Assert.assertEquals(externalState, "OFFLINE", "unexpected externalState");
-
-    Thread.sleep(6000);
-    externalViewForTopic =
-        helixMirrorMakerManager.getExternalViewForTopic(topicName);
-    externalState =
-        externalViewForTopic.getStateMap(String.valueOf(partition)).values().iterator().next();
-    Assert.assertEquals(externalState, "ONLINE", "unexpected externalState");
+    assertIdealStateOnce(topicName, partition, "ONLINE");
+    assertExternalViewOnce(topicName, partition, "OFFLINE");
+    assertExternalView(topicName, partition, "ONLINE");
   }
+
+  private void assertExternalView(String topicName, int partition, String expectedState) throws InterruptedException {
+    int maxRetry = 10;
+    for (int i = 0; i < maxRetry; i++) {
+
+      try {
+        if (assertExternalViewOnce(topicName, partition, expectedState)) {
+          return;
+        }
+      } catch (AssertionError e) {
+        LOGGER.info("assertExternalViewOnce failed, try in next 1000ms, retry count: {}", i);
+        Thread.sleep(1000);
+      }
+    }
+    assertExternalViewOnce(topicName, partition, expectedState);
+  }
+
+  private boolean assertExternalViewOnce(String topicName, int partition, String expected) {
+    ExternalView externalViewForTopic =
+        helixMirrorMakerManager.getExternalViewForTopic(topicName);
+    if (externalViewForTopic == null ||
+        externalViewForTopic.getStateMap(String.valueOf(partition)) == null ||
+        externalViewForTopic.getStateMap(String.valueOf(partition)).values().size() == 0) {
+      Assert.fail(String.format("fail to find ExternalView for topic %s, partition %d", topicName, partition));
+    }
+    String externalState =
+        externalViewForTopic.getStateMap(String.valueOf(partition)).values().iterator().next();
+    Assert.assertEquals(externalState, expected, "unexpected externalState");
+    return true;
+  }
+
+  private boolean assertIdealStateOnce(String topicName, int partition, String expected) {
+    IdealState idealStateForTopic =
+        helixMirrorMakerManager.getIdealStateForTopic(topicName);
+    if (idealStateForTopic.getInstanceStateMap(String.valueOf(partition)) == null || idealStateForTopic.getInstanceStateMap(String.valueOf(partition)).values().size() == 0) {
+      Assert.fail(String.format("fail to find IdealState for topic %s, partition %d", topicName, partition));
+    }
+    String externalState =
+        idealStateForTopic.getInstanceStateMap(String.valueOf(partition)).values().iterator().next();
+    Assert.assertEquals(externalState, expected, "unexpected idealstate");
+    return true;
+  }
+
 }

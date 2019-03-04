@@ -25,6 +25,8 @@ import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
+import java.util.Random;
+
 public class TestKafkaBrokerTopicObserver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TestKafkaBrokerTopicObserver.class);
@@ -42,13 +44,9 @@ public class TestKafkaBrokerTopicObserver {
 
     // Create Kafka topic
     KafkaStarterUtils.createTopic("testTopic0", KafkaStarterUtils.DEFAULT_ZK_STR);
-    try {
-      Thread.sleep(2000);
-    } catch (Exception e) {
-    }
     kafkaBrokerTopicObserver = new KafkaBrokerTopicObserver("broker0", KafkaStarterUtils.DEFAULT_ZK_STR);
     try {
-      Thread.sleep(3000);
+      Thread.sleep(1000);
     } catch (Exception e) {
     }
   }
@@ -66,12 +64,14 @@ public class TestKafkaBrokerTopicObserver {
     Assert.assertEquals(kafkaBrokerTopicObserver.getNumTopics(), 1);
     Assert.assertEquals(kafkaBrokerTopicObserver.getTopicPartition("testTopic0").getPartition(), 1);
 
-    for (int i = 1; i < 10; ++i) {
+    Random random = new Random();
+    int topicCount = 3 + random.nextInt(5);
+    for (int i = 1; i < topicCount; ++i) {
       String topicName = "testTopic" + i;
       // Create Kafka topic
       KafkaStarterUtils.createTopic(topicName, KafkaStarterUtils.DEFAULT_ZK_STR);
       try {
-        Thread.sleep(5000);
+        Thread.sleep(1000);
       } catch (Exception e) {
       }
       Assert.assertEquals(kafkaBrokerTopicObserver.getNumTopics(), 1 + i);
