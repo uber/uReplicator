@@ -50,10 +50,8 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 public class TestManagerTopicManagement extends RestTestBase {
-
   private static final Logger LOGGER = LoggerFactory.getLogger(TestManagerTopicManagement.class);
 
-  public static String CONTROLLER_PORT = "9998";
   public static List<ControllerStarter> CONTROLLER_STARTER = new ArrayList<>();
   public static List<Thread> WORKER_STARTER0 = new ArrayList<>();
   public static List<FederatedMainThread> WORKER_STARTER1 = new ArrayList<>();
@@ -108,6 +106,7 @@ public class TestManagerTopicManagement extends RestTestBase {
           conf.setControllerPort(port);
           conf.setZkStr(ZkStarter.DEFAULT_ZK_STR);
           conf.setInstanceId("localhost");
+          conf.setHostname("localhost");
           conf.setFederatedEnabled("true");
           conf.setDeploymentName(deploymentName);
           conf.setBackUpToGit("false");
