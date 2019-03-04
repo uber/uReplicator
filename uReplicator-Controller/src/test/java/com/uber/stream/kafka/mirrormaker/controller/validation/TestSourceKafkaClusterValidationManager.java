@@ -92,7 +92,7 @@ public class TestSourceKafkaClusterValidationManager {
       // Create Kafka topic
       KafkaStarterUtils.createTopic(topicName, KafkaStarterUtils.DEFAULT_ZK_STR);
       try {
-        Thread.sleep(5000);
+        Thread.sleep(1000);
       } catch (Exception e) {
       }
       Assert.assertEquals(kafkaBrokerTopicObserver.getNumTopics(), 1 + i);
@@ -122,7 +122,7 @@ public class TestSourceKafkaClusterValidationManager {
       // Create Kafka topic
       KafkaStarterUtils.createTopic(topicName, KafkaStarterUtils.DEFAULT_ZK_STR);
       try {
-        Thread.sleep(5000);
+        Thread.sleep(1000);
       } catch (Exception e) {
       }
       Assert.assertEquals(kafkaBrokerTopicObserver.getNumTopics(), 1 + i);
@@ -150,7 +150,7 @@ public class TestSourceKafkaClusterValidationManager {
       // Create Kafka topic
       KafkaStarterUtils.createTopic(topicName, KafkaStarterUtils.DEFAULT_ZK_STR);
       try {
-        Thread.sleep(5000);
+        Thread.sleep(1000);
       } catch (Exception e) {
       }
       Assert.assertEquals(kafkaBrokerTopicObserver.getNumTopics(), 1 + i);

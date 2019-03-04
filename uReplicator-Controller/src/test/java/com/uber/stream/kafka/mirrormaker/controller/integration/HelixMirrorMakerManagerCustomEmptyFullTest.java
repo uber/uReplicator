@@ -74,7 +74,6 @@ public class HelixMirrorMakerManagerCustomEmptyFullTest {
     List<FakeInstance> fakeInstances = ControllerTestUtils
         .addFakeDataInstancesToAutoJoinHelixCluster(helixClusterName, ZkStarter.DEFAULT_ZK_STR,
             numBatchBringUpInstances, 0);
-    Thread.sleep(6000);
     ControllerTestUtils.assertInstanceOwnedTopicPartitionsBalanced(helixMirrorMakerManager,
         numBatchBringUpInstances, 8 * numTotalTopics);
 
@@ -84,7 +83,6 @@ public class HelixMirrorMakerManagerCustomEmptyFullTest {
         .addFakeDataInstancesToAutoJoinHelixCluster(helixClusterName, ZkStarter.DEFAULT_ZK_STR,
             numBatchBringUpInstances, numBatchBringUpInstances));
 
-    Thread.sleep(6000);
     ControllerTestUtils.assertInstanceOwnedTopicPartitionsBalanced(helixMirrorMakerManager,
         numBatchBringUpInstances * 2, 8 * numTotalTopics);
 
@@ -92,10 +90,9 @@ public class HelixMirrorMakerManagerCustomEmptyFullTest {
       String topic = "testTopic" + i;
       LOGGER.info("Expanding topic: {} , waiting for rebalancing", topic);
       helixMirrorMakerManager.expandTopicInMirrorMaker(topic, 16);
+      ControllerTestUtils.assertInstanceOwnedTopicPartitionsBalanced(helixMirrorMakerManager,
+          numBatchBringUpInstances * 2, 8 * numTotalTopics + 8 * (i + 1));
     }
-    Thread.sleep(6000);
-    ControllerTestUtils.assertInstanceOwnedTopicPartitionsBalanced(helixMirrorMakerManager,
-        numBatchBringUpInstances * 2, 16 * numTotalTopics);
 
     LOGGER.info("Simulate restart nodes 1 by 1");
     int totalInstancesSize = numBatchBringUpInstances * 2;
@@ -104,9 +101,10 @@ public class HelixMirrorMakerManagerCustomEmptyFullTest {
       int instanceId = random.nextInt(fakeInstances.size());
       LOGGER.info("Trying to bring down: " + fakeInstances.get(instanceId).getInstanceId());
       totalInstancesSize = stopInstance(fakeInstances.get(instanceId), totalInstancesSize);
+      ControllerTestUtils.assertInstanceOwnedTopicPartitionsBalanced(helixMirrorMakerManager,
+          totalInstancesSize, 16 * numTotalTopics);
       LOGGER.info("Trying to bring up: " + fakeInstances.get(instanceId).getInstanceId());
       totalInstancesSize = startInstance(fakeInstances.get(instanceId), totalInstancesSize);
-      Thread.sleep(6000);
       ControllerTestUtils.assertInstanceOwnedTopicPartitionsBalanced(helixMirrorMakerManager, totalInstancesSize,
           16 * numTotalTopics);
     }
@@ -123,7 +121,6 @@ public class HelixMirrorMakerManagerCustomEmptyFullTest {
       totalInstancesSize = stopInstance(fakeInstances.get(instanceId), totalInstancesSize);
 
     }
-    Thread.sleep(6000);
     ControllerTestUtils.assertInstanceOwnedTopicPartitionsBalanced(helixMirrorMakerManager, totalInstancesSize,
         16 * numTotalTopics);
 
@@ -132,7 +129,6 @@ public class HelixMirrorMakerManagerCustomEmptyFullTest {
       int instanceId = (Integer) stoppedId.toArray()[i];
       LOGGER.info("Trying to bring up: " + fakeInstances.get(instanceId).getInstanceId());
       totalInstancesSize = startInstance(fakeInstances.get(instanceId), totalInstancesSize);
-      Thread.sleep(6000);
       ControllerTestUtils.assertInstanceOwnedTopicPartitionsBalanced(helixMirrorMakerManager, totalInstancesSize,
           16 * numTotalTopics);
     }

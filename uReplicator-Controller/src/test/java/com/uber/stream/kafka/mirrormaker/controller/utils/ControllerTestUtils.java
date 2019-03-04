@@ -18,6 +18,7 @@ package com.uber.stream.kafka.mirrormaker.controller.utils;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
 import org.apache.helix.model.ExternalView;
+import org.apache.helix.model.IdealState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -80,10 +81,52 @@ public class ControllerTestUtils {
     return serverToPartitionMapping;
   }
 
-  public static void assertInstanceOwnedTopicPartitionsBalanced(
+  public static Map<String, Integer> assertIdealServerPartitionCount(
+      HelixMirrorMakerManager helixMirrorMakerManager,
+      int numTotalPartitions) {
+    Map<String, Integer> serverToPartitionMapping = new HashMap<>();
+    int assginedPartitions = 0;
+    for (String topicName : helixMirrorMakerManager.getTopicLists()) {
+      IdealState idealStateForTopic =
+          helixMirrorMakerManager.getIdealStateForTopic(topicName);
+      LOGGER.info("IdealState: " + idealStateForTopic.toString());
+      for (String partition : idealStateForTopic.getPartitionSet()) {
+        String instanceName =
+            idealStateForTopic.getInstanceStateMap(partition).keySet().iterator().next();
+        if (!serverToPartitionMapping.containsKey(instanceName)) {
+          serverToPartitionMapping.put(instanceName, 0);
+        }
+        serverToPartitionMapping.put(instanceName, serverToPartitionMapping.get(instanceName) + 1);
+        assginedPartitions++;
+      }
+    }
+    Assert.assertEquals(assginedPartitions, numTotalPartitions, "assignedPartitions not match with numTotalPartitions");
+    return serverToPartitionMapping;
+  }
+
+  public static void assertInstanceOwnedTopicPartitionsBalanced(HelixMirrorMakerManager helixMirrorMakerManager,
+      int numInstances,
+      int numTotalPartitions) throws InterruptedException {
+    int maxRetryCount = 15;
+
+    for (int i = 0; i < maxRetryCount; i ++) {
+      try {
+        if (assertInstanceOwnedTopicPartitionsBalancedOnce(helixMirrorMakerManager, numInstances, numTotalPartitions)) {
+          return;
+        }
+      } catch (AssertionError e) {
+        LOGGER.info("assertInstanceOwnedTopicPartitionsBalanced, try in next 1000ms, retry count: {}", i);
+        Thread.sleep(1000);
+      }
+    }
+    assertInstanceOwnedTopicPartitionsBalancedOnce(helixMirrorMakerManager, numInstances, numTotalPartitions);
+  }
+
+  public static boolean assertInstanceOwnedTopicPartitionsBalancedOnce(
       HelixMirrorMakerManager helixMirrorMakerManager,
       int numInstances,
       int numTotalPartitions) {
+    assertIdealServerPartitionCount(helixMirrorMakerManager, numTotalPartitions);
     Map<String, Integer> serverToPartitionMapping = assertServerPartitionCount(helixMirrorMakerManager, numTotalPartitions);
     int expectedLowerBound = (int) Math.floor((double) numTotalPartitions / (double) numInstances);
     int expectedUpperBound = (int) Math.ceil((double) numTotalPartitions / (double) numInstances);
@@ -96,5 +139,6 @@ public class ControllerTestUtils {
       Assert.assertTrue(serverPartitions >= expectedLowerBound, String.format("serverPartitions %d less than expected lower bound %d", serverPartitions, expectedLowerBound));
       Assert.assertTrue(serverPartitions <= expectedUpperBound, String.format("serverPartitions %d greater than expected upper bound %d", serverPartitions, expectedUpperBound));
     }
+    return true;
   }
 }

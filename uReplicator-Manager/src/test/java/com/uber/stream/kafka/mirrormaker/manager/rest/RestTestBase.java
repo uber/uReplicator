@@ -32,16 +32,16 @@ import org.slf4j.LoggerFactory;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 
+import java.util.Random;
+
 public class RestTestBase {
   private static final Logger LOGGER = LoggerFactory.getLogger(TestHealthCheck.class);
-
   private static final String MANAGER_CONTROLLER_HELIX_PREFIX = "manager-controller";
-
   public static String REQUEST_URL;
   public static String MANAGER_PORT = "9999";
   public static Client HTTP_CLIENT = new Client(Protocol.HTTP);
   public static ManagerStarter MANAGER_STARTER = null;
-  public static String DEPLOYMENT_NAME = "testing";
+  public static String DEPLOYMENT_NAME = "testing" + new Random().nextInt(10);
   public static String HELIX_CLUSTER_NAME = MANAGER_CONTROLLER_HELIX_PREFIX + "-" + DEPLOYMENT_NAME;
   public static ZkClient ZK_CLIENT = null;
   protected KafkaServerStartable kafkaStarter;
