@@ -2,7 +2,8 @@
 /build/
 target/
 */target/
-deploy/ 
+deploy/
+bin/pkg 
 # OS Files #
 .DS_Store
  
