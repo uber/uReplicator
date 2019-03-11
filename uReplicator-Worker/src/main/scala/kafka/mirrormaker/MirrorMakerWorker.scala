@@ -22,6 +22,7 @@ import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 import java.util.{Collections, Properties, UUID}
 
+import com.yammer.metrics.core.Meter
 import com.yammer.metrics.core.Gauge
 import joptsimple.OptionParser
 import kafka.consumer._
@@ -74,6 +75,8 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
   private var lastOffsetCommitMs = System.currentTimeMillis()
   private val recordCount: AtomicInteger = new AtomicInteger(0)
   private val flushCommitLock: ReentrantLock = new ReentrantLock
+  private var mapFailureMeter: Meter = null
+  private var topicPartitionCountObserver: TopicPartitionCountObserver = null
 
   def main(args: Array[String]) {
     info("Starting mirror maker")
@@ -117,6 +120,12 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
       .describedAs("Path to mappings file")
       .ofType(classOf[String])
 
+    val dstZkConfigOpt = parser.accepts("dstzk.config",
+      "Embedded destination zookeeper config.")
+      .withRequiredArg()
+      .describedAs("config file")
+      .ofType(classOf[String])
+
     val helpOpt = parser.accepts("help", "Print this message.")
 
     if (args.length == 0)
@@ -140,6 +149,29 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
         cleanShutdown()
       }
     })
+
+    val dstZkProps = {
+      try {
+        info("load properties dstZkConfigOpt")
+        Utils.loadProps(options.valueOf(dstZkConfigOpt))
+      } catch {
+        case e: Exception
+        => null
+      }
+    }
+    if (dstZkProps != null && dstZkProps.getProperty("enable", "false").toBoolean) {
+      info("TopicPartitionCountObserver is enabled")
+
+      topicPartitionCountObserver = new TopicPartitionCountObserver(
+        dstZkProps.getProperty("zkServer", "localhost:2181"),
+        dstZkProps.getProperty("zkPath", "/brokers/topics"),
+        dstZkProps.getProperty("connection.timeout.ms", "120000").toInt,
+        dstZkProps.getProperty("session.timeout.ms", "600000").toInt,
+        dstZkProps.getProperty("refresh.interval.ms", "3600000").toInt)
+      topicPartitionCountObserver.start()
+    } else {
+      info("Disable TopicPartitionCountObserver to use round robin to produce msg")
+    }
 
     // create producer
     val producerProps = Utils.loadProps(options.valueOf(producerConfigOpt))
@@ -191,6 +223,10 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
       Map("clientId" -> consumerConfig.clientId)
     )
 
+    mapFailureMeter = newMeter("MirrorMaker-mapFailurePerSec", "start", TimeUnit.SECONDS,
+      Map("clientId" -> consumerConfig.clientId))
+
+
     // initialize topic mappings for rewriting topic names between consuming side and producing side
     topicMappings = if (options.has(topicMappingsOpt)) {
       val topicMappingsFile = options.valueOf(topicMappingsOpt)
@@ -207,7 +243,6 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
       }).toMap
     } else Map.empty[String, String]
 
-    // Create mirror maker threads
     mirrorMakerThread = new MirrorMakerThread(connector, instanceId)
     mirrorMakerThread.start()
     mirrorMakerThread.awaitShutdown()
@@ -217,7 +252,7 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
     helixZkManager = HelixManagerFactory.getZKHelixManager(helixClusterName, instanceId, InstanceType.PARTICIPANT, zkServer)
     val stateMachineEngine: StateMachineEngine = helixZkManager.getStateMachineEngine()
     // register the MirrorMaker worker
-    val stateModelFactory = new HelixWorkerOnlineOfflineStateModelFactory(instanceId, connector)
+    val stateModelFactory = new HelixWorkerOnlineOfflineStateModelFactory(instanceId, connector, topicPartitionCountObserver)
     stateMachineEngine.registerStateModelFactory("OnlineOffline", stateModelFactory)
     helixZkManager.connect()
   }
@@ -268,6 +303,10 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
 
       // disconnect with helixZkManager
       helixZkManager.disconnect()
+
+      if (topicPartitionCountObserver != null) {
+        topicPartitionCountObserver.shutdown()
+      }
       info("helix connection shutdown successfully")
 
       info("Kafka mirror maker shutdown successfully")
@@ -413,7 +452,21 @@ object MirrorMakerWorker extends Logging with KafkaMetricsGroup {
     override def handle(record: MessageAndMetadata[Array[Byte], Array[Byte]]): util.List[ProducerRecord[Array[Byte], Array[Byte]]] = {
       // rewrite topic between consuming side and producing side
       val topic = topicMappings.get(record.topic).getOrElse(record.topic)
-      Collections.singletonList(new ProducerRecord[Array[Byte], Array[Byte]](topic, record.key(), record.message()))
+      var partitionCount = 0
+      if (topicPartitionCountObserver != null) {
+        partitionCount = topicPartitionCountObserver.getPartitionCount(topic)
+      }
+      if (partitionCount > 0 && record.partition >= 0) {
+        Collections.singletonList(new ProducerRecord[Array[Byte], Array[Byte]](topic,
+          record.partition % partitionCount, record.key(), record.message()))
+      } else {
+        if (topicPartitionCountObserver != null) {
+          // this is failure if topicPartitionCountObserver is enabled
+          mapFailureMeter.mark()
+        }
+        Collections.singletonList(new ProducerRecord[Array[Byte], Array[Byte]](topic,
+          record.key(), record.message()))
+      }
     }
   }
 
