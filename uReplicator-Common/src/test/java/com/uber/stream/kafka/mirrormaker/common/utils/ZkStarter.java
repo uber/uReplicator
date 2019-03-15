@@ -111,7 +111,7 @@ public class ZkStarter {
     }
 
     // Wait until the ZK server is started
-    ZkClient client = new ZkClient("localhost:" + port, 10000);
+    ZkClient client = new ZkClient("localhost:" + port, 1000);
     client.waitUntilConnected(10L, TimeUnit.SECONDS);
     client.close();
   }

@@ -15,10 +15,10 @@
  */
 package com.uber.stream.kafka.mirrormaker.manager.rest;
 
+import com.uber.stream.kafka.mirrormaker.common.utils.KafkaStarterUtils;
+import com.uber.stream.kafka.mirrormaker.common.utils.ZkStarter;
 import com.uber.stream.kafka.mirrormaker.manager.ManagerConf;
 import com.uber.stream.kafka.mirrormaker.manager.ManagerStarter;
-import com.uber.stream.kafka.mirrormaker.manager.utils.KafkaStarterUtils;
-import com.uber.stream.kafka.mirrormaker.manager.utils.ZkStarter;
 import kafka.server.KafkaServerStartable;
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.commons.cli.CommandLine;

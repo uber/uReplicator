@@ -18,18 +18,27 @@
   <dependencies>
     <dependency>
       <groupId>com.uber.uReplicator</groupId>
+      <artifactId>uReplicator-Common</artifactId>
+      <version>${project.parent.version}</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.uber.uReplicator</groupId>
       <artifactId>uReplicator-Controller</artifactId>
       <version>${project.parent.version}</version>
+      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>com.uber.uReplicator</groupId>
       <artifactId>uReplicator-Worker</artifactId>
       <version>${project.parent.version}</version>
+      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>com.uber.uReplicator</groupId>
       <artifactId>uReplicator-Manager</artifactId>
       <version>${project.parent.version}</version>
+      <scope>compile</scope>
     </dependency>
   </dependencies>
 
@@ -325,6 +334,20 @@
                 </resource>
               </resources>
             </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco.version}</version>
+        <executions>
+          <execution>
+            <id>report-aggregate</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>report-aggregate</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>

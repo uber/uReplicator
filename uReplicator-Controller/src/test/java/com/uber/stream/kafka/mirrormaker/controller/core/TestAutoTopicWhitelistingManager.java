@@ -15,10 +15,10 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
+import com.uber.stream.kafka.mirrormaker.common.utils.KafkaStarterUtils;
+import com.uber.stream.kafka.mirrormaker.common.utils.ZkStarter;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.utils.ControllerTestUtils;
-import com.uber.stream.kafka.mirrormaker.controller.utils.KafkaStarterUtils;
-import com.uber.stream.kafka.mirrormaker.controller.utils.ZkStarter;
 import kafka.server.KafkaServerStartable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
