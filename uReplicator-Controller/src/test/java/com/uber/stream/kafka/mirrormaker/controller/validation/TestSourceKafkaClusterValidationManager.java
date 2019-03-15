@@ -16,11 +16,11 @@
 package com.uber.stream.kafka.mirrormaker.controller.validation;
 
 import com.alibaba.fastjson.JSONObject;
+import com.uber.stream.kafka.mirrormaker.common.utils.KafkaStarterUtils;
+import com.uber.stream.kafka.mirrormaker.common.utils.ZkStarter;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
 import com.uber.stream.kafka.mirrormaker.controller.core.KafkaBrokerTopicObserver;
-import com.uber.stream.kafka.mirrormaker.controller.utils.KafkaStarterUtils;
-import com.uber.stream.kafka.mirrormaker.controller.utils.ZkStarter;
 import kafka.server.KafkaServerStartable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,7 +86,7 @@ public class TestSourceKafkaClusterValidationManager {
     System.out.println(validationResult);
     Assert.assertEquals(validationResult,
         "{\"mismatchedTopicPartitions\":{},\"numMismatchedTopicPartitions\":0,\"numMismatchedTopics\":0,\"numMissingTopics\":0}");
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 0; i < 2; ++i) {
       Assert.assertEquals(helixMirrorMakerManager.getTopicLists().size(), i);
       String topicName = "testTopic" + i;
       // Create Kafka topic
@@ -109,15 +109,15 @@ public class TestSourceKafkaClusterValidationManager {
       helixMirrorMakerManager.addTopicToMirrorMaker(topicName, 1);
     }
 
-    for (int i = 10; i < 20; ++i) {
+    for (int i = 2; i < 4; ++i) {
       helixMirrorMakerManager.addTopicToMirrorMaker("testTopic" + i, 1);
     }
     JSONObject validationResultJson =
         JSONObject.parseObject(sourceKafkaClusterValidationManager.validateSourceKafkaCluster());
     System.out.println(validationResultJson);
-    Assert.assertEquals(validationResultJson.get("numMissingTopics"), 10);
-    for (int i = 10; i < 20; ++i) {
-      Assert.assertEquals(helixMirrorMakerManager.getTopicLists().size(), 20);
+    Assert.assertEquals(validationResultJson.get("numMissingTopics"), 2);
+    for (int i = 2; i < 4; ++i) {
+      Assert.assertEquals(helixMirrorMakerManager.getTopicLists().size(), 4);
       String topicName = "testTopic" + i;
       // Create Kafka topic
       KafkaStarterUtils.createTopic(topicName, KafkaStarterUtils.DEFAULT_ZK_STR);
@@ -135,17 +135,17 @@ public class TestSourceKafkaClusterValidationManager {
       validationResultJson =
           JSONObject.parseObject(sourceKafkaClusterValidationManager.validateSourceKafkaCluster());
       System.out.println(validationResultJson);
-      Assert.assertEquals(validationResultJson.get("numMissingTopics"), 19 - i);
+      Assert.assertEquals(validationResultJson.get("numMissingTopics"), 3 - i);
     }
-    for (int i = 20; i < 30; ++i) {
+    for (int i = 4; i < 6; ++i) {
       helixMirrorMakerManager.addTopicToMirrorMaker("testTopic" + i, 2);
     }
     validationResultJson =
         JSONObject.parseObject(sourceKafkaClusterValidationManager.validateSourceKafkaCluster());
     System.out.println(validationResultJson);
-    Assert.assertEquals(validationResultJson.get("numMissingTopics"), 10);
-    for (int i = 20; i < 30; ++i) {
-      Assert.assertEquals(helixMirrorMakerManager.getTopicLists().size(), 30);
+    Assert.assertEquals(validationResultJson.get("numMissingTopics"), 2);
+    for (int i = 4; i < 6; ++i) {
+      Assert.assertEquals(helixMirrorMakerManager.getTopicLists().size(), 6);
       String topicName = "testTopic" + i;
       // Create Kafka topic
       KafkaStarterUtils.createTopic(topicName, KafkaStarterUtils.DEFAULT_ZK_STR);
@@ -163,17 +163,17 @@ public class TestSourceKafkaClusterValidationManager {
       validationResultJson =
           JSONObject.parseObject(sourceKafkaClusterValidationManager.validateSourceKafkaCluster());
       System.out.println(validationResultJson);
-      Assert.assertEquals(validationResultJson.get("numMissingTopics"), 29 - i);
-      Assert.assertEquals(validationResultJson.get("numMismatchedTopics"), i - 19);
-      Assert.assertEquals(validationResultJson.get("numMismatchedTopicPartitions"), i - 19);
-      for (int h = 20; h <= i; ++h) {
+      Assert.assertEquals(validationResultJson.get("numMissingTopics"), 5 - i);
+      Assert.assertEquals(validationResultJson.get("numMismatchedTopics"), i - 3);
+      Assert.assertEquals(validationResultJson.get("numMismatchedTopicPartitions"), i - 3);
+      for (int h = 4; h <= i; ++h) {
         Assert.assertEquals(
             validationResultJson.getJSONObject("mismatchedTopicPartitions").get("testTopic" + h),
             1);
       }
     }
 
-    for (int i = 20; i < 30; ++i) {
+    for (int i = 4; i < 6; ++i) {
       helixMirrorMakerManager.deleteTopicInMirrorMaker("testTopic" + i);
       helixMirrorMakerManager.addTopicToMirrorMaker("testTopic" + i, 1);
     }

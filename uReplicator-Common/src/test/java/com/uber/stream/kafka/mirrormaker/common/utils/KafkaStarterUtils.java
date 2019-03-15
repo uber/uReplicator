@@ -20,10 +20,8 @@ import java.util.Properties;
 import kafka.admin.TopicCommand;
 import kafka.server.KafkaConfig;
 import kafka.server.KafkaServerStartable;
-import kafka.utils.ZkUtils;
 import kafka.zk.KafkaZkClient;
 import org.I0Itec.zkclient.ZkClient;
-import org.apache.commons.io.FileUtils;
 import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.utils.Time;
 
@@ -39,7 +37,9 @@ public class KafkaStarterUtils {
   public static final String DEFAULT_KAFKA_BROKER = "localhost:" + DEFAULT_KAFKA_PORT;
 
   public static Properties getDefaultKafkaConfiguration() {
-    return new Properties();
+    Properties properties = new Properties();
+    properties.setProperty("controlled.shutdown.enable", "false");
+    return properties;
   }
 
   public static KafkaServerStartable startServer(final int port, final int brokerId,
@@ -101,7 +101,7 @@ public class KafkaStarterUtils {
     try {
       String[] args = new String[]{"--create", "--zookeeper", zkStr, "--replication-factor", "1",
           "--partitions", "1", "--topic", kafkaTopic};
-      KafkaZkClient zkClient = KafkaZkClient.apply(zkStr, false, 30000, 30000, Integer.MAX_VALUE, Time.SYSTEM,"kafka.server",
+      KafkaZkClient zkClient = KafkaZkClient.apply(zkStr, false, 3000, 3000, Integer.MAX_VALUE, Time.SYSTEM, "kafka.server",
           "SessionExpireListener");
       TopicCommand.TopicCommandOptions opts = new TopicCommand.TopicCommandOptions(args);
       TopicCommand.createTopic(zkClient, opts);

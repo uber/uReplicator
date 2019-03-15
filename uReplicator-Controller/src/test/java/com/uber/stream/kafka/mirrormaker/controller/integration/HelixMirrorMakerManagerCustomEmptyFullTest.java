@@ -15,11 +15,11 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.integration;
 
+import com.uber.stream.kafka.mirrormaker.common.utils.ZkStarter;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
 import com.uber.stream.kafka.mirrormaker.controller.utils.ControllerTestUtils;
 import com.uber.stream.kafka.mirrormaker.controller.utils.FakeInstance;
-import com.uber.stream.kafka.mirrormaker.controller.utils.ZkStarter;
 
 import java.util.HashSet;
 import java.util.List;
@@ -61,8 +61,8 @@ public class HelixMirrorMakerManagerCustomEmptyFullTest {
     helixMirrorMakerManager.start();
     // Adding fake workers
     Random random = new Random();
-    int numBatchBringUpInstances = 3 + random.nextInt(3);
-    int numTotalTopics = 3 + random.nextInt(3);
+    int numBatchBringUpInstances = 3;
+    int numTotalTopics = 5;
     for (int i = 0; i < numTotalTopics; ++i) {
       String topic = "testTopic" + i;
       helixMirrorMakerManager.addTopicToMirrorMaker(topic, 8);

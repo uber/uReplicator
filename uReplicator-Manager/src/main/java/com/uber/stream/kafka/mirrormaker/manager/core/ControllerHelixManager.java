@@ -1339,6 +1339,9 @@ public class ControllerHelixManager implements IHelixManager {
           .getTopicPartitionWithRefresh(topicName);
       instance.removeTopicPartition(tp);
       _topicToPipelineInstanceMap.get(topicName).remove(pipeline);
+      if (_topicToPipelineInstanceMap.get(topicName).keySet().size() == 0) {
+        _topicToPipelineInstanceMap.remove(topicName);
+      }
       if (instance.getServingTopicPartitionSet().isEmpty()) {
         _availableControllerList.add(instance.getInstanceName());
         _assignedControllerCount.dec();

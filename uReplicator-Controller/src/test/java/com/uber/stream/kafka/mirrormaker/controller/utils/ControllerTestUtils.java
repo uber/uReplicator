@@ -15,6 +15,7 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.utils;
 
+import com.uber.stream.kafka.mirrormaker.common.utils.ZkStarter;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
 import org.apache.helix.model.ExternalView;
