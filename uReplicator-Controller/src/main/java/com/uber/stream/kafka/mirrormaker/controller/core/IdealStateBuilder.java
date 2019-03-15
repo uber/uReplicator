@@ -116,7 +116,7 @@ public class IdealStateBuilder {
         }
 
         InstanceTopicPartitionHolder liveInstance =
-            instancesForNewPartitions.get(i % instancesForNewPartitions.size());
+            instancesForNewPartitions.get((i - numOldPartitions) % instancesForNewPartitions.size());
         customModeIdealStateBuilder.assignInstanceAndState(Integer.toString(i),
             liveInstance.getInstanceName(),
             "ONLINE");

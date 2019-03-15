@@ -15,13 +15,13 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.rest;
 
+import com.uber.stream.kafka.mirrormaker.common.utils.KafkaStarterUtils;
+import com.uber.stream.kafka.mirrormaker.common.utils.ZkStarter;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerStarter;
 import com.uber.stream.kafka.mirrormaker.controller.core.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.controller.utils.ControllerTestUtils;
 import com.uber.stream.kafka.mirrormaker.controller.utils.FakeInstance;
-import com.uber.stream.kafka.mirrormaker.controller.utils.KafkaStarterUtils;
-import com.uber.stream.kafka.mirrormaker.controller.utils.ZkStarter;
 import kafka.server.KafkaServerStartable;
 import org.I0Itec.zkclient.ZkClient;
 import org.restlet.Client;
