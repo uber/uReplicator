@@ -15,6 +15,7 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.uber.stream.kafka.mirrormaker.common.Constants;
 import com.uber.stream.kafka.mirrormaker.common.configuration.IuReplicatorConf;
 import com.uber.stream.kafka.mirrormaker.common.core.IHelixManager;
@@ -28,12 +29,14 @@ import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
+import com.uber.stream.kafka.mirrormaker.common.modules.TopicPartitionLag;
+import org.apache.commons.lang.StringUtils;
 import org.apache.helix.HelixAdmin;
 import org.apache.helix.HelixDataAccessor;
 import org.apache.helix.HelixManager;
@@ -69,17 +72,44 @@ public class HelixMirrorMakerManager implements IHelixManager {
   private final ControllerConf _controllerConf;
   private final String _helixClusterName;
   private final String _helixZkURL;
+
   private HelixManager _helixZkManager;
   private HelixAdmin _helixAdmin;
   private String _instanceId;
 
   private final PriorityQueue<InstanceTopicPartitionHolder> _currentServingInstance;
 
-  private final WorkloadInfoRetriever _workloadInfoRetriever;
-
-  private final OffsetMonitor _offsetMonitor;
-
   private AutoRebalanceLiveInstanceChangeListener _autoRebalanceLiveInstanceChangeListener = null;
+
+  // if the difference between latest offset and commit offset is less than this
+  // threshold, it is not considered as lag
+  private final long _minLagOffset;
+
+  // if the difference between latest offset and commit offset is less than this
+  // threshold in terms of ingestion time, it is not considered as lag
+  private final long _minLagTimeSec;
+
+  // the maximum valid time for offset
+  private final long _offsetMaxValidTimeMillis;
+
+  // the maximum ratio of instances can be used as dedicated for lagging partitions
+  private final double _maxDedicatedInstancesRatio;
+
+  private double _maxWorkloadPerWorkerBytes;
+
+  @VisibleForTesting
+  WorkloadInfoRetriever _workloadInfoRetriever;
+
+  @VisibleForTesting
+  OffsetMonitor _offsetMonitor;
+
+  public double getMaxWorkloadPerWorkerBytes() {
+    return _maxWorkloadPerWorkerBytes;
+  }
+
+  public double getMaxDedicatedInstancesRatio() {
+    return _maxDedicatedInstancesRatio;
+  }
 
   public HelixMirrorMakerManager(ControllerConf controllerConf) {
     _controllerConf = controllerConf;
@@ -88,8 +118,13 @@ public class HelixMirrorMakerManager implements IHelixManager {
     _instanceId = controllerConf.getInstanceId();
     _workloadInfoRetriever = new WorkloadInfoRetriever(this, true);
     _currentServingInstance = new PriorityQueue<>(1,
-        InstanceTopicPartitionHolder.getTotalWorkloadComparator(_workloadInfoRetriever, null, true));
+        InstanceTopicPartitionHolder.perPartitionWorkloadComparator(_workloadInfoRetriever, null));
     _offsetMonitor = new OffsetMonitor(this, controllerConf);
+
+    _minLagTimeSec = controllerConf.getAutoRebalanceMinLagTimeInSeconds();
+    _minLagOffset = controllerConf.getAutoRebalanceMinLagOffset();
+    _offsetMaxValidTimeMillis = TimeUnit.SECONDS.toMillis(controllerConf.getAutoRebalanceMaxOffsetInfoValidInSeconds());
+    _maxDedicatedInstancesRatio = controllerConf.getMaxDedicatedLaggingInstancesRatio();
   }
 
   public synchronized void start() {
@@ -99,6 +134,9 @@ public class HelixMirrorMakerManager implements IHelixManager {
     LOGGER.info("Trying to register AutoRebalanceLiveInstanceChangeListener");
     _autoRebalanceLiveInstanceChangeListener = new AutoRebalanceLiveInstanceChangeListener(this, _helixZkManager,
         _controllerConf);
+    _maxWorkloadPerWorkerBytes = isSameRegion(_controllerConf.getSourceCluster(), _controllerConf.getDestinationCluster()) ?
+        _controllerConf.getMaxWorkloadPerWorkerByteWithinRegion() : _controllerConf.getMaxWorkloadPerWorkerByteCrossRegion();
+    LOGGER.info("environment:maxWorkloadPerWorkerBytes {}", _maxWorkloadPerWorkerBytes);
     updateCurrentServingInstance();
     _workloadInfoRetriever.start();
     _offsetMonitor.start();
@@ -359,5 +397,43 @@ public class HelixMirrorMakerManager implements IHelixManager {
 
   public boolean isHealthy() {
     return getOffsetMonitor().isHealthy();
+  }
+
+  /**
+   * Calculates the lagging time if the given partition has lag.
+   *
+   * @param tp topic partition
+   * @return the lagging time in seconds if the given partition has lag; otherwise return null.
+   */
+  public TopicPartitionLag calculateLagTime(TopicPartition tp) {
+    TopicPartitionLag tpl = getOffsetMonitor().getTopicPartitionOffset(tp);
+    if (tpl == null || tpl.getLatestOffset() <= 0 || tpl.getCommitOffset() <= 0
+        || System.currentTimeMillis() - tpl.getTimeStamp() > _offsetMaxValidTimeMillis) {
+      return null;
+    }
+    long lag = tpl.getLatestOffset() - tpl.getCommitOffset();
+    if (lag <= _minLagOffset) {
+      return null;
+    }
+
+    double msgRate = getWorkloadInfoRetriever().topicWorkload(tp.getTopic())
+        .getMsgsPerSecondPerPartition();
+    if (msgRate < 1) {
+      msgRate = 1;
+    }
+    double lagTime = lag / msgRate;
+    if (lagTime > _minLagTimeSec) {
+      tpl.setLagTime(Math.round(lagTime));
+      return tpl;
+    }
+    return null;
+  }
+
+  public boolean isSameRegion(String src, String dst) {
+    if (StringUtils.isBlank(src) || StringUtils.isBlank(dst)) {
+      LOGGER.error("Either srcCluster: {} or dstCluster: {} is empty, return false", src, dst);
+      return false;
+    }
+    return src.substring(0, 3).equals(dst.substring(0, 3));
   }
 }

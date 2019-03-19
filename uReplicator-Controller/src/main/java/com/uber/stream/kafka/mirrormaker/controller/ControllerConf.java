@@ -155,6 +155,15 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
   private static final String MSGS_PER_SECOND_DEFAULT = "controller.msgs.per.second.default";
   private static final double DEFAULT_MSGS_PER_SECOND_DEFAULT = 1;
 
+  private static final String MAX_WORKLOAD_PER_WORKER_BYTE_WITHIN_REGION = "controller.max.workload.per.worker.byte.within.region";
+  private static final double DEFAULT_MAX_WORKLOAD_PER_WORKER_BYTE_WITHIN_REGION = 8 * 1024 * 1024;
+
+  private static final String MAX_WORKLOAD_PER_WORKER_BYTE_CROSS_REGION = "controller.max.workload.per.worker.byte.cross.region";
+  private static final double DEFAULT_MAX_WORKLOAD_PER_WORKER_BYTE_CROSS_REGION = 8 * 1024 * 1024;
+
+  private static final String SOURCE_CLUSTER = "controller.src.cluster";
+  private static final String DESTINATION_CLUSTER = "controller.dst.cluster";
+
   public ControllerConf() {
     super();
     this.setDelimiterParsingDisabled(true);
@@ -345,6 +354,23 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
     setProperty(HOSTNAME, hostname);
   }
 
+  public void setSourceCluster(String sourceCluster) {
+    setProperty(SOURCE_CLUSTER, sourceCluster);
+  }
+
+  public void setDestinationCluster(String destinationCluster) {
+    setProperty(DESTINATION_CLUSTER, destinationCluster);
+  }
+
+
+  public void setMaxWorkloadPerWorkerByteWithinRegion(String maxWorkloadPerWorkerByteWithinRegion) {
+    setProperty(MAX_WORKLOAD_PER_WORKER_BYTE_WITHIN_REGION, Double.parseDouble(maxWorkloadPerWorkerByteWithinRegion));
+  }
+
+  public void setMaxWorkloadPerWorkerByteCrossRegion(String maxWorkloadPerWorkerByteCrossRegion) {
+    setProperty(MAX_WORKLOAD_PER_WORKER_BYTE_CROSS_REGION, Double.parseDouble(maxWorkloadPerWorkerByteCrossRegion));
+  }
+
   public String getHostname() {
     if (containsKey(HOSTNAME)) {
       return (String) getProperty(HOSTNAME);
@@ -488,6 +514,22 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
 
   public Boolean getBackUpToGit() {
     return (Boolean) getProperty(BACKUP_TO_GIT);
+  }
+
+  public String getSourceCluster() {
+    if (containsKey(SOURCE_CLUSTER)) {
+      return (String) getProperty(SOURCE_CLUSTER);
+    } else {
+      return "";
+    }
+  }
+
+  public String getDestinationCluster() {
+    if (containsKey(DESTINATION_CLUSTER)) {
+      return (String) getProperty(DESTINATION_CLUSTER);
+    } else {
+      return "";
+    }
   }
 
   public Integer getMaxWorkingInstances() {
@@ -703,6 +745,22 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
     return clusters;
   }
 
+  public Double getMaxWorkloadPerWorkerByteWithinRegion() {
+    if (containsKey(MAX_WORKLOAD_PER_WORKER_BYTE_WITHIN_REGION)) {
+      return (Double) getProperty(MAX_WORKLOAD_PER_WORKER_BYTE_WITHIN_REGION);
+    } else {
+      return DEFAULT_MAX_WORKLOAD_PER_WORKER_BYTE_WITHIN_REGION;
+    }
+  }
+
+  public Double getMaxWorkloadPerWorkerByteCrossRegion() {
+    if (containsKey(MAX_WORKLOAD_PER_WORKER_BYTE_CROSS_REGION)) {
+      return (Double) getProperty(MAX_WORKLOAD_PER_WORKER_BYTE_CROSS_REGION);
+    } else {
+      return DEFAULT_MAX_WORKLOAD_PER_WORKER_BYTE_CROSS_REGION;
+    }
+  }
+
   @SuppressWarnings("rawtypes")
   @Override
   public String toString() {
@@ -776,7 +834,9 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
         .addOption("remoteBackupRepo", true, "Remote Backup Repo to store cluster state")
         .addOption("localGitRepoClonePath", true, "Clone location of the remote git backup repo")
         .addOption("localBackupFilePath", true, "Local backup file location")
-        .addOption("hostname", true, "hostname for this host");
+        .addOption("hostname", true, "hostname for this host")
+        .addOption("maxWorkloadPerWorkerByteWithRegion", true, "The max workload per worker within region")
+        .addOption("maxWorkloadPerWorkerByteCrossRegion", true, "The max workload per worker cross region");
     return controllerOptions;
   }
 
@@ -1038,6 +1098,18 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
       }
     } else {
       controllerConf.setConfigFile("");
+    }
+
+    if (cmd.hasOption("maxWorkloadPerWorkerByteWithinRegion")) {
+      controllerConf.setMaxWorkloadPerWorkerByteWithinRegion(cmd.getOptionValue("maxWorkloadPerWorkerByteWithinRegion"));
+    } else {
+      controllerConf.setMaxWorkloadPerWorkerByteWithinRegion(Double.toString(DEFAULT_MAX_WORKLOAD_PER_WORKER_BYTE_WITHIN_REGION));
+    }
+
+    if (cmd.hasOption("maxWorkloadPerWorkerByteCrossRegion")) {
+      controllerConf.setMaxWorkloadPerWorkerByteCrossRegion(cmd.getOptionValue("maxWorkloadPerWorkerByteCrossRegion"));
+    } else {
+      controllerConf.setMaxWorkloadPerWorkerByteCrossRegion(Double.toString(DEFAULT_MAX_WORKLOAD_PER_WORKER_BYTE_CROSS_REGION));
     }
 
     return controllerConf;

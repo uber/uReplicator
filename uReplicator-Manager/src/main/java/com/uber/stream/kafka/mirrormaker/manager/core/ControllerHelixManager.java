@@ -24,7 +24,7 @@ import com.uber.stream.kafka.mirrormaker.common.core.IHelixManager;
 import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicWorkload;
-import com.uber.stream.kafka.mirrormaker.common.core.WorkloadInfoRetriever;
+import com.uber.stream.kafka.mirrormaker.common.modules.ControllerWorkloadInfo;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixSetupUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.HttpClientUtils;
@@ -78,7 +78,7 @@ public class ControllerHelixManager implements IHelixManager {
 
   private final WorkerHelixManager _workerHelixManager;
   private LiveInstanceChangeListener _liveInstanceChangeListener;
-  private Map<String, WorkloadInfoRetriever> _workloadInfoRetrieverMap;
+  private Map<String, TopicWorkload> _pipelineWorkloadMap;
 
   private final CloseableHttpClient _httpClient;
   private final int _controllerPort;
@@ -86,8 +86,6 @@ public class ControllerHelixManager implements IHelixManager {
 
   private final int _workloadRefreshPeriodInSeconds;
   private final int _initMaxNumPartitionsPerRoute;
-  private final double _initMaxWorkloadPerWorkerByteDc;
-  private final double _initMaxWorkloadPerWorkerByteXdc;
   private final int _maxNumPartitionsPerRoute;
   private final int _initMaxNumWorkersPerRoute;
   private final int _maxNumWorkersPerRoute;
@@ -106,6 +104,7 @@ public class ControllerHelixManager implements IHelixManager {
   private static final Counter _availableWorker = new Counter();
   private static final Counter _nonParityTopic = new Counter();
   private static final Counter _validateWrongCount = new Counter();
+  private static final Counter _rescaleFailedCount = new Counter();
   private static final Counter _lowUrgencyValidateWrongCount = new Counter();
   private static final Counter _assignedControllerCount = new Counter();
 
@@ -129,13 +128,11 @@ public class ControllerHelixManager implements IHelixManager {
     _srcKafkaValidationManager = srcKafkaValidationManager;
     _initMaxNumPartitionsPerRoute = managerConf.getInitMaxNumPartitionsPerRoute();
     _maxNumPartitionsPerRoute = managerConf.getMaxNumPartitionsPerRoute();
-    _initMaxWorkloadPerWorkerByteDc = managerConf.getInitMaxWorkloadPerWorkerByteDc();
-    _initMaxWorkloadPerWorkerByteXdc = managerConf.getInitMaxWorkloadPerWorkerByteXdc();
     _initMaxNumWorkersPerRoute = managerConf.getInitMaxNumWorkersPerRoute();
     _maxNumWorkersPerRoute = managerConf.getMaxNumWorkersPerRoute();
     _workloadRefreshPeriodInSeconds = managerConf.getWorkloadRefreshPeriodInSeconds();
     _workerHelixManager = new WorkerHelixManager(managerConf);
-    _workloadInfoRetrieverMap = new ConcurrentHashMap<>();
+    _pipelineWorkloadMap = new ConcurrentHashMap<>();
     _helixZkURL = HelixUtils.getAbsoluteZkPathForHelix(managerConf.getManagerZkStr());
     _helixClusterName = MANAGER_CONTROLLER_HELIX_PREFIX + "-" + managerConf.getManagerDeployment();
     _instanceId = managerConf.getManagerInstanceId();
@@ -172,9 +169,6 @@ public class ControllerHelixManager implements IHelixManager {
     _helixAdmin = _helixManager.getClusterManagmentTool();
     _helixPropertyStore = _helixManager.getHelixPropertyStore();
 
-
-    initWorkloadInfoRetriever();
-
     updateCurrentStatus();
 
     LOGGER.info("Trying to register ControllerLiveInstanceChangeListener");
@@ -186,19 +180,8 @@ public class ControllerHelixManager implements IHelixManager {
     }
   }
 
-  private void initWorkloadInfoRetriever() {
-    for (String cluster : _conf.getSourceClusters()) {
-      String srcKafkaZkPath = (String) _conf.getProperty(CONFIG_KAFKA_CLUSTER_KEY_PREFIX + cluster);
-      _workloadInfoRetrieverMap.put(cluster, new WorkloadInfoRetriever(this, false, srcKafkaZkPath));
-      _workloadInfoRetrieverMap.get(cluster).start();
-    }
-  }
-
   public synchronized void stop() throws IOException {
     LOGGER.info("Trying to stop ManagerControllerHelix!");
-    for (WorkloadInfoRetriever retriever : _workloadInfoRetrieverMap.values()) {
-      retriever.stop();
-    }
     _zkClient.close();
     _workerHelixManager.stop();
     _helixManager.disconnect();
@@ -215,6 +198,8 @@ public class ControllerHelixManager implements IHelixManager {
           _nonParityTopic);
       HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("validate.wrong.counter",
           _validateWrongCount);
+      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("rescale.failed.counter",
+          _rescaleFailedCount);
       HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("validate.wrong.low.urgency.counter",
           _lowUrgencyValidateWrongCount);
       HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("controller.assigned.counter",
@@ -554,7 +539,7 @@ public class ControllerHelixManager implements IHelixManager {
           String topicName = tp.getTopic();
           if (topicName.startsWith(SEPARATOR)) {
             currPipelineToInstanceMap.putIfAbsent(topicName, new PriorityQueue<>(1,
-                InstanceTopicPartitionHolder.getTotalWorkloadComparator(_workloadInfoRetrieverMap.get(getSrc(topicName)), null, false)));
+                InstanceTopicPartitionHolder.totalWorkloadComparator(_pipelineWorkloadMap)));
             InstanceTopicPartitionHolder itph = new InstanceTopicPartitionHolder(instanceId, tp);
             if (workerRouteToInstanceMap.get(tp) != null) {
               itph.addWorkers(workerRouteToInstanceMap.get(tp));
@@ -910,7 +895,7 @@ public class ControllerHelixManager implements IHelixManager {
     for (String pipeline : _pipelineToInstanceMap.keySet()) {
       LOGGER.info("Start rescale pipeline: {}", pipeline);
       PriorityQueue<InstanceTopicPartitionHolder> newItphQueue = new PriorityQueue<>(1,
-          InstanceTopicPartitionHolder.getTotalWorkloadComparator(_workloadInfoRetrieverMap.get(getSrc(pipeline)), null, false));
+          InstanceTopicPartitionHolder.totalWorkloadComparator(_pipelineWorkloadMap));
       // TODO: what if routeId is not continuous
       int nextRouteId = _pipelineToInstanceMap.get(pipeline).size();
       for (InstanceTopicPartitionHolder itph : _pipelineToInstanceMap.get(pipeline)) {
@@ -969,103 +954,65 @@ public class ControllerHelixManager implements IHelixManager {
             }
           }
         }
-
-        // TODO: what to do when workload retriever is not working
-        // Expand route when topics are expanded
-        /*if (itph.getTotalNumPartitions() > _initMaxNumPartitionsPerRoute) {
-          LOGGER.info("Checking route {} with controller {} and topics {} since it exceeds "
-                  + "initMaxNumPartitionsPerRoute {}", itph.getRouteString(), itph.getInstanceName(),
-              itph.getServingTopicPartitionSet(), _initMaxNumPartitionsPerRoute);
-          int expectedNumWorkers = getExpectedNumWorkers(itph.getTotalNumPartitions());
-          LOGGER.info("current {}, expected {}", itph.getWorkerSet().size(), expectedNumWorkers);
-          if (itph.getWorkerSet().size() < expectedNumWorkers) {
-            LOGGER.info("Current {} workers in route {}, expect {} workers",
-                itph.getWorkerSet().size(), itph.getRouteString(), expectedNumWorkers);
-            // TODO: handle exception
-            _workerHelixManager.addWorkersToMirrorMaker(itph, itph.getRoute().getTopic(),
-                itph.getRoute().getPartition(), expectedNumWorkers - itph.getWorkerSet().size());
-          }
-        }*/
-
-        // Expand route when configs are changed
-        /*if (itph.getWorkerSet().size() < _initMaxNumWorkersPerRoute) {
-          LOGGER.info("Checking route {} with controller {} and topics {} since its number of workers {} "
-                  + "is smaller than initMaxNumWorkersPerRoute {}", itph.getRouteString(), itph.getInstanceName(),
-              itph.getServingTopicPartitionSet(), itph.getWorkerSet().size(), _initMaxNumWorkersPerRoute);
-          int expectedNumWorkers = _initMaxNumWorkersPerRoute;
-          LOGGER.info("Current {}, expected {}", itph.getWorkerSet().size(), expectedNumWorkers);
-          if (itph.getWorkerSet().size() < expectedNumWorkers) {
-            LOGGER.info("Current {} workers in route {}, expect {} workers",
-                itph.getWorkerSet().size(), itph.getRouteString(), expectedNumWorkers);
-            // TODO: handle exception
-            _workerHelixManager.addWorkersToMirrorMaker(itph, itph.getRoute().getTopic(),
-                itph.getRoute().getPartition(), expectedNumWorkers - itph.getWorkerSet().size());
-          }
-        }*/
-
         newItphQueue.add(itph);
       }
 
       // After moving topics, scale workers based on workload
+      int rescaleFailedCount = 0;
       for (InstanceTopicPartitionHolder itph : newItphQueue) {
+        oldTotalNumWorker += itph.getWorkerSet().size();
         String routeString = itph.getRouteString();
         int initWorkerCount = _initMaxNumWorkersPerRoute;
         if (_routeWorkerOverrides.containsKey(routeString) && _routeWorkerOverrides.get(routeString) > initWorkerCount) {
           initWorkerCount = _routeWorkerOverrides.get(routeString);
         }
-        String cluster = itph.getSrc();
-        WorkloadInfoRetriever retriever = _workloadInfoRetrieverMap.get(cluster);
-        if (retriever == null) {
-          String srcKafkaZkPath = (String) _conf.getProperty(CONFIG_KAFKA_CLUSTER_KEY_PREFIX + cluster);
-          _workloadInfoRetrieverMap.put(cluster, new WorkloadInfoRetriever(this, false, srcKafkaZkPath));
-          _workloadInfoRetrieverMap.get(cluster).start();
-        }
-        if (!retriever.isInitialized()) {
-          LOGGER.info("Retriever for itph: {} not initialized", itph.getInstanceName());
-          int actualNumWorkers = itph.getWorkerSet().size();
-          if (initWorkerCount > itph.getWorkerSet().size()) {
-            LOGGER.info("Current {} workers in route {}, expect at least {} workers, add {} workers",
-                itph.getWorkerSet().size(), itph.getRouteString(), initWorkerCount, _initMaxNumWorkersPerRoute - itph.getWorkerSet().size());
-            // TODO: handle exception
-            _workerHelixManager.addWorkersToMirrorMaker(itph, itph.getRoute().getTopic(),
-                itph.getRoute().getPartition(), initWorkerCount - itph.getWorkerSet().size());
-            actualNumWorkers = initWorkerCount;
+
+        String hostname = getHostname(itph.getInstanceName());
+        try {
+          String result = HttpClientUtils.getData(_httpClient, _requestConfig,
+              hostname, _controllerPort, "/admin/workloadinfo");
+          ControllerWorkloadInfo workloadInfo = JSONObject.parseObject(result, ControllerWorkloadInfo.class);
+          TopicWorkload totalWorkload = workloadInfo.getTopicWorkload();
+
+          if (workloadInfo != null && workloadInfo.getNumOfExpectedWorkers() != 0) {
+            _pipelineWorkloadMap.put(itph.getRouteString(), totalWorkload);
+            int expectedNumWorkers = workloadInfo.getNumOfExpectedWorkers();
+            LOGGER.info("Current {} workers in route {}, expect {} workers",
+                itph.getWorkerSet().size(), itph.getRouteString(), expectedNumWorkers);
+            int actualExpectedNumWorkers = getActualExpectedNumWorkers(expectedNumWorkers, initWorkerCount);
+            LOGGER.info("Current {} workers in route {}, actual expect {} workers",
+                itph.getWorkerSet().size(), itph.getRouteString(), actualExpectedNumWorkers);
+
+            if (actualExpectedNumWorkers > itph.getWorkerSet().size()) {
+              LOGGER.info("Current {} workers in route {}, actual expect {} workers, add {} workers",
+                  itph.getWorkerSet().size(), itph.getRouteString(), actualExpectedNumWorkers, actualExpectedNumWorkers - itph.getWorkerSet().size());
+              // TODO: handle exception
+              _workerHelixManager.addWorkersToMirrorMaker(itph, itph.getRoute().getTopic(),
+                  itph.getRoute().getPartition(), actualExpectedNumWorkers - itph.getWorkerSet().size());
+            }
+
+            if (actualExpectedNumWorkers < itph.getWorkerSet().size()) {
+              LOGGER.info("Current {} workers in route {}, actual expect {} workers, remove {} workers",
+                  itph.getWorkerSet().size(), itph.getRouteString(), actualExpectedNumWorkers, itph.getWorkerSet().size() - actualExpectedNumWorkers);
+              // TODO: handle exception
+              _workerHelixManager.removeWorkersToMirrorMaker(itph, itph.getRoute().getTopic(),
+                  itph.getRoute().getPartition(), itph.getWorkerSet().size() - actualExpectedNumWorkers);
+            }
+            newTotalNumWorker += actualExpectedNumWorkers;
+          } else {
+            LOGGER.error("Get workload on {} for route: {} returns 0. No change on number of workers", hostname, itph.getRouteString());
+            newTotalNumWorker += itph.getWorkerSet().size();
+            rescaleFailedCount ++;
           }
-          oldTotalNumWorker += itph.getWorkerSet().size();
-          newTotalNumWorker += actualNumWorkers;
-          continue;
+        } catch (Exception e) {
+          rescaleFailedCount ++;
+          LOGGER.error(String.format("Get workload error when connecting to %s for route %s. No change on number of workers", hostname, itph.getRouteString()), e);
+          newTotalNumWorker += itph.getWorkerSet().size();
+          rescaleFailedCount ++;
         }
-        TopicWorkload totalWorkload = itph.totalWorkload(_workloadInfoRetrieverMap.get(itph.getSrc()), null, false);
-        double workloadPerWorker = itph.isSameDc() ? _initMaxWorkloadPerWorkerByteDc : _initMaxWorkloadPerWorkerByteXdc;
-        LOGGER.info("itph: {}, route: {}, #topics: {}, #partitions: {}, totalWorkload: {}", itph.getInstanceName(), itph.getRouteString(),
-            itph.getServingTopicPartitionSet().size(), itph.getTotalNumPartitions(), totalWorkload.getBytesPerSecond());
-        int expectedNumWorkers = (int) Math.round(totalWorkload.getBytesPerSecond() / workloadPerWorker);
-        LOGGER.info("Current {} workers in route {}, expect {} workers",
-            itph.getWorkerSet().size(), itph.getRouteString(), expectedNumWorkers);
-        int actualExpectedNumWorkers = getActualExpectedNumWorkers(expectedNumWorkers, initWorkerCount);
-        LOGGER.info("Current {} workers in route {}, actual expect {} workers",
-            itph.getWorkerSet().size(), itph.getRouteString(), actualExpectedNumWorkers);
-
-        if (actualExpectedNumWorkers > itph.getWorkerSet().size()) {
-          LOGGER.info("Current {} workers in route {}, actual expect {} workers, add {} workers",
-              itph.getWorkerSet().size(), itph.getRouteString(), actualExpectedNumWorkers, actualExpectedNumWorkers - itph.getWorkerSet().size());
-          // TODO: handle exception
-          _workerHelixManager.addWorkersToMirrorMaker(itph, itph.getRoute().getTopic(),
-              itph.getRoute().getPartition(), actualExpectedNumWorkers - itph.getWorkerSet().size());
-        }
-
-        if (actualExpectedNumWorkers < itph.getWorkerSet().size()) {
-          LOGGER.info("Current {} workers in route {}, actual expect {} workers, remove {} workers",
-              itph.getWorkerSet().size(), itph.getRouteString(), actualExpectedNumWorkers, itph.getWorkerSet().size() - actualExpectedNumWorkers);
-          // TODO: handle exception
-          _workerHelixManager.removeWorkersToMirrorMaker(itph, itph.getRoute().getTopic(),
-              itph.getRoute().getPartition(), itph.getWorkerSet().size() - actualExpectedNumWorkers);
-        }
-
-        oldTotalNumWorker += itph.getWorkerSet().size();
-        newTotalNumWorker += actualExpectedNumWorkers;
       }
       _pipelineToInstanceMap.put(pipeline, newItphQueue);
+      _rescaleFailedCount.inc(rescaleFailedCount - _rescaleFailedCount.getCount());
     }
     LOGGER.info("oldTotalNumWorker: {}, newTotalNumWorker: {}", oldTotalNumWorker, newTotalNumWorker);
   }
@@ -1138,7 +1085,7 @@ public class ControllerHelixManager implements IHelixManager {
 
     _availableControllerList.remove(instanceName);
     _pipelineToInstanceMap.put(pipeline, new PriorityQueue<>(1,
-        InstanceTopicPartitionHolder.getTotalWorkloadComparator(_workloadInfoRetrieverMap.get(srcDst[1]), null, false)));
+        InstanceTopicPartitionHolder.totalWorkloadComparator(_pipelineWorkloadMap)));
     _pipelineToInstanceMap.get(pipeline).add(instance);
     _assignedControllerCount.inc();
     _workerHelixManager.addTopicToMirrorMaker(instance, pipeline, routeId);
@@ -1155,13 +1102,11 @@ public class ControllerHelixManager implements IHelixManager {
       PriorityQueue<InstanceTopicPartitionHolder> instanceList,
       String topicName,
       int numPartitions,
-      String pipeline,
-      boolean isSameDc) throws Exception {
+      String pipeline) throws Exception {
 
     LOGGER.info("maybeCreateNewRoute, topicName: {}, numPartitions: {}, pipeline: {}", topicName, numPartitions,
         pipeline);
 
-    double workload = isSameDc ? _initMaxWorkloadPerWorkerByteDc : _initMaxWorkloadPerWorkerByteXdc;
     Set<Integer> routeIdSet = new HashSet<>();
     for (InstanceTopicPartitionHolder instance : instanceList) {
       if (instance.getTotalNumPartitions() + numPartitions < _initMaxNumPartitionsPerRoute) {
@@ -1201,7 +1146,7 @@ public class ControllerHelixManager implements IHelixManager {
       boolean isSameDc = src.substring(0, 3).equals(dst.substring(0, 3));
 
       InstanceTopicPartitionHolder instance = maybeCreateNewRoute(_pipelineToInstanceMap.get(pipeline), topicName,
-          numPartitions, pipeline, isSameDc);
+          numPartitions, pipeline);
       String route = instance.getRouteString();
       if (!isTopicExisted(topicName)) {
         setEmptyResourceConfig(topicName);

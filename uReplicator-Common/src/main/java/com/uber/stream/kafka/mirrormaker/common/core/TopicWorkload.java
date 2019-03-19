@@ -15,15 +15,18 @@
  */
 package com.uber.stream.kafka.mirrormaker.common.core;
 
+import lombok.NoArgsConstructor;
+
+@NoArgsConstructor
 public class TopicWorkload implements Comparable<TopicWorkload> {
 
   public static final double DEFAULT_BYTES_PER_SECOND = 1000.0;
   public static final double DEFAULT_MSGS_PER_SECOND = 1;
   public static final int DEFAULT_PARTITIONS = 1;
 
-  private double bytesPerSecond;
-  private double msgsPerSecond;
-  private int partitions;
+  private double bytesPerSecond = 0;
+  private double msgsPerSecond = 0;
+  private int partitions = 0;
   private long lastUpdate = 0;
 
   public TopicWorkload(double bytesPerSecond, double msgsPerSecond) {
