@@ -26,6 +26,7 @@ import com.uber.stream.kafka.mirrormaker.common.core.TopicWorkload;
 import com.uber.stream.kafka.mirrormaker.common.core.WorkloadInfoRetriever;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
+import com.uber.stream.kafka.mirrormaker.common.modules.TopicPartitionLag;
 import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
 
 import java.util.ArrayList;
@@ -85,19 +86,10 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
   // unbalancing is allowed but it will trigger less partition re-assignments.
   private final double _overloadedRatioThreshold;
 
-  // if the difference between latest offset and commit offset is less than this
-  // threshold, it is not considered as lag
-  private final long _minLagOffset;
-
-  // if the difference between latest offset and commit offset is less than this
-  // threshold in terms of ingestion time, it is not considered as lag
-  private final long _minLagTimeSec;
 
   // the maximum ratio of instances can be used as dedicated for lagging partitions
   private final double _maxDedicatedInstancesRatio;
 
-  // the maximum valid time for offset
-  private final long _offsetMaxValidTimeMillis;
 
   private long _lastRebalanceTimeMillis = 0;
 
@@ -116,9 +108,6 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     _maxDedicatedInstancesRatio = controllerConf.getMaxDedicatedLaggingInstancesRatio();
     _maxStuckPartitionMovements = controllerConf.getMaxStuckPartitionMovements();
     _movePartitionAfterStuckMillis = TimeUnit.MINUTES.toMillis(controllerConf.getMoveStuckPartitionAfterMinutes());
-    _minLagTimeSec = controllerConf.getAutoRebalanceMinLagTimeInSeconds();
-    _minLagOffset = controllerConf.getAutoRebalanceMinLagOffset();
-    _offsetMaxValidTimeMillis = TimeUnit.SECONDS.toMillis(controllerConf.getAutoRebalanceMaxOffsetInfoValidInSeconds());
     LOGGER.info("Delayed Auto Reblance Time In Seconds: {}", _delayedAutoReblanceTimeInSeconds);
     registerMetrics();
 
@@ -391,7 +380,7 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     // find the corresponding stuck instances
     Set<TopicPartition> stuckPartitionsToMove = new HashSet<>();
     TreeSet<InstanceTopicPartitionHolder> nonStuckInstances = new TreeSet<>(InstanceTopicPartitionHolder
-        .getTotalWorkloadComparator(_helixMirrorMakerManager.getWorkloadInfoRetriever(), null, true));
+        .perPartitionWorkloadComparator(_helixMirrorMakerManager.getWorkloadInfoRetriever(), null));
     long now = System.currentTimeMillis();
     for (InstanceTopicPartitionHolder itph : instances) {
       boolean isStuckInstance = false;
@@ -467,9 +456,9 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
         continue;
       }
 
-      long lag = getLagTime(tp);
-      if (lag > 0) {
-        lagTimeMap.put(tp, lag);
+      TopicPartitionLag lagInfo = _helixMirrorMakerManager.calculateLagTime(tp);
+      if (lagInfo != null && lagInfo.getLag() > 0) {
+        lagTimeMap.put(tp, lagInfo.getLag());
         laggingPartitions.add(tp);
       } else {
         nonLaggingPartitions.add(tp);
@@ -477,23 +466,19 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     }
     for (InstanceTopicPartitionHolder instance : instances) {
       for (TopicPartition tp : instance.getServingTopicPartitionSet()) {
-        long lag = getLagTime(tp);
-        if (lag > 0) {
-          lagTimeMap.put(tp, lag);
+        TopicPartitionLag lagInfo = _helixMirrorMakerManager.calculateLagTime(tp);
+        if (lagInfo != null && lagInfo.getLag() > 0) {
+          lagTimeMap.put(tp, lagInfo.getLag());
         }
       }
     }
     LOGGER.info("balancePartitions: Current lagging partitions: " + lagTimeMap);
 
     // re-distribute the lagging partitions first
-    ITopicWorkloadWeighter laggingPartitionWeighter = new ITopicWorkloadWeighter() {
-      @Override
-      public double partitionWeight(TopicPartition tp) {
-        return lagTimeMap.containsKey(tp) ? 1.0 : 0.0;
-      }
-    };
+    ITopicWorkloadWeighter laggingPartitionWeighter = (TopicPartition tp) -> lagTimeMap.containsKey(tp) ? 1.0 : 0.0;
+
     TreeSet<InstanceTopicPartitionHolder> instancesSortedByLag = new TreeSet<>(InstanceTopicPartitionHolder
-        .getTotalWorkloadComparator(_helixMirrorMakerManager.getWorkloadInfoRetriever(), laggingPartitionWeighter, true));
+        .perPartitionWorkloadComparator(_helixMirrorMakerManager.getWorkloadInfoRetriever(), laggingPartitionWeighter));
     instancesSortedByLag.addAll(instances);
     List<TopicPartition> reassignedLaggingPartitions = removeOverloadedParitions(instancesSortedByLag,
         laggingPartitions, null, true, laggingPartitionWeighter);
@@ -506,7 +491,7 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     // dedicated instances serve only lagging partitions
     int maxDedicated = (int) (instances.size() * _maxDedicatedInstancesRatio);
     TreeSet<InstanceTopicPartitionHolder> orderedInstances = new TreeSet<>(InstanceTopicPartitionHolder
-        .getTotalWorkloadComparator(_helixMirrorMakerManager.getWorkloadInfoRetriever(), null, true));
+        .perPartitionWorkloadComparator(_helixMirrorMakerManager.getWorkloadInfoRetriever(), null));
     // instancesSortedByLag are sorted by lags, so the instances with lags appear after the instances with non-lags only
     List<InstanceTopicPartitionHolder> dedicatedInstances = new ArrayList<>();
     for (InstanceTopicPartitionHolder instance : instancesSortedByLag) {
@@ -749,33 +734,6 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
     return removedInstances;
   }
 
-  /**
-   * Return the lagging time if the given partition has lag.
-   *
-   * @param tp topic partition
-   * @return the lagging time in seconds if the given partition has lag; otherwise return 0.
-   */
-  private long getLagTime(TopicPartition tp) {
-    TopicPartitionLag tpl = _helixMirrorMakerManager.getOffsetMonitor().getTopicPartitionOffset(tp);
-    if (tpl == null || tpl.getLatestOffset() <= 0 || tpl.getCommitOffset() <= 0
-        || System.currentTimeMillis() - tpl.getTimeStamp() > _offsetMaxValidTimeMillis) {
-      return 0;
-    }
-    long lag = tpl.getLatestOffset() - tpl.getCommitOffset();
-    if (lag <= _minLagOffset) {
-      return 0;
-    }
-    double msgRate = _helixMirrorMakerManager.getWorkloadInfoRetriever().topicWorkload(tp.getTopic())
-        .getMsgsPerSecondPerPartition();
-    if (msgRate < 1) {
-      msgRate = 1;
-    }
-    double lagTime = lag / msgRate;
-    if (lagTime > _minLagTimeSec) {
-      return Math.round(lagTime);
-    }
-    return 0;
-  }
 
   /**
    * Get stuck topic partitions via offset manager.

@@ -176,10 +176,10 @@ public class AdminRestletResource extends ServerResource {
         if (_helixMirrorMakerManager.getRouteWorkerOverride().containsKey(routeString)) {
           _helixMirrorMakerManager.updateRouteWorkerOverride(routeString, -1);
           responseJson.put("worker_number_override", _helixMirrorMakerManager.getRouteWorkerOverride());
-          responseJson.put("status", Status.SUCCESS_OK);
+          responseJson.put("status", Status.SUCCESS_OK.getCode());
         } else {
           responseJson.put("message", String.format("route override not exists"));
-          responseJson.put("status", Status.SUCCESS_OK);
+          responseJson.put("status", Status.SUCCESS_OK.getCode());
         }
       }
     } else {

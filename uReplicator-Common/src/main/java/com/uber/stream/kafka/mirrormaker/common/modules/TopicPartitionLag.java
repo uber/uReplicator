@@ -13,35 +13,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.uber.stream.kafka.mirrormaker.controller.core;
+package com.uber.stream.kafka.mirrormaker.common.modules;
 
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
 public class TopicPartitionLag {
-
+  private String topicName;
+  private int partitionId;
   private long latestOffset;
   private long commitOffset;
   private long timeStamp;
+  private long lag;
+  private long lagTime = 0;
 
-  public TopicPartitionLag(long latestOffset, long commitOffset) {
+  public TopicPartitionLag(String topicName, int partitionId, long latestOffset, long commitOffset) {
+    this.topicName = topicName;
+    this.partitionId = partitionId;
     this.latestOffset = latestOffset;
     this.commitOffset = commitOffset;
+    this.lag = latestOffset - commitOffset;
     this.timeStamp = System.currentTimeMillis();
-  }
-
-  public long getLatestOffset() {
-    return latestOffset;
-  }
-
-  public long getCommitOffset() {
-    return commitOffset;
-  }
-
-  public long getTimeStamp() {
-    return timeStamp;
   }
 
   @Override
   public String toString() {
-    return String.format("%d/%d", latestOffset, commitOffset);
+    return String.format("%s:%d-%d/%d", topicName, latestOffset, commitOffset);
   }
 
 }
