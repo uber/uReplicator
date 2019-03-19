@@ -157,7 +157,9 @@ public class ManagerControllerHelix {
     _controllerConf.setHelixClusterName(clusterName);
     _controllerConf.setEnableSrcKafkaValidation("true");
     _controllerConf.setGroupId("ureplicator-" + srcCluster + "-" + dstCluster);
-
+    _controllerConf.setSourceCluster(srcCluster);
+    _controllerConf.setDestinationCluster(dstCluster);
+    
     _currentControllerInstance = new ControllerInstance(this, _controllerConf);
     LOGGER.info("Starting controller instance for route {}", clusterName);
     try {

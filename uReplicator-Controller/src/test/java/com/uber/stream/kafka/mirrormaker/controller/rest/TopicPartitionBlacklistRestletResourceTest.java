@@ -27,6 +27,7 @@ import org.restlet.Response;
 import org.restlet.data.Protocol;
 import org.restlet.data.Status;
 import org.testng.Assert;
+import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
@@ -110,5 +111,11 @@ public class TopicPartitionBlacklistRestletResourceTest {
     response = RestTestBase.HTTP_CLIENT.handle(request);
     Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
     Assert.assertEquals(response.getEntityAsText(), "OK");
+  }
+
+  @AfterTest
+  public void cleanup() throws Exception {
+    _controllerRestApp.stop();
+    _component.stop();
   }
 }

@@ -22,6 +22,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
+import com.uber.stream.kafka.mirrormaker.common.modules.TopicPartitionLag;
 import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
 
 import java.util.*;
@@ -77,7 +78,7 @@ public class OffsetMonitor {
   private final Map<TopicAndPartition, TopicPartitionLag> noProgressMap;
   private final AtomicInteger numNoProgressTopicPartitions = new AtomicInteger();
   private final AtomicInteger offsetMonitorFailureCount = new AtomicInteger();
-  private long lastSucceedOffsetCheck = 0;
+  private long lastSucceedOffsetCheck = new Date().getTime();
 
   public OffsetMonitor(final HelixMirrorMakerManager helixMirrorMakerManager,
                        ControllerConf controllerConf) {
@@ -270,7 +271,7 @@ public class OffsetMonitor {
           }
 
           TopicPartitionLag previousOffset = topicPartitionToOffsetMap
-              .put(tp, new TopicPartitionLag(latestOffset, commitOffset));
+              .put(tp, new TopicPartitionLag(tp.topic(), tp.partition(), latestOffset, commitOffset));
           logger.debug("Get latest offset={} committed offset={} for {}", latestOffset, commitOffset, tp);
           if (latestOffset > 0 && commitOffset > 0) {
             if (latestOffset - commitOffset > 0 && previousOffset != null

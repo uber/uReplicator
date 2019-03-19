@@ -67,6 +67,14 @@ public class ControllerRequestURLBuilder {
     return request;
   }
 
+  public Request getWorkloadInfoUrl() {
+    String requestUrl = StringUtils.join(new String[]{
+        _baseUrl, "/admin/workloadinfo"
+    });
+    Request request = new Request(Method.GET, requestUrl);
+    return request;
+  }
+
   public Request postBlacklistRequestUrl(String topic, String partition, String opt) {
     String requestUrl = StringUtils.join(new String[]{
         _baseUrl, String.format("/blacklist?topic=%s&partition=%s&opt=%s", topic, partition, opt)

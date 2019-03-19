@@ -16,9 +16,11 @@
 package com.uber.stream.kafka.mirrormaker.common.core;
 
 import com.google.common.collect.ImmutableSet;
+
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -126,30 +128,45 @@ public class InstanceTopicPartitionHolder {
     return total;
   }
 
-  public static Comparator<InstanceTopicPartitionHolder> getTotalWorkloadComparator(
-      final WorkloadInfoRetriever infoRetriever, final ITopicWorkloadWeighter weighter, final boolean perPartition) {
-    return new Comparator<InstanceTopicPartitionHolder>() {
-      @Override
-      public int compare(InstanceTopicPartitionHolder o1, InstanceTopicPartitionHolder o2) {
-        if (infoRetriever != null) {
-          TopicWorkload workload1 = (o1 == null) ? new TopicWorkload(0, 0) : o1.totalWorkload(infoRetriever, weighter, perPartition);
-          TopicWorkload workload2 = (o2 == null) ? new TopicWorkload(0, 0) : o2.totalWorkload(infoRetriever, weighter, perPartition);
-          int cmp = workload1.compareTotal(workload2);
-          if (cmp != 0) {
-            return cmp;
-          }
+  public static Comparator<InstanceTopicPartitionHolder> perPartitionWorkloadComparator(
+      final WorkloadInfoRetriever infoRetriever, final ITopicWorkloadWeighter weighter) {
+    return (InstanceTopicPartitionHolder o1, InstanceTopicPartitionHolder o2) -> {
+      if (infoRetriever != null) {
+        TopicWorkload workload1 = (o1 == null) ? new TopicWorkload(0, 0) : o1.totalWorkload(infoRetriever, weighter, true);
+        TopicWorkload workload2 = (o2 == null) ? new TopicWorkload(0, 0) : o2.totalWorkload(infoRetriever, weighter, true);
+        int cmp = workload1.compareTotal(workload2);
+        if (cmp != 0) {
+          return cmp;
         }
-        // if workload is the same, compare them based on the number of partitions
-        int size1 = (o1 == null) ? -1 : o1.getNumServingTopicPartitions();
-        int size2 = (o2 == null) ? -1 : o2.getNumServingTopicPartitions();
-        if (size1 != size2) {
-          return size1 - size2;
-        } else {
-          return o1.getInstanceName().compareTo(o2.getInstanceName());
-        }
-
       }
+      return compareNumServingTopicPartitions(o1, o2);
     };
+  }
+
+  public static Comparator<InstanceTopicPartitionHolder> totalWorkloadComparator(
+      final Map<String, TopicWorkload> topicWorkloadMap) {
+    return (InstanceTopicPartitionHolder o1, InstanceTopicPartitionHolder o2) -> {
+      if (topicWorkloadMap != null) {
+        TopicWorkload workload1 = topicWorkloadMap.containsKey(o1.getRouteString()) ? topicWorkloadMap.get(o1.getRouteString()) : new TopicWorkload(0, 0);
+        TopicWorkload workload2 = topicWorkloadMap.containsKey(o2.getRouteString()) ? topicWorkloadMap.get(o2.getRouteString()) : new TopicWorkload(0, 0);
+        int cmp = workload1.compareTotal(workload2);
+        if (cmp != 0) {
+          return cmp;
+        }
+      }
+      return compareNumServingTopicPartitions(o1, o2);
+    };
+  }
+
+  private static int compareNumServingTopicPartitions(InstanceTopicPartitionHolder o1, InstanceTopicPartitionHolder o2) {
+    // if workload is the same, compare them based on the number of partitions
+    int size1 = (o1 == null) ? -1 : o1.getNumServingTopicPartitions();
+    int size2 = (o2 == null) ? -1 : o2.getNumServingTopicPartitions();
+    if (size1 != size2) {
+      return size1 - size2;
+    } else {
+      return o1.getInstanceName().compareTo(o2.getInstanceName());
+    }
   }
 
   public void addTopicPartitions(Collection<TopicPartition> topicPartitionInfos) {
