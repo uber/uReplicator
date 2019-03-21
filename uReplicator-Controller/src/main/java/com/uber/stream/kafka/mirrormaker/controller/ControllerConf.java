@@ -835,7 +835,7 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
         .addOption("localGitRepoClonePath", true, "Clone location of the remote git backup repo")
         .addOption("localBackupFilePath", true, "Local backup file location")
         .addOption("hostname", true, "hostname for this host")
-        .addOption("maxWorkloadPerWorkerByteWithRegion", true, "The max workload per worker within region")
+        .addOption("maxWorkloadPerWorkerByteWithinRegion", true, "The max workload per worker within region")
         .addOption("maxWorkloadPerWorkerByteCrossRegion", true, "The max workload per worker cross region");
     return controllerOptions;
   }
