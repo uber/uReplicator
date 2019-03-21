@@ -1000,7 +1000,7 @@ public class ControllerHelixManager implements IHelixManager {
             }
             newTotalNumWorker += actualExpectedNumWorkers;
           } else {
-            LOGGER.error("Get workload on {} for route: {} returns 0. No change on number of workers", hostname, itph.getRouteString());
+            LOGGER.warn("Get workload on {} for route: {} returns 0. No change on number of workers", hostname, itph.getRouteString());
             newTotalNumWorker += itph.getWorkerSet().size();
             rescaleFailedCount ++;
           }
