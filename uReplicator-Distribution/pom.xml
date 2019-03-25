@@ -9,7 +9,7 @@
   <parent>
     <groupId>com.uber.uReplicator</groupId>
     <artifactId>uReplicator</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.7</version>
   </parent>
   <description>
     A distribution for this project.
