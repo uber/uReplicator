@@ -599,11 +599,11 @@ public class ControllerHelixManager implements IHelixManager {
     return result;
   }
 
-  private String getHostname(String instanceId) {
+  private String getHostname(String instanceId) throws ControllerException {
     Map<String, String> instanceIdAndNameMap = HelixUtils.getInstanceToHostnameMap(_helixManager);
     String hostname =  instanceIdAndNameMap.containsKey(instanceId) ? instanceIdAndNameMap.get(instanceId) : "";
     if (StringUtils.isEmpty(hostname)) {
-      throw new InternalError(String.format("Failed to find hostname for instanceId %s", instanceId));
+      throw new ControllerException(String.format("Failed to find hostname for instanceId %s", instanceId));
     }
     return hostname;
   }
@@ -967,8 +967,8 @@ public class ControllerHelixManager implements IHelixManager {
           initWorkerCount = _routeWorkerOverrides.get(routeString);
         }
 
-        String hostname = getHostname(itph.getInstanceName());
         try {
+          String hostname = getHostname(itph.getInstanceName());
           String result = HttpClientUtils.getData(_httpClient, _requestConfig,
               hostname, _controllerPort, "/admin/workloadinfo");
           ControllerWorkloadInfo workloadInfo = JSONObject.parseObject(result, ControllerWorkloadInfo.class);
@@ -1006,7 +1006,7 @@ public class ControllerHelixManager implements IHelixManager {
           }
         } catch (Exception e) {
           rescaleFailedCount ++;
-          LOGGER.error(String.format("Get workload error when connecting to %s for route %s. No change on number of workers", hostname, itph.getRouteString()), e);
+          LOGGER.error(String.format("Get workload error when connecting to %s for route %s. No change on number of workers", itph.getInstanceName(), itph.getRouteString()), e);
           newTotalNumWorker += itph.getWorkerSet().size();
           rescaleFailedCount ++;
         }

@@ -9,6 +9,6 @@
   <parent>
     <artifactId>uReplicator</artifactId>
     <groupId>com.uber.uReplicator</groupId>
-    <version>1.0.7</version>
+    <version>1.0.7.1-HOTFIX</version>
   </parent>
 </project>
