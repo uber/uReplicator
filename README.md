@@ -162,13 +162,13 @@ docker build -t ureplicator .
 
 - Start uReplicator Controller
 ```
-docker run -d --link devenv:devenv -p 9000:9000 --name controller --expose=9000 ureplicator "controller" -mode auto \
+docker run -d --link devenv:devenv -p 9000:9000 --name controller --expose=9000 ureplicator "controller" -mode customized \
 -enableAutoWhitelist true \
 -port 9000 \
 -refreshTimeInSeconds 10 \
 -srcKafkaZkPath devenv:2181/cluster1 \
 -zookeeper devenv:2181 \
--destKafkaZkPath devenv:2181/cluster1 \
+-destKafkaZkPath devenv:2181/cluster2 \
 -helixClusterName testMirrorMaker
 ```
 
