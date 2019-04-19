@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-FROM java:openjdk-8-jre
+FROM openjdk:8-jre
 #
 # Copyright (C) 2015-2017 Uber Technologies, Inc. (streaming-data@uber.com)
 #
@@ -43,7 +43,7 @@ apt-get install -y zookeeper wget supervisor dnsutils netcat && \
 rm -rf /var/lib/apt/lists/* && \
 apt-get clean
 
-RUN wget -q http://apache.mirrors.spacedump.net/kafka/"$KAFKA_VERSION"/kafka_"$SCALA_VERSION"-"$KAFKA_VERSION".tgz -O /tmp/kafka_"$SCALA_VERSION"-"$KAFKA_VERSION".tgz && \
+RUN wget -q https://archive.apache.org/dist/kafka/"$KAFKA_VERSION"/kafka_"$SCALA_VERSION"-"$KAFKA_VERSION".tgz -O /tmp/kafka_"$SCALA_VERSION"-"$KAFKA_VERSION".tgz && \
 tar xfz /tmp/kafka_"$SCALA_VERSION"-"$KAFKA_VERSION".tgz -C /opt && \
 rm /tmp/kafka_"$SCALA_VERSION"-"$KAFKA_VERSION".tgz
 
