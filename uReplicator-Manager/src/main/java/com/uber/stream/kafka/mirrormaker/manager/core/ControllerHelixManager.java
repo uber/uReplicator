@@ -108,6 +108,8 @@ public class ControllerHelixManager implements IHelixManager {
   private static final Counter _lowUrgencyValidateWrongCount = new Counter();
   private static final Counter _assignedControllerCount = new Counter();
 
+  private static final int _numOfWorkersBatchSize = 5;
+
   private ReentrantLock _lock = new ReentrantLock();
   private Map<String, Map<String, InstanceTopicPartitionHolder>> _topicToPipelineInstanceMap;
   private Map<String, PriorityQueue<InstanceTopicPartitionHolder>> _pipelineToInstanceMap;
@@ -996,7 +998,7 @@ public class ControllerHelixManager implements IHelixManager {
                   itph.getWorkerSet().size(), itph.getRouteString(), actualExpectedNumWorkers, itph.getWorkerSet().size() - actualExpectedNumWorkers);
               // TODO: handle exception
               _workerHelixManager.removeWorkersToMirrorMaker(itph, itph.getRoute().getTopic(),
-                  itph.getRoute().getPartition(), itph.getWorkerSet().size() - actualExpectedNumWorkers);
+                  itph.getRoute().getPartition(), _numOfWorkersBatchSize);
             }
             newTotalNumWorker += actualExpectedNumWorkers;
           } else {
@@ -1024,7 +1026,7 @@ public class ControllerHelixManager implements IHelixManager {
     if (expectedNumWorkers >= _maxNumWorkersPerRoute) {
       return _maxNumWorkersPerRoute;
     }
-    return (int) (Math.ceil((double) (expectedNumWorkers - initWorkerPerRoute) / 5) * 5) + initWorkerPerRoute;
+    return (int) (Math.ceil((double) (expectedNumWorkers - initWorkerPerRoute) / _numOfWorkersBatchSize) * _numOfWorkersBatchSize) + initWorkerPerRoute;
   }
 
   public int getExpectedNumWorkers(int currNumPartitions) {
