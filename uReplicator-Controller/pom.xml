@@ -9,7 +9,7 @@
   <parent>
     <groupId>com.uber.uReplicator</groupId>
     <artifactId>uReplicator</artifactId>
-    <version>1.0.7.1-HOTFIX</version>
+    <version>1.0.7.2-HOTFIX</version>
   </parent>
   <description>
     Kafka MirrorMaker with Helix is built for resolving high level consumers rebalancing pain point.
