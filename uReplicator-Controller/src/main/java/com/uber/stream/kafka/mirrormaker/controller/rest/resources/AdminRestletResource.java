@@ -123,7 +123,7 @@ public class AdminRestletResource extends ServerResource {
       }
     }
     controllerWorkloadInfo.setNumOfLaggingWorkers(numberOfLaggingWorkers);
-    int numberOfExpectedWorkers = (int) Math.round(controllerWorkloadInfo.getTopicWorkload().getBytesPerSecond() / _helixMirrorMakerManager.getMaxWorkloadPerWorkerBytes());
+    int numberOfExpectedWorkers = (int) Math.round(controllerWorkloadInfo.getTopicWorkload().getBytesPerSecond() / _helixMirrorMakerManager.getMaxWorkloadPerWorkerBytes()) + 1;
     int numOfDedicatedWorkers = (int) (controllerWorkloadInfo.getWorkerInstances().size() * _helixMirrorMakerManager.getMaxDedicatedInstancesRatio());
     int laggingAdditional = numberOfLaggingWorkers < numOfDedicatedWorkers ? 0 : numberOfLaggingWorkers - numOfDedicatedWorkers;
     controllerWorkloadInfo.setNumOfExpectedWorkers(numberOfExpectedWorkers + laggingAdditional);
