@@ -116,7 +116,7 @@ public class AdminRestletResourceTest {
 
     Assert.assertEquals(controllerWorkloadInfo.getWorkerInstances().size(), 2);
     Assert.assertEquals(controllerWorkloadInfo.getNumOfLaggingWorkers(), 1);
-    Assert.assertEquals(controllerWorkloadInfo.getNumOfExpectedWorkers(), 3);
+    Assert.assertEquals(controllerWorkloadInfo.getNumOfExpectedWorkers(), 4);
   }
 
   @AfterTest
