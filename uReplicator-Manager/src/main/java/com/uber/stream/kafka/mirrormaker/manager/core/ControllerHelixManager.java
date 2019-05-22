@@ -30,7 +30,7 @@ import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.HttpClientUtils;
 import com.uber.stream.kafka.mirrormaker.manager.ManagerConf;
 import com.uber.stream.kafka.mirrormaker.manager.reporter.HelixKafkaMirrorMakerMetricsReporter;
-import com.uber.stream.kafka.mirrormaker.manager.validation.SourceKafkaClusterValidationManager;
+import com.uber.stream.kafka.mirrormaker.manager.validation.KafkaClusterValidationManager;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -68,7 +68,7 @@ public class ControllerHelixManager implements IHelixManager {
   private static final String SEPARATOR = "@";
 
   private final ManagerConf _conf;
-  private final SourceKafkaClusterValidationManager _srcKafkaValidationManager;
+  private final KafkaClusterValidationManager _kafkaValidationManager;
   private final String _helixZkURL;
   private final String _helixClusterName;
   private HelixManager _helixManager;
@@ -123,11 +123,11 @@ public class ControllerHelixManager implements IHelixManager {
   private boolean _enableRebalance;
 
   public ControllerHelixManager(
-      SourceKafkaClusterValidationManager srcKafkaValidationManager,
+      KafkaClusterValidationManager kafkaValidationManager,
       ManagerConf managerConf) {
     _conf = managerConf;
     _enableRebalance = managerConf.getEnableRebalance();
-    _srcKafkaValidationManager = srcKafkaValidationManager;
+    _kafkaValidationManager = kafkaValidationManager;
     _initMaxNumPartitionsPerRoute = managerConf.getInitMaxNumPartitionsPerRoute();
     _maxNumPartitionsPerRoute = managerConf.getMaxNumPartitionsPerRoute();
     _initMaxNumWorkersPerRoute = managerConf.getInitMaxNumWorkersPerRoute();
@@ -528,7 +528,7 @@ public class ControllerHelixManager implements IHelixManager {
       Map<TopicPartition, List<String>> workerRouteToInstanceMap = _workerHelixManager.getWorkerRouteToInstanceMap();
       // Map<Instance, Set<Pipeline>> from IdealState
       Map<String, Set<TopicPartition>> instanceToTopicPartitionsMap = HelixUtils
-          .getInstanceToTopicPartitionsMap(_helixManager, _srcKafkaValidationManager.getClusterToObserverMap());
+          .getInstanceToTopicPartitionsMap(_helixManager, _kafkaValidationManager.getClusterToObserverMap());
 
       List<String> liveInstances = HelixUtils.liveInstances(_helixManager);
       currAvailableControllerList.addAll(liveInstances);
@@ -696,7 +696,7 @@ public class ControllerHelixManager implements IHelixManager {
 
       // Check if any controller in route is down
       Map<String, Set<TopicPartition>> instanceToTopicPartitionsMap = HelixUtils
-          .getInstanceToTopicPartitionsMap(_helixManager, _srcKafkaValidationManager.getClusterToObserverMap());
+          .getInstanceToTopicPartitionsMap(_helixManager, _kafkaValidationManager.getClusterToObserverMap());
       List<String> liveInstances = HelixUtils.liveInstances(_helixManager);
       List<String> instanceToReplace = new ArrayList<>();
       boolean routeControllerDown = false;
@@ -1225,7 +1225,7 @@ public class ControllerHelixManager implements IHelixManager {
 
       itph.removeTopicPartition(new TopicPartition(topicName, oldNumPartitions, pipeline));
       itph.addTopicPartition(new TopicPartition(topicName, newNumPartitions, pipeline));
-      _srcKafkaValidationManager.getClusterToObserverMap().get(srcCluster).tryUpdateTopic(topicName);
+      _kafkaValidationManager.getClusterToObserverMap().get(srcCluster).tryUpdateTopic(topicName);
     } finally {
       _lock.unlock();
     }
@@ -1282,7 +1282,7 @@ public class ControllerHelixManager implements IHelixManager {
         _helixAdmin.setResourceIdealState(_helixClusterName, topicName,
             IdealStateBuilder.shrinkCustomIdealStateFor(currIdealState, topicName, instance.getRouteString()));
       }
-      TopicPartition tp = _srcKafkaValidationManager.getClusterToObserverMap().get(src)
+      TopicPartition tp = _kafkaValidationManager.getClusterToObserverMap().get(src)
           .getTopicPartitionWithRefresh(topicName);
       instance.removeTopicPartition(tp);
       _topicToPipelineInstanceMap.get(topicName).remove(pipeline);
@@ -1304,8 +1304,8 @@ public class ControllerHelixManager implements IHelixManager {
         .forResource(topicName).build(), new HashMap<>());
   }
 
-  public SourceKafkaClusterValidationManager getSrcKafkaValidationManager() {
-    return _srcKafkaValidationManager;
+  public KafkaClusterValidationManager getKafkaValidationManager() {
+    return _kafkaValidationManager;
   }
 
   public WorkerHelixManager getWorkerHelixManager() {
