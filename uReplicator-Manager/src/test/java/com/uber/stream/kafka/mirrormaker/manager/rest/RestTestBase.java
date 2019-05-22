@@ -45,6 +45,7 @@ public class RestTestBase {
   public static String HELIX_CLUSTER_NAME = MANAGER_CONTROLLER_HELIX_PREFIX + "-" + DEPLOYMENT_NAME;
   public static ZkClient ZK_CLIENT = null;
   protected KafkaServerStartable kafkaStarter;
+  protected KafkaServerStartable dstkafkaStarter;
 
   public static String CONTROLLER_PORT = "9998";
 
@@ -72,6 +73,7 @@ public class RestTestBase {
     CommandLine cmd = parser.parse(ManagerConf.constructManagerOptions(), args);
     ManagerConf conf = ManagerConf.getManagerConf(cmd);
     conf.addProperty("kafka.cluster.zkStr.cluster1", ZkStarter.DEFAULT_ZK_STR + "/cluster1");
+    conf.addProperty("kafka.cluster.zkStr.cluster3", ZkStarter.DEFAULT_ZK_STR + "/cluster3");
 
     ManagerStarter managerStarter = new ManagerStarter(conf);
     try {
@@ -89,6 +91,10 @@ public class RestTestBase {
     kafkaStarter = KafkaStarterUtils.startServer(KafkaStarterUtils.DEFAULT_KAFKA_PORT,
         KafkaStarterUtils.DEFAULT_BROKER_ID,
         ZkStarter.DEFAULT_ZK_STR + "/cluster1", KafkaStarterUtils.getDefaultKafkaConfiguration());
+
+    dstkafkaStarter = KafkaStarterUtils.startServer(KafkaStarterUtils.DEFAULT_KAFKA_PORT+1,
+        KafkaStarterUtils.DEFAULT_BROKER_ID+1,
+        ZkStarter.DEFAULT_ZK_STR + "/cluster3", KafkaStarterUtils.getDefaultKafkaConfiguration());
 
     try {
       Thread.sleep(2000);
@@ -115,6 +121,8 @@ public class RestTestBase {
     MANAGER_STARTER.stop();
 
     KafkaStarterUtils.stopServer(kafkaStarter);
+
+    KafkaStarterUtils.stopServer(dstkafkaStarter);
 
     ZK_CLIENT.deleteRecursive("/" + HELIX_CLUSTER_NAME);
     ZK_CLIENT.close();

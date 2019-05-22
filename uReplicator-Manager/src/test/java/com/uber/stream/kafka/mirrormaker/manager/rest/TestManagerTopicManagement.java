@@ -335,6 +335,15 @@ public class TestManagerTopicManagement extends RestTestBase {
     Assert.assertEquals(json.getString("message"), "No topic is added in uReplicator!");
     Assert.assertEquals(json.getString("status"), "200");
 
+    // Create topic but expect not found error
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
+        .getTopicCreationRequestUrl("testManagerTopicManagement0", "cluster1", "cluster3");
+    response = HTTP_CLIENT.handle(request);
+    Assert.assertEquals(response.getStatus(), Status.CLIENT_ERROR_NOT_FOUND);
+    Assert.assertFalse(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testManagerTopicManagement0"));
+
+    KafkaStarterUtils.createTopic("testManagerTopicManagement0", ZkStarter.DEFAULT_ZK_STR + "/cluster3");
+
     // Create topic but expect failure with no controller
     request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
         .getTopicCreationRequestUrl("testManagerTopicManagement0", "cluster1", "cluster3");
@@ -422,6 +431,9 @@ public class TestManagerTopicManagement extends RestTestBase {
     startController(DEPLOYMENT_NAME, CONTROLLER_PORT, 1);
     startWorker(DEPLOYMENT_NAME, 2);
 
+    KafkaStarterUtils.createTopic("testManagerTopicManagement0", ZkStarter.DEFAULT_ZK_STR + "/cluster1");
+    KafkaStarterUtils.createTopic("testManagerTopicManagement0", ZkStarter.DEFAULT_ZK_STR + "/cluster3");
+
     // Create topic
     request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
         .getTopicCreationRequestUrl("testManagerTopicManagement0", "cluster1", "cluster3");
@@ -479,6 +491,9 @@ public class TestManagerTopicManagement extends RestTestBase {
     // Add controller
     startController(DEPLOYMENT_NAME, CONTROLLER_PORT, 1);
     startWorker(DEPLOYMENT_NAME, 2);
+
+    KafkaStarterUtils.createTopic("testManagerTopicManagement0", ZkStarter.DEFAULT_ZK_STR + "/cluster1");
+    KafkaStarterUtils.createTopic("testManagerTopicManagement0", ZkStarter.DEFAULT_ZK_STR + "/cluster3");
 
     // Create topic
     request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
@@ -545,6 +560,9 @@ public class TestManagerTopicManagement extends RestTestBase {
     // Add controller
     startController(DEPLOYMENT_NAME, CONTROLLER_PORT, 1);
     startWorker(DEPLOYMENT_NAME, 2);
+
+    KafkaStarterUtils.createTopic("testManagerTopicManagement0", ZkStarter.DEFAULT_ZK_STR + "/cluster1");
+    KafkaStarterUtils.createTopic("testManagerTopicManagement0", ZkStarter.DEFAULT_ZK_STR + "/cluster3");
 
     // Create topic
     request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
