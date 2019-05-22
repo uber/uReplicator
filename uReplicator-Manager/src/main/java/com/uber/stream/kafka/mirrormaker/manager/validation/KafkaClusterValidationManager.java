@@ -25,21 +25,25 @@ import org.slf4j.LoggerFactory;
 /**
  * Validate idealstates and source kafka cluster info and update related metrics.
  */
-public class SourceKafkaClusterValidationManager {
+public class KafkaClusterValidationManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SourceKafkaClusterValidationManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(KafkaClusterValidationManager.class);
   private static final String CONFIG_KAFKA_CLUSTER_KEY_PREFIX = "kafka.cluster.zkStr.";
 
   private final ManagerConf _conf;
   private final Map<String, KafkaBrokerTopicObserver> _clusterToObserverMap;
 
 
-  public SourceKafkaClusterValidationManager(ManagerConf conf) {
+  public KafkaClusterValidationManager(ManagerConf conf) {
     _conf = conf;
     _clusterToObserverMap = new HashMap<>();
     for (String cluster : conf.getSourceClusters()) {
       String srcKafkaZkPath = (String) conf.getProperty(CONFIG_KAFKA_CLUSTER_KEY_PREFIX + cluster);
       _clusterToObserverMap.put(cluster, new KafkaBrokerTopicObserver(cluster, srcKafkaZkPath));
+    }
+    for (String cluster : conf.getDestinationClusters()) {
+      String dstKafkaZkPath = (String) conf.getProperty(CONFIG_KAFKA_CLUSTER_KEY_PREFIX + cluster);
+      _clusterToObserverMap.put(cluster, new KafkaBrokerTopicObserver(cluster, dstKafkaZkPath));
     }
   }
 
