@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.uber.uReplicator</groupId>
   <artifactId>uReplicator</artifactId>
@@ -15,6 +15,7 @@
     <module>uReplicator-Distribution</module>
     <module>uReplicator-Manager</module>
     <module>uReplicator-Common</module>
+    <module>uReplicator-Worker-3.0</module>
   </modules>
 
   <distributionManagement>
@@ -370,8 +371,10 @@
             <copyConfigurationDirectory>false</copyConfigurationDirectory>
             <!-- Include the target configuration directory in the beginning of
                 the classpath declaration in the bin scripts -->
-            <includeConfigurationDirectoryInClasspath>false</includeConfigurationDirectoryInClasspath>
-            <assembleDirectory>${project.build.directory}/${project.artifactId}-pkg</assembleDirectory>
+            <includeConfigurationDirectoryInClasspath>false
+            </includeConfigurationDirectoryInClasspath>
+            <assembleDirectory>${project.build.directory}/${project.artifactId}-pkg
+            </assembleDirectory>
             <!-- Extra JVM arguments that will be included in the bin scripts -->
             <extraJvmArguments>-Xms1024m -Xmx1024m</extraJvmArguments>
             <!-- Generate bin scripts for windows and unix pr default -->
@@ -513,6 +516,25 @@
             <id>prepare-agent</id>
             <goals>
               <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <version>2.4.1</version>
+        <configuration>
+          <descriptorRefs>
+            <descriptorRef>jar-with-dependencies</descriptorRef>
+          </descriptorRefs>
+        </configuration>
+        <executions>
+          <execution>
+            <id>make-assembly</id>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
             </goals>
           </execution>
         </executions>

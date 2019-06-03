@@ -369,5 +369,4 @@ class CompactConsumerFetcherThread(name: String,
     }
     info("Finish removePartitions in CompactConsumerFetcherThread %d for set %s".format(this.getId, topicAndPartitions.toString()))
   }
-
 }

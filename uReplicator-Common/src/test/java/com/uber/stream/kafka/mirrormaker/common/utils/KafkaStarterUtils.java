@@ -16,14 +16,19 @@
 package com.uber.stream.kafka.mirrormaker.common.utils;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Properties;
 import kafka.admin.TopicCommand;
 import kafka.server.KafkaConfig;
 import kafka.server.KafkaServerStartable;
 import kafka.zk.KafkaZkClient;
 import org.I0Itec.zkclient.ZkClient;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.utils.Time;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -31,14 +36,18 @@ import org.apache.kafka.common.utils.Time;
  */
 public class KafkaStarterUtils {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(KafkaStarterUtils.class);
   public static final int DEFAULT_KAFKA_PORT = 19092;
   public static final int DEFAULT_BROKER_ID = 0;
   public static final String DEFAULT_ZK_STR = ZkStarter.DEFAULT_ZK_STR + "/kafka";
   public static final String DEFAULT_KAFKA_BROKER = "localhost:" + DEFAULT_KAFKA_PORT;
-
+  public static String kafkaDataDir = "";
   public static Properties getDefaultKafkaConfiguration() {
     Properties properties = new Properties();
     properties.setProperty("controlled.shutdown.enable", "false");
+    // set replication factor to 1 to fix offsets topic creation failure.
+    // default offsets topic replication factor is 3 but most of the unittest only start one kafka process
+    properties.setProperty("offsets.topic.replication.factor", "1");
     return properties;
   }
 
@@ -57,6 +66,7 @@ public class KafkaStarterUtils {
     File logDir = new File("/tmp/kafka-" + Double.toHexString(Math.random()));
     logDir.mkdirs();
     logDir.deleteOnExit();
+    kafkaDataDir = logDir.toString();
 
     configureKafkaPort(configuration, port);
     configureZkConnectionString(configuration, zkStr);
@@ -72,7 +82,8 @@ public class KafkaStarterUtils {
     properties.put("log.segment.bytes", Integer.toString(segmentSize));
   }
 
-  public static void configureLogRetentionSizeBytes(Properties properties, int logRetentionSizeBytes) {
+  public static void configureLogRetentionSizeBytes(Properties properties,
+      int logRetentionSizeBytes) {
     properties.put("log.retention.bytes", Integer.toString(logRetentionSizeBytes));
   }
 
@@ -94,15 +105,27 @@ public class KafkaStarterUtils {
 
   public static void stopServer(KafkaServerStartable serverStartable) {
     serverStartable.shutdown();
+    if (StringUtils.isNotEmpty(kafkaDataDir)) {
+      try {
+        FileUtils.deleteDirectory(new File(kafkaDataDir));
+      } catch (IOException e) {
+        LOGGER.warn("Caught exception while stopping kafka", e);
+      }
+    }
   }
 
   public static void createTopic(String kafkaTopic, String zkStr) {
+    createTopic(kafkaTopic, 1, zkStr, "1");
+  }
+
+  public static void createTopic(String kafkaTopic, int numOfPartitions, String zkStr, String replicatorFactor) {
     // TopicCommand.main() will call System.exit() finally, which will break maven-surefire-plugin
     try {
-      String[] args = new String[]{"--create", "--zookeeper", zkStr, "--replication-factor", "1",
-          "--partitions", "1", "--topic", kafkaTopic};
-      KafkaZkClient zkClient = KafkaZkClient.apply(zkStr, false, 3000, 3000, Integer.MAX_VALUE, Time.SYSTEM, "kafka.server",
-          "SessionExpireListener");
+      String[] args = new String[]{"--create", "--zookeeper", zkStr, "--replication-factor", replicatorFactor,
+          "--partitions", String.valueOf(numOfPartitions), "--topic", kafkaTopic};
+      KafkaZkClient zkClient = KafkaZkClient
+          .apply(zkStr, false, 3000, 3000, Integer.MAX_VALUE, Time.SYSTEM, "kafka.server",
+              "SessionExpireListener");
       TopicCommand.TopicCommandOptions opts = new TopicCommand.TopicCommandOptions(args);
       TopicCommand.createTopic(zkClient, opts);
     } catch (TopicExistsException e) {
