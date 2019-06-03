@@ -15,6 +15,7 @@
     <module>uReplicator-Distribution</module>
     <module>uReplicator-Manager</module>
     <module>uReplicator-Common</module>
+    <module>uReplicator-Worker-3.0</module>
   </modules>
 
   <licenses>
@@ -359,8 +360,10 @@
             <copyConfigurationDirectory>false</copyConfigurationDirectory>
             <!-- Include the target configuration directory in the beginning of
                 the classpath declaration in the bin scripts -->
-            <includeConfigurationDirectoryInClasspath>false</includeConfigurationDirectoryInClasspath>
-            <assembleDirectory>${project.build.directory}/${project.artifactId}-pkg</assembleDirectory>
+            <includeConfigurationDirectoryInClasspath>false
+            </includeConfigurationDirectoryInClasspath>
+            <assembleDirectory>${project.build.directory}/${project.artifactId}-pkg
+            </assembleDirectory>
             <!-- Extra JVM arguments that will be included in the bin scripts -->
             <extraJvmArguments>-Xms1024m -Xmx1024m</extraJvmArguments>
             <!-- Generate bin scripts for windows and unix pr default -->
