@@ -17,7 +17,7 @@ package com.uber.stream.kafka.mirrormaker.manager.core;
 
 import com.codahale.metrics.Counter;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
-import com.uber.stream.kafka.mirrormaker.manager.reporter.HelixKafkaMirrorMakerMetricsReporter;
+import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -107,7 +107,7 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
 
   private void registerMetrics() {
     try {
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("leader.counter",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("leader.counter",
           _isLeaderCounter);
     } catch (Exception e) {
       LOGGER.error("Error registering metrics!", e);

@@ -36,7 +36,7 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
-public class CompactConsumerFetcherManagerTest {
+public class CompactFetcherManagerTest {
 
   private String testTopic1 = "CompactConsumerFetcherManagerTest1";
   List<PartitionInfo> partitionInfo1 = new ArrayList<>();

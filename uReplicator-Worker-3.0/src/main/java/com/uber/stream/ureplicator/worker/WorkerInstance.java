@@ -16,6 +16,8 @@
 package com.uber.stream.ureplicator.worker;
 
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartitionCountObserver;
+import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
+import com.uber.stream.ureplicator.common.MetricsReporterConf;
 import com.uber.stream.ureplicator.worker.interfaces.ICheckPointManager;
 import com.uber.stream.ureplicator.worker.interfaces.IConsumerFetcherManager;
 import com.uber.stream.ureplicator.worker.interfaces.IMessageTransformer;
@@ -105,8 +107,11 @@ public class WorkerInstance {
    *
    * @param srcCluster source cluster name
    * @param dstCluster destination cluster name
+   * @param routeId routeId for federated uReplicator
+   * @param federatedDeploymentName deployment name for federated uReplicator
    */
-  public void start(String srcCluster, String dstCluster) {
+  public void start(String srcCluster, String dstCluster, String routeId,
+      String federatedDeploymentName) {
     if (isShuttingDown.get()) {
       LOGGER.error("WorkerInstance start failure, can't restart a shutdown instance");
     }
@@ -115,7 +120,7 @@ public class WorkerInstance {
     // Init blocking queue
     initializeConsumerStream();
     initializeTopicObserver();
-
+    initializeMetricsReporter(srcCluster, dstCluster, routeId, federatedDeploymentName);
     additionalConfigs(srcCluster, dstCluster);
 
     if (messageTransformer == null) {
@@ -225,6 +230,7 @@ public class WorkerInstance {
     for (ConsumerIterator iterator : consumerStream) {
       iterator.cleanCurrentChunk();
     }
+    KafkaUReplicatorMetricsReporter.stop();
 
     topicMapping.clear();
     LOGGER.info("Kafka uReplicator worker shutdown successfully");
@@ -281,8 +287,19 @@ public class WorkerInstance {
       }
     }
     consumerProps.setProperty(Constants.COMMIT_ZOOKEEPER_SERVER_CONFIG, commitZk);
+  }
 
-
+  private void initializeMetricsReporter(String srcCluster, String dstCluster, String routeId, String federatedDeploymentName) {
+    List<String> additionalInfo = new ArrayList<>();
+    additionalInfo.add(workerConf.getMetricsPrefix());
+    if (workerConf.getFederatedEnabled()) {
+      additionalInfo.add(federatedDeploymentName);
+      additionalInfo.add(String.format("%s-%s-%s", srcCluster, dstCluster, routeId));
+    }
+    MetricsReporterConf metricsReporterConf = new MetricsReporterConf(workerConf.getRegion(),
+        additionalInfo, workerConf.getHostname(), workerConf.getGraphiteHost(),
+        workerConf.getGraphitePort());
+    KafkaUReplicatorMetricsReporter.init(metricsReporterConf);
   }
 
   private void initializeTopicObserver() {

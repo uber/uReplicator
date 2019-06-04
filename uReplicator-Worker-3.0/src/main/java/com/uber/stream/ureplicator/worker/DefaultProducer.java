@@ -15,6 +15,7 @@
  */
 package com.uber.stream.ureplicator.worker;
 
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -24,6 +25,8 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.Metric;
+import org.apache.kafka.common.MetricName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,12 +45,12 @@ public class DefaultProducer {
 
   private boolean producerAbort = false;
   private long lastOffsetCommitMs = System.currentTimeMillis();
-  private String threadName;
+  private String producerClientId;
 
-  public DefaultProducer(String threadId, Properties producerProps,
+  public DefaultProducer(String producerClientId, Properties producerProps,
       Boolean abortOnSendFailure,
       WorkerInstance instance) {
-    threadName = Constants.PRODUCER_THREAD_PREFIX + threadId;
+    this.producerClientId = producerClientId;
     this.abortOnSendFailure = abortOnSendFailure;
     this.syncProducer = producerProps
         .getProperty(Constants.PRODUCER_TYPE_CONFIG, Constants.DEFAULT_PRODUCER_TYPE)
@@ -57,9 +60,7 @@ public class DefaultProducer {
             Constants.DEFAULT_PRODUCER_OFFSET_COMMIT_INTERVAL_MS);
     this.offsetCommitIntervalMs = Integer.parseInt(offsetCommitIntervalMsStr);
     this.workerInstance = instance;
-    String producerGroup = producerProps
-        .getProperty(ProducerConfig.CLIENT_ID_CONFIG, "uReplicator");
-    producerProps.setProperty(ProducerConfig.CLIENT_ID_CONFIG, producerGroup + "-" + threadId);
+    producerProps.setProperty(ProducerConfig.CLIENT_ID_CONFIG, producerClientId);
     producer = new KafkaProducer(producerProps);
   }
 
@@ -74,17 +75,21 @@ public class DefaultProducer {
     }
   }
 
+  public Map<MetricName, ? extends Metric> getMetrics() {
+    return producer.metrics();
+  }
+
   public boolean maybeFlush(boolean forceCommit) throws InterruptedException {
     synchronized (flushCommitLock) {
       if (forceCommit || System.currentTimeMillis() - lastOffsetCommitMs > offsetCommitIntervalMs) {
-        LOGGER.info("[{}] Flushing producer. forceCommit: {}", threadName, forceCommit);
+        LOGGER.info("[{}] Flushing producer. forceCommit: {}", producerClientId, forceCommit);
         producer.flush();
         while (!producerAbort && recordCount.get() != 0) {
           flushCommitLock.wait(100);
         }
-        LOGGER.info("[{}] Flushing producer finished. producerAbort: {}", threadName, producerAbort);
+        LOGGER.info("[{}] Flushing producer finished. producerAbort: {}", producerClientId, producerAbort);
         if (producerAbort) {
-          LOGGER.warn("[{}] Exiting on send failure, skip committing offsets.", threadName);
+          LOGGER.warn("[{}] Exiting on send failure, skip committing offsets.", producerClientId);
           return false;
         }
         lastOffsetCommitMs = System.currentTimeMillis();
@@ -115,7 +120,7 @@ public class DefaultProducer {
     public void onCompletion(RecordMetadata metadata, Exception e) {
       try {
         if (e != null) {
-          LOGGER.error("[{}] Closing producer due to send failure. topic: {}", threadName, topic, e);
+          LOGGER.error("[{}] Closing producer due to send failure. topic: {}", producerClientId, topic, e);
           if (abortOnSendFailure) {
             producerAbort = true;
             producer.close();

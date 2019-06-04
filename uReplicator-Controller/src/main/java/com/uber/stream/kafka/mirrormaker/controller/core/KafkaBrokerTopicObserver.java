@@ -21,7 +21,7 @@ import com.codahale.metrics.Timer.Context;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
-import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
+import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -84,9 +84,9 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
 
   private void registerMetric() {
     try {
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(
+      KafkaUReplicatorMetricsReporter.get().registerMetric(
           String.format(METRIC_TEMPLATE, _kakfaClusterName, "refreshLatency"), _refreshLatency);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(
+      KafkaUReplicatorMetricsReporter.get().registerMetric(
           String.format(METRIC_TEMPLATE, _kakfaClusterName, "kafkaTopicsCounter"),
           _kafkaTopicsCounter);
     } catch (Exception e) {

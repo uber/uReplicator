@@ -40,7 +40,7 @@ public class ManagerWorkerHelixHandler implements HelixHandler {
   private final WorkerConf workerConf;
   private final String instanceId;
   private final String helixZkURL;
-  private final String federatedGroupName;
+  private final String federatedDeploymentName;
   private final Properties helixProps;
   private final WorkerInstance workerInstance;
   private final HelixManager mangerWorkerHelixManager;
@@ -63,14 +63,15 @@ public class ManagerWorkerHelixHandler implements HelixHandler {
     this.instanceId = helixProps.getProperty(
         Constants.HELIX_INSTANCE_ID,
         "uReplicator-" + new Date().getTime());
-    this.federatedGroupName = helixProps.getProperty(Constants.FEDERATED_DEPLOYMENT_NAME,
+    this.federatedDeploymentName = helixProps.getProperty(Constants.FEDERATED_DEPLOYMENT_NAME,
         null);
-    this.clusterName = WorkerUtils.getManagerWorkerHelixClusterName(federatedGroupName);
+    this.clusterName = WorkerUtils.getManagerWorkerHelixClusterName(federatedDeploymentName);
     if (workerConf.getFederatedEnabled()) {
-      if (StringUtils.isEmpty(federatedGroupName)) {
+      if (StringUtils.isEmpty(federatedDeploymentName)) {
         LOGGER.error("{} is missing in helix properties for federated mode",
             Constants.FEDERATED_DEPLOYMENT_NAME);
-        throw new IllegalArgumentException(Constants.FEDERATED_DEPLOYMENT_NAME + "is required on helix property for federated mode");
+        throw new IllegalArgumentException(Constants.FEDERATED_DEPLOYMENT_NAME
+            + "is required on helix property for federated mode");
       }
 
       if (StringUtils.isEmpty(workerConf.getClusterConfigFile())) {
@@ -169,7 +170,7 @@ public class ManagerWorkerHelixHandler implements HelixHandler {
     String helixCluster = WorkerUtils.getControllerWorkerHelixClusterName(routeName);
     LOGGER.error("Join controller-worker cluster {}", helixCluster);
     controllerWorkerHelixHandler = new ControllerWorkerHelixHandler(helixProps,
-        helixCluster, srcCluster, dstCluster, workerInstance);
+        helixCluster, srcCluster, dstCluster, routeId, federatedDeploymentName, workerInstance);
     try {
       controllerWorkerHelixHandler.start();
     } catch (Exception e) {

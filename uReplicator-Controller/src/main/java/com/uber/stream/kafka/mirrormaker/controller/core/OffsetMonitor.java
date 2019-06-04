@@ -23,8 +23,8 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.common.modules.TopicPartitionLag;
-import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
 
+import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
@@ -118,8 +118,8 @@ public class OffsetMonitor {
       logger.info("OffsetMonitor starts updating offsets every {} seconds with delay {} seconds", refreshIntervalInSec,
           delaySec);
 
-      MetricRegistry metricRegistry = HelixKafkaMirrorMakerMetricsReporter.get().getRegistry();
-      Counter counter = metricRegistry.counter("offsetMonitor.executed");
+      Counter counter = new Counter();
+      KafkaUReplicatorMetricsReporter.get().registerMetric("offsetMonitor.executed", counter);
 
       refreshExecutor.scheduleAtFixedRate(new Runnable() {
         @Override
@@ -364,7 +364,7 @@ public class OffsetMonitor {
   }
 
   private synchronized void updateOffsetMetrics() {
-    MetricRegistry metricRegistry = HelixKafkaMirrorMakerMetricsReporter.get().getRegistry();
+    MetricRegistry metricRegistry = KafkaUReplicatorMetricsReporter.get().getRegistry();
     @SuppressWarnings("rawtypes")
     Map<String, Gauge> gauges = metricRegistry.getGauges();
     for (final TopicAndPartition topicPartition : topicPartitionToOffsetMap.keySet()) {
@@ -401,7 +401,7 @@ public class OffsetMonitor {
   }
 
   private void registerNoProgressMetric() {
-    MetricRegistry metricRegistry = HelixKafkaMirrorMakerMetricsReporter.get().getRegistry();
+    MetricRegistry metricRegistry = KafkaUReplicatorMetricsReporter.get().getRegistry();
     Gauge<Integer> gauge = new Gauge<Integer>() {
       @Override
       public Integer getValue() {
@@ -416,7 +416,7 @@ public class OffsetMonitor {
   }
 
   private void registerUpdateOffsetStatusMetric() {
-    MetricRegistry metricRegistry = HelixKafkaMirrorMakerMetricsReporter.get().getRegistry();
+    MetricRegistry metricRegistry = KafkaUReplicatorMetricsReporter.get().getRegistry();
     Gauge<Integer> gauge = new Gauge<Integer>() {
       @Override
       public Integer getValue() {

@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,9 +40,11 @@ public class ProducerManager {
       ICheckPointManager checkpointManager,
       WorkerInstance workerInstance) {
     this.workerInstance = workerInstance;
+    String clientIdPrefix = producerProps
+        .getProperty(ProducerConfig.CLIENT_ID_CONFIG, "uReplicator");
     for (int index = 0; index < consumerStream.size(); index++) {
       String threadId = String.valueOf(index);
-      ProducerThread producerThread = new ProducerThread(threadId, producerProps,
+      ProducerThread producerThread = new ProducerThread(threadId, clientIdPrefix, producerProps,
           abortOnSendFailure,
           consumerStream.get(index), messageTransformer, checkpointManager, workerInstance);
       producerThreadMap.put(threadId, producerThread);

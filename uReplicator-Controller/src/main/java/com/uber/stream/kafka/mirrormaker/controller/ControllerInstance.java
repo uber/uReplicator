@@ -22,14 +22,18 @@ import com.uber.stream.kafka.mirrormaker.controller.core.GitBackUpHandler;
 import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
 import com.uber.stream.kafka.mirrormaker.controller.core.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.controller.core.ManagerControllerHelix;
-import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import com.uber.stream.kafka.mirrormaker.controller.rest.ControllerRestApplication;
 import com.uber.stream.kafka.mirrormaker.controller.validation.SourceKafkaClusterValidationManager;
 import com.uber.stream.kafka.mirrormaker.controller.validation.ValidationManager;
+import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
+import com.uber.stream.ureplicator.common.MetricsReporterConf;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.lang.StringUtils;
 import org.restlet.Application;
 import org.restlet.Component;
 import org.restlet.Context;
@@ -63,7 +67,7 @@ public class ControllerInstance {
     LOGGER.info("Trying to init ControllerStarter with config: {}", conf);
     _managerControllerHelix = managerControllerHelix;
     _config = conf;
-    HelixKafkaMirrorMakerMetricsReporter.init(conf);
+    initializeMetricsReporter(conf);
     _component = new Component();
     _controllerRestApp = new ControllerRestApplication(null);
     _helixMirrorMakerManager = new HelixMirrorMakerManager(_config);
@@ -79,12 +83,33 @@ public class ControllerInstance {
     }
   }
 
+  private void initializeMetricsReporter(ControllerConf conf) {
+    String[] dcEnv = KafkaUReplicatorMetricsReporter.parseEnvironment(conf.getEnvironment());
+    if (dcEnv != null) {
+      String hostName =
+          StringUtils.isNotEmpty(conf.getHostname()) ? conf.getHostname() : conf.getInstanceId();
+      List<String> additionalInfo = new ArrayList<>();
+      additionalInfo.add(conf.getMetricsPrefix());
+      additionalInfo.add(dcEnv[1]);
+      if (conf.isFederatedEnabled()) {
+        additionalInfo.add(conf.getRoute());
+      }
+      MetricsReporterConf metricsReporterConf = new MetricsReporterConf(dcEnv[0],
+          additionalInfo, hostName, conf.getGraphiteHost(),
+          conf.getGraphitePort());
+      KafkaUReplicatorMetricsReporter.init(metricsReporterConf);
+    } else {
+      LOGGER.warn("Skip initializeMetricsReporter because of environment not found in controllerConf");
+    }
+  }
+
   private SourceKafkaClusterValidationManager getSourceKafkaClusterValidationManager() {
     if (_config.getEnableSrcKafkaValidation()) {
       LOGGER.info("Try to init SourceKafkaClusterValidationManager!");
       if (!_kafkaBrokerTopicObserverMap.containsKey(SRC_KAFKA_CLUSTER)) {
         _kafkaBrokerTopicObserverMap.put(SRC_KAFKA_CLUSTER,
-            new KafkaBrokerTopicObserver(SRC_KAFKA_CLUSTER, _config.getSrcKafkaZkPath(), TimeUnit.MINUTES.toMillis(5)));
+            new KafkaBrokerTopicObserver(SRC_KAFKA_CLUSTER, _config.getSrcKafkaZkPath(),
+                TimeUnit.MINUTES.toMillis(5)));
       }
       return new SourceKafkaClusterValidationManager(
           _kafkaBrokerTopicObserverMap.get(SRC_KAFKA_CLUSTER),
@@ -104,11 +129,13 @@ public class ControllerInstance {
       LOGGER.info("Try to init AutoTopicWhitelistingManager!");
       if (!_kafkaBrokerTopicObserverMap.containsKey(SRC_KAFKA_CLUSTER)) {
         _kafkaBrokerTopicObserverMap.put(SRC_KAFKA_CLUSTER,
-            new KafkaBrokerTopicObserver(SRC_KAFKA_CLUSTER, _config.getSrcKafkaZkPath(), TimeUnit.MINUTES.toMillis(5)));
+            new KafkaBrokerTopicObserver(SRC_KAFKA_CLUSTER, _config.getSrcKafkaZkPath(),
+                TimeUnit.MINUTES.toMillis(5)));
       }
       if (!_kafkaBrokerTopicObserverMap.containsKey(DEST_KAFKA_CLUSTER)) {
         _kafkaBrokerTopicObserverMap.put(DEST_KAFKA_CLUSTER,
-            new KafkaBrokerTopicObserver(DEST_KAFKA_CLUSTER, _config.getDestKafkaZkPath(), TimeUnit.MINUTES.toMillis(5)));
+            new KafkaBrokerTopicObserver(DEST_KAFKA_CLUSTER, _config.getDestKafkaZkPath(),
+                TimeUnit.MINUTES.toMillis(5)));
       }
 
       String patternToExcludeTopics = _config.getPatternToExcludeTopics();
@@ -121,7 +148,8 @@ public class ControllerInstance {
 
       return new AutoTopicWhitelistingManager(_kafkaBrokerTopicObserverMap.get(SRC_KAFKA_CLUSTER),
           _kafkaBrokerTopicObserverMap.get(DEST_KAFKA_CLUSTER), _helixMirrorMakerManager,
-          patternToExcludeTopics, _config.getWhitelistRefreshTimeInSeconds(), _config.getInitWaitTimeInSeconds());
+          patternToExcludeTopics, _config.getWhitelistRefreshTimeInSeconds(),
+          _config.getInitWaitTimeInSeconds());
     } else {
       LOGGER.info("Not init AutoTopicWhitelistingManager!");
       return null;
@@ -195,6 +223,7 @@ public class ControllerInstance {
 
   /**
    * Stop controller instance.
+   *
    * @return whether all components stopped successfully.
    */
   public boolean stop() {
@@ -220,7 +249,7 @@ public class ControllerInstance {
     }
 
     LOGGER.info("stopping metrics reporter");
-    HelixKafkaMirrorMakerMetricsReporter.stop();
+    KafkaUReplicatorMetricsReporter.stop();
 
     if (_clusterInfoBackupManager != null) {
       LOGGER.info("stopping cluster info backup manager");
