@@ -36,15 +36,28 @@ public class ControllerWorkerHelixHandler implements HelixHandler {
   private final String helixClusterName;
   private final String srcCluster;
   private final String dstCluster;
+  private final String routeId;
+  private final String federatedDeploymentName;
   private final WorkerInstance workerInstance;
   private HelixManager helixManager;
 
   public ControllerWorkerHelixHandler(Properties helixProps,
-      String helixClusterName, String srcCluster, String dstCluster, WorkerInstance workerInstance) {
+      String helixClusterName,
+      WorkerInstance workerInstance) {
+    this(helixProps, helixClusterName, null, null, null, null, workerInstance);
+  }
+
+  public ControllerWorkerHelixHandler(Properties helixProps,
+      String helixClusterName, String srcCluster, String dstCluster, String routeId,
+      String federatedDeploymentName,
+      WorkerInstance workerInstance) {
     this.srcCluster = srcCluster;
     this.dstCluster = dstCluster;
+    this.routeId = routeId;
     this.helixClusterName = helixClusterName;
-    this.helixZkURL = helixProps.getProperty(Constants.HELIX_ZK_SERVER, Constants.DEFAULT_HELIX_ZK_SERVER);
+    this.federatedDeploymentName = federatedDeploymentName;
+    this.helixZkURL = helixProps
+        .getProperty(Constants.HELIX_ZK_SERVER, Constants.DEFAULT_HELIX_ZK_SERVER);
     this.workerInstanceId = helixProps
         .getProperty(Constants.HELIX_INSTANCE_ID, "uReplicator-" + System.currentTimeMillis());
     this.workerInstance = workerInstance;
@@ -52,7 +65,7 @@ public class ControllerWorkerHelixHandler implements HelixHandler {
 
   public void start() throws Exception {
     try {
-      workerInstance.start(srcCluster, dstCluster);
+      workerInstance.start(srcCluster, dstCluster, routeId, federatedDeploymentName);
       if (helixManager != null && helixManager.isConnected()) {
         LOGGER.warn("ControllerWorkerHelixManager already connected");
         return;

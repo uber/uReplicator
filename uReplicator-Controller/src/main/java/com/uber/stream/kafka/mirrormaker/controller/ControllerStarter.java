@@ -16,7 +16,6 @@
 package com.uber.stream.kafka.mirrormaker.controller;
 
 import com.uber.stream.kafka.mirrormaker.controller.core.ManagerControllerHelix;
-import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import java.util.concurrent.CountDownLatch;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;

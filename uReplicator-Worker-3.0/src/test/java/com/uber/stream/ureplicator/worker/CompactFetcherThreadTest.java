@@ -17,6 +17,7 @@ package com.uber.stream.ureplicator.worker;
 
 import com.uber.stream.kafka.mirrormaker.common.utils.KafkaStarterUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.ZkStarter;
+import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -38,10 +39,10 @@ import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
-public class CompactConsumerFetcherThreadTest {
+public class CompactFetcherThreadTest {
 
   private static final Logger LOGGER = LoggerFactory
-      .getLogger(CompactConsumerFetcherThreadTest.class);
+      .getLogger(CompactFetcherThreadTest.class);
 
   private KafkaServerStartable kafka;
   private final int clusterPort = 19092;
@@ -52,6 +53,7 @@ public class CompactConsumerFetcherThreadTest {
 
   @BeforeTest
   public void setup() {
+    KafkaUReplicatorMetricsReporter.init(null);
     ZkStarter.startLocalZkServer();
     kafka = KafkaStarterUtils
         .startServer(clusterPort, KafkaStarterUtils.DEFAULT_BROKER_ID, clusterZk,
@@ -66,7 +68,7 @@ public class CompactConsumerFetcherThreadTest {
   }
 
   @Test
-  public void testCompactConsumerFetcherThread() throws InterruptedException, IOException {
+  public void testConsumerFetcherThread() throws InterruptedException, IOException {
     String threadName = "testCompactConsumerFetcherThread";
     ConcurrentHashMap<TopicAndPartition, PartitionOffsetInfo> partitionInfoMap = new ConcurrentHashMap<>();
     KafkaStarterUtils.createTopic(testTopic1, clusterZk);

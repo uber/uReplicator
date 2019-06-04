@@ -13,56 +13,63 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.uber.stream.kafka.mirrormaker.controller.reporter;
+package com.uber.stream.ureplicator.common;
 
-import com.codahale.metrics.jmx.*;
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
+import com.codahale.metrics.jmx.JmxReporter;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.io.Closeables;
-import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import java.net.InetSocketAddress;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
-
-import org.apache.commons.lang.StringUtils;
+import org.apache.kafka.common.Metric;
+import org.apache.kafka.common.MetricName;
 import org.apache.log4j.Logger;
 
 /**
- * Holds a singleton MetricRegistry to be shared across MirrorMaker.
- * This will start a JmxReporter and an optional GraphiteReporter (based on the
- * config). Note: There is no need to explicitly close this.
+ * Holds a singleton MetricRegistry to be shared across uReplicator.
+ *
+ * This will start a JmxReporter and an optional GraphiteReporter (based on the config). Note: There
+ * is no need to explicitly close this.
  */
-public class HelixKafkaMirrorMakerMetricsReporter {
+public class KafkaUReplicatorMetricsReporter {
 
-  private static HelixKafkaMirrorMakerMetricsReporter METRICS_REPORTER_INSTANCE = null;
-  private static final Logger LOGGER = Logger.getLogger(HelixKafkaMirrorMakerMetricsReporter.class);
+  private static KafkaUReplicatorMetricsReporter METRICS_REPORTER_INSTANCE = null;
+  private static final Logger LOGGER = Logger.getLogger(KafkaUReplicatorMetricsReporter.class);
   private static volatile boolean DID_INIT = false;
+  // prefix for non federated mode :
+  // stats.##dc##.counter.##component##.hostname
+  // prefix for federated mode:
+  // stats.##dc##.counter.##component##.##federated deployment##.##route id##.hostname
+  public static final String KAFKA_UREPLICATOR_METRICS_REPORTER_PREFIX_FORMAT = "stats.%s.counter.%s.%s";
 
+  // FIXME: change convention for member variable
   private final MetricRegistry _registry;
   private final GraphiteReporter _graphiteReporter;
   private final JmxReporter _jmxReporter;
   private final String _reporterMetricPrefix;
 
+
   // Exposed for tests. Call Metrics.get() instead.
-  HelixKafkaMirrorMakerMetricsReporter(ControllerConf config) {
-    final String environment = config.getEnvironment();
-    final String clientId = StringUtils.isNotEmpty(config.getHostname()) ? config.getHostname() : config.getInstanceId();
-    String[] dcNenv = parse(environment);
-    if (dcNenv == null) {
-      LOGGER.error("Error parsing environment info");
+  KafkaUReplicatorMetricsReporter(MetricsReporterConf conf) {
+    if (conf == null) {
+      LOGGER.error(
+          "Skip create KafkaUReplicatorMetricsReporter because of MetricsReporterConf is null");
       _registry = null;
       _graphiteReporter = null;
       _jmxReporter = null;
       _reporterMetricPrefix = null;
       return;
     }
-    _reporterMetricPrefix = config.isFederatedEnabled() ?
-        String.format("stats.%s.counter.%s.%s.%s.%s",
-            dcNenv[0], config.getMetricsPrefix(), dcNenv[1], config.getRoute(), clientId) :
-        String.format("stats.%s.counter.%s.%s.%s",
-            dcNenv[0], config.getMetricsPrefix(), dcNenv[1], clientId);
+
+    _reporterMetricPrefix = String
+        .format(KAFKA_UREPLICATOR_METRICS_REPORTER_PREFIX_FORMAT, conf.getRegion(),
+            String.join(".", conf.getAdditionalInfo()),
+            conf.getHostname());
     LOGGER.info("Reporter Metric Prefix is : " + _reporterMetricPrefix);
     _registry = new MetricRegistry();
     final Boolean enabledGraphiteReporting = true;
@@ -79,7 +86,7 @@ public class HelixKafkaMirrorMakerMetricsReporter {
 
     // Init graphite reporter
     if (enabledGraphiteReporting) {
-      Graphite graphite = getGraphite(config);
+      Graphite graphite = getGraphite(conf);
       if (graphite == null) {
         _graphiteReporter = null;
       } else {
@@ -100,7 +107,7 @@ public class HelixKafkaMirrorMakerMetricsReporter {
     });
   }
 
-  private String[] parse(String environment) {
+  public static String[] parseEnvironment(String environment) {
     if (environment == null || environment.trim().length() <= 0) {
       return null;
     }
@@ -112,7 +119,7 @@ public class HelixKafkaMirrorMakerMetricsReporter {
   }
 
   // Exposed for test
-  static Graphite getGraphite(ControllerConf config) {
+  static Graphite getGraphite(MetricsReporterConf config) {
     if (config.getGraphiteHost() == null || config.getGraphitePort() == 0) {
       LOGGER.warn("No Graphite built!");
       return null;
@@ -125,16 +132,16 @@ public class HelixKafkaMirrorMakerMetricsReporter {
   }
 
   /**
-   * This function must be called before calling the get() method, because of
-   * the dependency on the config object.
+   * This function must be called before calling the get() method, because of the dependency on the
+   * config object.
    *
    * @param config Specifies config pertaining to Metrics
    */
-  public static synchronized void init(ControllerConf config) {
+  public static synchronized void init(MetricsReporterConf config) {
     if (DID_INIT) {
       return;
     }
-    METRICS_REPORTER_INSTANCE = new HelixKafkaMirrorMakerMetricsReporter(config);
+    METRICS_REPORTER_INSTANCE = new KafkaUReplicatorMetricsReporter(config);
     DID_INIT = true;
   }
 
@@ -157,7 +164,15 @@ public class HelixKafkaMirrorMakerMetricsReporter {
     METRICS_REPORTER_INSTANCE = null;
   }
 
-  public static HelixKafkaMirrorMakerMetricsReporter get() {
+  public void registerKafkaMetrics(String prefix, Map<MetricName, ? extends Metric> metrics) {
+    Preconditions.checkState(DID_INIT, "Not initialized yet");
+    for (MetricName metricName : metrics.keySet()) {
+      String kafkaMetricName = String.format("%s.%s", prefix, metricName.name());
+      registerMetric(kafkaMetricName, new GraphiteKafkaGauge(metrics.get(metricName)));
+    }
+  }
+
+  public static KafkaUReplicatorMetricsReporter get() {
     Preconditions.checkState(DID_INIT, "Not initialized yet");
     return METRICS_REPORTER_INSTANCE;
   }
@@ -169,9 +184,21 @@ public class HelixKafkaMirrorMakerMetricsReporter {
 
   public <T extends com.codahale.metrics.Metric> void registerMetric(String metricName, T metric) {
     Preconditions.checkState(DID_INIT, "Not initialized yet");
-    if (_registry != null) {
+    if (_registry == null) {
+      return;
+    }
+    if (!_registry.getNames().contains(metricName)) {
       _registry.register(metricName, metric);
+    } else {
+      LOGGER.warn("Failed to register an existed metric: {}" + metricName);
     }
   }
 
+  public void removeMetric(String metricName) {
+    Preconditions.checkState(DID_INIT, "Not initialized yet");
+    if (_registry == null) {
+      return;
+    }
+    _registry.remove(metricName);
+  }
 }

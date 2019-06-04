@@ -38,8 +38,8 @@ import org.slf4j.LoggerFactory;
 /**
  * FetcherManagerGroupByLeaderId creates the CompactConsumerFetcherThreads. It groups partitions
  * into small groups using topic partition leader id  and create fetcher thread for each group. Once
- * CompactConsumerFetcherManager is created, start() and stopAllConnections() can be called repeatedly
- * until shutdown() is called.
+ * CompactConsumerFetcherManager is created, start() and stopAllConnections() can be called
+ * repeatedly until shutdown() is called.
  */
 public class FetcherManagerGroupByLeaderId extends ShutdownableThread implements
     IConsumerFetcherManager {
@@ -172,14 +172,21 @@ public class FetcherManagerGroupByLeaderId extends ShutdownableThread implements
    * shutdown all CompactConsumerFetcherThreads
    */
   public void shutdown() {
-    LOGGER.info("CompactConsumerFetcherManager stopConnections");
+    LOGGER.info("CompactConsumerFetcherManager shutdown");
     super.initiateShutdown();
+
     synchronized (fetcherMapLock) {
       for (ConsumerFetcherThread fetcherThread : fetcherThreadMap.values()) {
-        fetcherThread.shutdown();
+        fetcherThread.initiateShutdown();
       }
-      kafkaConsumer.close();
+      for (ConsumerFetcherThread fetcherThread : fetcherThreadMap.values()) {
+        fetcherThread.awaitShutdown();
+      }
+    }
+    
+    synchronized (updateMapLock) {
       super.awaitShutdown();
+      kafkaConsumer.close();
       partitionMap.clear();
       partitionAddMap.clear();
       partitionDeleteMap.clear();

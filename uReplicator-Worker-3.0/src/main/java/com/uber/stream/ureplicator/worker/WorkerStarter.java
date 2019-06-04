@@ -53,7 +53,9 @@ public class WorkerStarter {
     try {
       helixProps = WorkerUtils.loadAndValidateHelixProps(workerConf.getHelixConfigFile());
     } catch (IOException e) {
-      LOGGER.error("uReplicator Worker failed to start because of load helix config file throws exception", e);
+      LOGGER.error(
+          "uReplicator Worker failed to start because of load helix config file throws exception",
+          e);
       System.exit(1);
     }
 
@@ -68,12 +70,13 @@ public class WorkerStarter {
         throw e;
       }
     } else {
-      LOGGER.info("Starting worker instance, federated_enabled : {}", workerConf.getFederatedEnabled());
+      LOGGER.info("Starting worker instance, federated_enabled : {}",
+          workerConf.getFederatedEnabled());
       String helixClusterName = helixProps
           .getProperty(Constants.HELIX_CLUSTER_NAME, Constants.DEFAULT_HELIX_CLUSTER_NAME);
       try {
         controllerWorkerHelixHandler = new ControllerWorkerHelixHandler(helixProps,
-            helixClusterName, null, null, workerInstance);
+            helixClusterName, workerInstance);
         controllerWorkerHelixHandler.start();
       } catch (Throwable e) {
         LOGGER.error("Caught exception while starting worker instance.", e);

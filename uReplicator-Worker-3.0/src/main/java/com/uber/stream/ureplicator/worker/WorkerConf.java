@@ -22,8 +22,12 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class WorkerConf extends PropertiesConfiguration {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(WorkerConf.class);
 
   private static final String FEDERATED_ENABLED = "federated_enabled";
   private static final boolean DEFAULT_FEDERATED_ENABLE = false;
@@ -57,6 +61,18 @@ public class WorkerConf extends PropertiesConfiguration {
   private static final String ENABLE_FILTER = "enable_filter";
   private static final boolean DEFAULT_ENABLE_FILTER = false;
 
+  private static final String METRICS_PREFIX = "metrics_prefix";
+  private static final String DEFAULT_METRICS_PREFIX = "ureplicator-worker";
+
+  private static final String REGION = "region";
+  private static final String DEFAULT_REGION = "global";
+
+  private static final String GRAPHITE_HOST = "graphite_host";
+
+  private static final String GRAPHITE_PORT = "graphite_port";
+  // DEFAULT_GRAPHITE_PORT = 0 means don't create graphite reporter
+  private static final int DEFAULT_GRAPHITE_PORT = 0;
+
   public WorkerConf() {
     super();
   }
@@ -72,10 +88,13 @@ public class WorkerConf extends PropertiesConfiguration {
 
   private Integer getProperty(String key, Integer defaultVal) {
     if (containsKey(key)) {
-      return (Integer) getProperty(key);
-    } else {
-      return defaultVal;
+      try {
+        return Integer.parseInt((String) getProperty(key));
+      } catch (Exception e) {
+        LOGGER.warn("Parse {} to integer failed.", getProperty(key), e);
+      }
     }
+    return defaultVal;
   }
 
   private boolean getProperty(String key, boolean defaultVal) {
@@ -141,6 +160,21 @@ public class WorkerConf extends PropertiesConfiguration {
     return getProperty(HOSTNAME, defaultVal);
   }
 
+  public String getMetricsPrefix() {
+    return getProperty(METRICS_PREFIX, DEFAULT_METRICS_PREFIX);
+  }
+
+  public String getRegion() {
+    return getProperty(REGION, DEFAULT_REGION);
+  }
+
+  public String getGraphiteHost() {
+    return getProperty(GRAPHITE_HOST, "");
+  }
+
+  public Integer getGraphitePort() {
+    return getProperty(GRAPHITE_PORT, DEFAULT_GRAPHITE_PORT);
+  }
 
   public void setFederatedEnabled(boolean federatedEnabled) {
     setProperty(FEDERATED_ENABLED, String.valueOf(federatedEnabled));
@@ -191,6 +225,22 @@ public class WorkerConf extends PropertiesConfiguration {
     setProperty(HOSTNAME, hostname);
   }
 
+  public void setMetricsPrefix(String metricsPrefix) {
+    setProperty(METRICS_PREFIX, metricsPrefix);
+  }
+
+  public void setRegion(String region) {
+    setProperty(REGION, region);
+  }
+
+  public void setGraphiteHost(String graphiteHost) {
+    setProperty(GRAPHITE_HOST, graphiteHost);
+  }
+
+  public void setGraphitePort(int graphitePort) {
+    setProperty(GRAPHITE_PORT, graphitePort);
+  }
+
   public static Options constructWorkerOptions() {
     final Options workerOptions = new Options();
     workerOptions.addOption("help", false, "Help")
@@ -209,7 +259,13 @@ public class WorkerConf extends PropertiesConfiguration {
         .addOption(ENABLE_FILTER, true,
             "Configure the uReplicator to filter message to send to dst cluster.")
         .addOption(HOSTNAME, true,
-            "hostname for this host");
+            "hostname for this host")
+        .addOption(REGION, true,
+            "region for worker instance")
+        .addOption(METRICS_PREFIX, true,
+            "metrics prefix")
+        .addOption(GRAPHITE_HOST, true, "graphite host")
+        .addOption(GRAPHITE_PORT, true, "graphite port");
     return workerOptions;
   }
 

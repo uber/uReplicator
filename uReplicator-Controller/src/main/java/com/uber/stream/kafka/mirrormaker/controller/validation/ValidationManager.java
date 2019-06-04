@@ -18,8 +18,8 @@ package com.uber.stream.kafka.mirrormaker.controller.validation;
 import com.alibaba.fastjson.JSONObject;
 import com.codahale.metrics.Counter;
 import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
-import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
 
+import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executors;
@@ -121,19 +121,19 @@ public class ValidationManager {
 
   private void registerMetrics() {
     try {
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("leader.counter",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("leader.counter",
           _isLeaderCounter);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("topic.totalNumber",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("topic.totalNumber",
           _numServingTopics);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("topic.errorNumber",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("topic.errorNumber",
           _numErrorTopics);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("topic.partitions.totalNumber",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("topic.partitions.totalNumber",
           _numTopicPartitions);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("topic.partitions.onlineNumber",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("topic.partitions.onlineNumber",
           _numOnlineTopicPartitions);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("topic.partitions.offlineNumber",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("topic.partitions.offlineNumber",
           _numOfflineTopicPartitions);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("topic.partitions.errorNumber",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("topic.partitions.errorNumber",
           _numErrorTopicPartitions);
     } catch (Exception e) {
       LOGGER.error("Error registering metrics!", e);
@@ -142,9 +142,9 @@ public class ValidationManager {
 
   private void unregisterMetrics() {
     try {
-      if (HelixKafkaMirrorMakerMetricsReporter.get().getRegistry() != null) {
-        for (String name : HelixKafkaMirrorMakerMetricsReporter.get().getRegistry().getNames()) {
-          HelixKafkaMirrorMakerMetricsReporter.get().getRegistry().remove(name);
+      if (KafkaUReplicatorMetricsReporter.get().getRegistry() != null) {
+        for (String name : KafkaUReplicatorMetricsReporter.get().getRegistry().getNames()) {
+          KafkaUReplicatorMetricsReporter.get().getRegistry().remove(name);
         }
       }
     } catch (Exception e) {
@@ -265,8 +265,8 @@ public class ValidationManager {
       if (!_idealStatePerWorkerTopicPartitionCounter.containsKey(worker)) {
         Counter workCounter = new Counter();
         try {
-          if (HelixKafkaMirrorMakerMetricsReporter.get().getRegistry() != null) {
-            HelixKafkaMirrorMakerMetricsReporter.get().getRegistry().register(getIdealStatePerWorkMetricName(worker), workCounter);
+          if (KafkaUReplicatorMetricsReporter.get().getRegistry() != null) {
+            KafkaUReplicatorMetricsReporter.get().getRegistry().register(getIdealStatePerWorkMetricName(worker), workCounter);
           }
         } catch (Exception e) {
           LOGGER.error("Error registering metrics!", e);
@@ -282,8 +282,8 @@ public class ValidationManager {
         //counter.dec(counter.getCount());
         _idealStatePerWorkerTopicPartitionCounter.remove(worker);
         try {
-          if (HelixKafkaMirrorMakerMetricsReporter.get().getRegistry() != null) {
-            HelixKafkaMirrorMakerMetricsReporter.get().getRegistry().remove(getIdealStatePerWorkMetricName(worker));
+          if (KafkaUReplicatorMetricsReporter.get().getRegistry() != null) {
+            KafkaUReplicatorMetricsReporter.get().getRegistry().remove(getIdealStatePerWorkMetricName(worker));
           }
         } catch (Exception e) {
           LOGGER.warn("Got exception when removing metrics for {}", getIdealStatePerWorkMetricName(worker), e);
@@ -298,7 +298,7 @@ public class ValidationManager {
       if (!_externalViewPerWorkerTopicPartitionCounter.containsKey(worker)) {
         Counter workCounter = new Counter();
         try {
-          HelixKafkaMirrorMakerMetricsReporter.get().getRegistry().register(
+          KafkaUReplicatorMetricsReporter.get().getRegistry().register(
               getExternalViewPerWorkMetricName(worker), workCounter);
         } catch (Exception e) {
           LOGGER.error("Error registering metrics!", e);
@@ -314,7 +314,7 @@ public class ValidationManager {
         //counter.dec(counter.getCount());
         _externalViewPerWorkerTopicPartitionCounter.remove(getExternalViewPerWorkMetricName(worker));
         try {
-          HelixKafkaMirrorMakerMetricsReporter.get().getRegistry().remove(getExternalViewPerWorkMetricName(worker));
+          KafkaUReplicatorMetricsReporter.get().getRegistry().remove(getExternalViewPerWorkMetricName(worker));
         } catch (Exception e) {
           LOGGER.warn("Got exception when removing metrics for {}", getExternalViewPerWorkMetricName(worker), e);
         }

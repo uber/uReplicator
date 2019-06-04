@@ -15,6 +15,7 @@
  */
 package com.uber.stream.ureplicator.worker;
 
+import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import com.uber.stream.ureplicator.worker.ConsumerIterator.ConsumerTimeoutException;
 import com.uber.stream.ureplicator.worker.interfaces.ICheckPointManager;
 import com.uber.stream.ureplicator.worker.interfaces.IMessageTransformer;
@@ -51,6 +52,7 @@ public class ProducerThread extends Thread {
    * Constructor
    *
    * @param threadId thread id
+   * @param clientIdPrefix prefix for client.id
    * @param producerProps producer configuration properties
    * @param abortOnSendFailure whether abort when send failure
    * @param incomeData consumed message stream
@@ -59,6 +61,7 @@ public class ProducerThread extends Thread {
    * @param workerInstance worker instance
    */
   public ProducerThread(String threadId,
+      String clientIdPrefix,
       Properties producerProps,
       Boolean abortOnSendFailure,
       ConsumerIterator incomeData,
@@ -72,11 +75,16 @@ public class ProducerThread extends Thread {
     maybeSetDefaultProperty(producerProps, ProducerConfig.RETRIES_CONFIG, "2147483647");
     maybeSetDefaultProperty(producerProps, ProducerConfig.MAX_BLOCK_MS_CONFIG, "600000");
     maybeSetDefaultProperty(producerProps, ProducerConfig.ACKS_CONFIG, "all");
-    maybeSetDefaultProperty(producerProps, ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, "1");
-    this.producer = new DefaultProducer(threadId, producerProps, abortOnSendFailure,
+    maybeSetDefaultProperty(producerProps, ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION,
+        "1");
+    String clientId = clientIdPrefix + "-" + threadId;
+    this.producer = new DefaultProducer(clientId, producerProps,
+        abortOnSendFailure,
         workerInstance);
     String threadName = Constants.PRODUCER_THREAD_PREFIX + threadId;
     setName(threadName);
+    KafkaUReplicatorMetricsReporter.get()
+        .registerKafkaMetrics("producer." + clientId, producer.getMetrics());
   }
 
   @Override
@@ -100,7 +108,7 @@ public class ProducerThread extends Thread {
           LOGGER.trace("[{}]Caught ConsumerTimeoutException, continue iteration.", getName());
           // TODO: add backoff ms for ConsumerTimeoutException
         } catch (Exception e) {
-          LOGGER.error("[{}]Caught Exception, continue iteration.", getName(), e);
+          LOGGER.error("[{}]Caught Exception, thread exit.", getName(), e);
           break;
         }
         flushAndCommitOffset(false);
@@ -111,7 +119,6 @@ public class ProducerThread extends Thread {
         LOGGER.error(
             "[{}]Thread exited abnormally, stopping the whole uReplicator.", getName());
         // start clean shutdown worker
-
       }
       shutdownLatch.countDown();
       workerInstance.cleanShutdown();
@@ -123,6 +130,7 @@ public class ProducerThread extends Thread {
       if (consumedOffsets.size() != 0 && producer.maybeFlush(forceCommit)) {
         checkpointManager.commitOffset(consumedOffsets);
         consumedOffsets.clear();
+        LOGGER.info("[{}]commitOffset finished", getName());
       }
     } catch (InterruptedException e) {
       LOGGER.error("[{}]Caught InterruptedException on flush.", getName(), e);
@@ -146,11 +154,13 @@ public class ProducerThread extends Thread {
     producer.shutdown();
   }
 
-  private void maybeSetDefaultProperty(Properties properties, String propertyName, String defaultValue) {
+  private void maybeSetDefaultProperty(Properties properties, String propertyName,
+      String defaultValue) {
     String propertyValue = properties.getProperty(propertyName, defaultValue);
     properties.setProperty(propertyName, propertyValue);
     if (properties.getProperty(propertyName) != defaultValue) {
-      LOGGER.info("Property {} is overridden to {} - data loss or message reordering is possible.", propertyName, propertyValue);
+      LOGGER.info("Property {} is overridden to {} - data loss or message reordering is possible.",
+          propertyName, propertyValue);
     }
   }
 }

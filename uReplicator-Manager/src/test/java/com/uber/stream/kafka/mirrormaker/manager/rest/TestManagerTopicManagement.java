@@ -16,11 +16,9 @@
 package com.uber.stream.kafka.mirrormaker.manager.rest;
 
 import com.alibaba.fastjson.JSONObject;
-import com.codahale.metrics.Counter;
 import com.uber.stream.kafka.mirrormaker.common.utils.ZkStarter;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerStarter;
-import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import com.uber.stream.kafka.mirrormaker.common.utils.KafkaStarterUtils;
 import com.uber.stream.kafka.mirrormaker.manager.utils.ManagerRequestURLBuilder;
 import joptsimple.OptionSet;
@@ -114,10 +112,6 @@ public class TestManagerTopicManagement extends RestTestBase {
           conf.setHelixClusterName("testMirrorMaker");
           conf.addProperty("kafka.cluster.zkStr.cluster1", ZkStarter.DEFAULT_ZK_STR + "/cluster1");
           conf.addProperty("kafka.cluster.zkStr.cluster3", ZkStarter.DEFAULT_ZK_STR + "/cluster3");
-          HelixKafkaMirrorMakerMetricsReporter.init(conf);
-          Counter testCounter0 = new Counter();
-          HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("offsetMonitor.executed", testCounter0);
-
           final ControllerStarter controllerStarter = new ControllerStarter(conf);
           try {
             CONTROLLER_STARTER.add(id, controllerStarter);

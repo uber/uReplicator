@@ -103,7 +103,7 @@ public class WorkerInstanceTest {
       KafkaStarterUtils.createTopic(topicName2, numberOfPartitions, srcClusterZK, "2");
       KafkaStarterUtils.createTopic(topicName1, numberOfPartitions, dstClusterZK, "1");
       KafkaStarterUtils.createTopic(topicName2, numberOfPartitions, dstClusterZK, "1");
-      workerInstance.start(null, null);
+      workerInstance.start(null, null, null, null);
 
       workerInstance.addTopicPartition(topicName1, 0);
       workerInstance.addTopicPartition(topicName1, 1);
@@ -123,7 +123,7 @@ public class WorkerInstanceTest {
       workerInstance = null;
 
       workerInstance = new WorkerInstance(conf);
-      workerInstance.start(null, null);
+      workerInstance.start(null, null, null,null);
 
       workerInstance.addTopicPartition(topicName1, 0);
       workerInstance.addTopicPartition(topicName1, 1);

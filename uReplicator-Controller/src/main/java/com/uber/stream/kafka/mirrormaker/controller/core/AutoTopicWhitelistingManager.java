@@ -17,7 +17,7 @@ package com.uber.stream.kafka.mirrormaker.controller.core;
 
 import com.codahale.metrics.Counter;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
-import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
+import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -228,16 +228,16 @@ public class AutoTopicWhitelistingManager {
 
   private void registerMetrics() {
     try {
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(
+      KafkaUReplicatorMetricsReporter.get().registerMetric(
           String.format(AUTO_TOPIC_WHITELIST_MANAGER_METRICS_TEMPLATE, "numOfAutoWhitelistingRuns"),
           _numOfAutoWhitelistingRuns);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(
+      KafkaUReplicatorMetricsReporter.get().registerMetric(
           String.format(AUTO_TOPIC_WHITELIST_MANAGER_METRICS_TEMPLATE, "numWhitelistedTopics"),
           _numWhitelistedTopics);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(
+      KafkaUReplicatorMetricsReporter.get().registerMetric(
           String.format(AUTO_TOPIC_WHITELIST_MANAGER_METRICS_TEMPLATE, "numAutoExpandedTopics"),
           _numAutoExpandedTopics);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(
+      KafkaUReplicatorMetricsReporter.get().registerMetric(
           String.format(AUTO_TOPIC_WHITELIST_MANAGER_METRICS_TEMPLATE, "numErrorTopics"),
           _numErrorTopics);
     } catch (Exception e) {

@@ -16,6 +16,7 @@
 package com.uber.stream.ureplicator.worker;
 
 import com.google.common.collect.ImmutableSet;
+import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -67,6 +68,8 @@ public class ConsumerFetcherThread extends ShutdownableThread {
     this.offsetMonitorMs = properties.getOffsetMonitorInterval();
     this.pollTimeoutMs = properties.getPollTimeoutMs();
     this.kafkaConsumer = new KafkaConsumer(properties);
+    KafkaUReplicatorMetricsReporter.get()
+        .registerKafkaMetrics("consumer." + threadName, kafkaConsumer.metrics());
   }
 
   @Override
@@ -97,10 +100,11 @@ public class ConsumerFetcherThread extends ShutdownableThread {
         Thread.sleep(fetchBackOffMs);
         return;
       }
+
       processFetchedData(records);
       logTopicPartitionInfo();
     } catch (Throwable e) {
-      LOGGER.error("[{}]: Catch Throwable", getName(), e.getMessage(), e);
+      LOGGER.error("[{}]: Catch Throwable exception: ", getName(), e.getMessage(), e);
     }
   }
 
@@ -120,15 +124,26 @@ public class ConsumerFetcherThread extends ShutdownableThread {
   }
 
   private void logTopicPartitionInfo() {
-    if ((System.currentTimeMillis() - lastDumpTime) < offsetMonitorMs) {
+    if ((System.currentTimeMillis() - lastDumpTime) < offsetMonitorMs || partitionMap.size() == 0) {
       return;
     }
     Map<TopicPartition, Long> endOffsets = kafkaConsumer.endOffsets(partitionMap.keySet());
+    if (endOffsets == null) {
+      LOGGER.error("[{}]: Failed to find endOffsets for topic partitions: {}", getName(),
+          partitionMap.keySet());
+      return;
+    }
     List<String> topicOffsetPairs = new ArrayList<>();
     for (PartitionOffsetInfo poi : partitionMap.values()) {
-      Long lag = endOffsets.get(poi.topicPartition()) - poi.fetchOffset();
-      topicOffsetPairs
-          .add(String.format("%s:%d:%d", poi.topicPartition().toString(), poi.fetchOffset(), lag));
+      if (endOffsets.containsKey(poi.topicPartition())) {
+        Long lag = endOffsets.get(poi.topicPartition()) - poi.fetchOffset();
+        topicOffsetPairs
+            .add(
+                String.format("%s:%d:%d", poi.topicPartition().toString(), poi.fetchOffset(), lag));
+      } else {
+        LOGGER.warn("[{}]: Failed to find endOffsets for topic partition : {}", getName(), poi);
+        continue;
+      }
     }
     LOGGER.info("[{}]: Topic partitions dump in fetcher thread: {}", getName(),
         String.join(",", topicOffsetPairs));
@@ -206,9 +221,13 @@ public class ConsumerFetcherThread extends ShutdownableThread {
     }
     LOGGER.info("[{}] Shutting down fetcher thread", getName());
     initiateShutdown();
+    awaitShutdown();
+  }
 
+  @Override
+  public void awaitShutdown() {
+    super.awaitShutdown();
     synchronized (partitionMapLock) {
-      awaitShutdown();
       kafkaConsumer.close();
       partitionMap.clear();
       partitionDeleteMap.clear();
@@ -216,6 +235,5 @@ public class ConsumerFetcherThread extends ShutdownableThread {
       partitionResetOffsetMap.clear();
     }
     LOGGER.info("[{}] Shutdown fetcher thread finished", getName());
-
   }
 }

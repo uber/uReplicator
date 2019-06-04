@@ -29,9 +29,9 @@ import com.uber.stream.kafka.mirrormaker.common.utils.HelixSetupUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.HttpClientUtils;
 import com.uber.stream.kafka.mirrormaker.manager.ManagerConf;
-import com.uber.stream.kafka.mirrormaker.manager.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import com.uber.stream.kafka.mirrormaker.manager.validation.KafkaClusterValidationManager;
 
+import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.*;
@@ -192,19 +192,19 @@ public class ControllerHelixManager implements IHelixManager {
 
   private void registerMetrics() {
     try {
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("controller.available.counter",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("controller.available.counter",
           _availableController);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("worker.available.counter",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("worker.available.counter",
           _availableWorker);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("topic.non-parity.counter",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("topic.non-parity.counter",
           _nonParityTopic);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("validate.wrong.counter",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("validate.wrong.counter",
           _validateWrongCount);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("rescale.failed.counter",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("rescale.failed.counter",
           _rescaleFailedCount);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("validate.wrong.low.urgency.counter",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("validate.wrong.low.urgency.counter",
           _lowUrgencyValidateWrongCount);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("controller.assigned.counter",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("controller.assigned.counter",
           _assignedControllerCount);
     } catch (Exception e) {
       LOGGER.error("Error registering metrics!", e);
@@ -221,15 +221,15 @@ public class ControllerHelixManager implements IHelixManager {
       _routeToCounterMap.get(route).put(WORKER_TOTAL_NUMBER, new Counter());
       //_routeToCounterMap.get(routeString).put(WORKER_ERROR_NUMBER, new Counter());
       try {
-        HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(route + ".topic.totalNumber",
+        KafkaUReplicatorMetricsReporter.get().registerMetric(route + ".topic.totalNumber",
             _routeToCounterMap.get(route).get(TOPIC_TOTAL_NUMBER));
         //HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(routeString + ".topic.errorNumber",
         //    _routeToCounterMap.get(routeString).get(TOPIC_ERROR_NUMBER));
-        HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(route + ".controller.totalNumber",
+        KafkaUReplicatorMetricsReporter.get().registerMetric(route + ".controller.totalNumber",
             _routeToCounterMap.get(route).get(CONTROLLER_TOTAL_NUMBER));
         //HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(routeString + "controller.errorNumber",
         //    _routeToCounterMap.get(routeString).get(CONTROLLER_ERROR_NUMBER));
-        HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(route + ".worker.totalNumber",
+        KafkaUReplicatorMetricsReporter.get().registerMetric(route + ".worker.totalNumber",
             _routeToCounterMap.get(route).get(WORKER_TOTAL_NUMBER));
         //HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(routeString + "worker.errorNumber",
         //    _routeToCounterMap.get(routeString).get(WORKER_ERROR_NUMBER));
