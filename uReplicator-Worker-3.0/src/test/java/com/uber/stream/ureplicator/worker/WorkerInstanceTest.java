@@ -187,30 +187,19 @@ public class WorkerInstanceTest {
         10000);
     WorkerConf workerConf = TestUtils.initWorkerConf();
     Properties helixProps = WorkerUtils.loadAndValidateHelixProps(workerConf.getHelixConfigFile());
-    String deployment = "integration-test";
-    String zkRoot = "localhost:12026/ureplicator";
-    Thread.sleep(500);
-    ZkClient zkClient = ZkUtils.createZkClient(ZkStarter.DEFAULT_ZK_STR, 1000, 1000);
-    zkClient.createPersistent("/ureplicator");
-    zkClient.close();
 
     String instanceId = helixProps.getProperty(Constants.HELIX_INSTANCE_ID, null);
     Assert.assertNotNull(instanceId, String
         .format("failed to find property %s in configuration file %s", Constants.HELIX_INSTANCE_ID,
             workerConf.getHelixConfigFile()));
 
-    ZKHelixAdmin helixAdmin = new ZKHelixAdmin(zkRoot);
     String route = String.format("%s-%s-0", TestUtils.SRC_CLUSTER, TestUtils.DST_CLUSTER);
     String routeForHelix = String.format("@%s@%s", TestUtils.SRC_CLUSTER, TestUtils.DST_CLUSTER);
 
+    ZKHelixAdmin helixAdmin = TestUtils.initHelixClustersForWorkerTest(helixProps, route);
+    String deployment = helixProps.getProperty("federated.deployment.name");
     String managerHelixClusterName = WorkerUtils.getManagerWorkerHelixClusterName(deployment);
     String controllerHelixClusterName = WorkerUtils.getControllerWorkerHelixClusterName(route);
-    HelixManager managerWorkerHelix = HelixSetupUtils
-        .setup(managerHelixClusterName, zkRoot, "0");
-    managerWorkerHelix.connect();
-    HelixManager controllerWorkerHelix = HelixSetupUtils
-        .setup(controllerHelixClusterName, zkRoot, "0");
-    controllerWorkerHelix.connect();
 
     Thread.sleep(1000);
     WorkerStarterRunnable runnable = new WorkerStarterRunnable(workerConf);
@@ -255,6 +244,14 @@ public class WorkerInstanceTest {
     records = TestUtils.consumeMessage(dstBootstrapServer, topicName1, 5000);
     Assert.assertEquals(records.size(), 0);
 
+    idealState = TestUtils
+        .buildManagerWorkerCustomIdealState(routeForHelix, Collections.singletonList(instanceId),
+            "OFFLINE");
+    helixAdmin.setResourceIdealState(managerHelixClusterName, routeForHelix, idealState);
+    Thread.sleep(1000);
+    externalView = helixAdmin
+        .getResourceExternalView(managerHelixClusterName, routeForHelix);
+    Assert.assertEquals(externalView.getStateMap("0").get("0"), "OFFLINE");
 
     runnable.shutdown();
     String offset = commitZkClient.readData("/consumers/ureplicator-cluster1-cluster2/offsets/"+ topicName1 + "/0").toString();

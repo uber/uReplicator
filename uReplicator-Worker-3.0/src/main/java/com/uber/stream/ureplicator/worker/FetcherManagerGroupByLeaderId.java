@@ -29,6 +29,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import kafka.utils.ShutdownableThread;
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
@@ -82,6 +83,9 @@ public class FetcherManagerGroupByLeaderId extends ShutdownableThread implements
       Map<String, ConsumerFetcherThread> fetcherThreadMap, Consumer kafkaConsumer) {
     super(threadName, true);
     this.consumerProperties = consumerProperties;
+
+    // uReplicator manages commit offset itself
+    consumerProperties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
     this.numberOfConsumerFetcher = consumerProperties.getNumberOfConsumerFetcher();
     this.refreshLeaderBackoff = consumerProperties.getLeaderRefreshMs();
     this.fetcherThreadMap = fetcherThreadMap;

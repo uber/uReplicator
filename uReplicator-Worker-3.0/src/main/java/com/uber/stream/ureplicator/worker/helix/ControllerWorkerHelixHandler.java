@@ -15,8 +15,10 @@
  */
 package com.uber.stream.ureplicator.worker.helix;
 
+import com.codahale.metrics.Meter;
 import com.uber.stream.kafka.mirrormaker.common.core.HelixHandler;
 import com.uber.stream.kafka.mirrormaker.common.core.OnlineOfflineStateFactory;
+import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import com.uber.stream.ureplicator.worker.Constants;
 import com.uber.stream.ureplicator.worker.WorkerInstance;
 import java.util.Properties;
@@ -30,6 +32,11 @@ import org.slf4j.LoggerFactory;
 public class ControllerWorkerHelixHandler implements HelixHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ControllerWorkerHelixHandler.class);
+
+  public static final Meter addTopicPartitionFailureMeter = new Meter();
+  public static final String METRIC_ADD_TOPIC_PARTITION_FAILURE = "addTopicPartitionFailure";
+  public static final Meter deleteTopicPartitionFailureMeter = new Meter();
+  public static final String METRIC_DELETE_TOPIC_PARTITION_FAILURE = "deleteTopicPartitionFailure";
 
   private final String workerInstanceId;
   private final String helixZkURL;
@@ -66,6 +73,11 @@ public class ControllerWorkerHelixHandler implements HelixHandler {
   public void start() throws Exception {
     try {
       workerInstance.start(srcCluster, dstCluster, routeId, federatedDeploymentName);
+      KafkaUReplicatorMetricsReporter.get()
+          .registerMetric(METRIC_ADD_TOPIC_PARTITION_FAILURE, addTopicPartitionFailureMeter);
+      KafkaUReplicatorMetricsReporter.get()
+          .registerMetric(METRIC_DELETE_TOPIC_PARTITION_FAILURE, deleteTopicPartitionFailureMeter);
+
       if (helixManager != null && helixManager.isConnected()) {
         LOGGER.warn("ControllerWorkerHelixManager already connected");
         return;
@@ -107,7 +119,10 @@ public class ControllerWorkerHelixHandler implements HelixHandler {
       workerInstance.addTopicPartition(topic,
           Integer.parseInt(partition));
     } catch (Throwable t) {
+      addTopicPartitionFailureMeter.mark();
       LOGGER.error("addTopicPartition Failed. topic: {}, partition: {}", topic, partition, t);
+      // add topic partition failure can be detected by controller offset monitor and helix will mark this as ERROR
+      throw t;
     }
   }
 
@@ -116,7 +131,10 @@ public class ControllerWorkerHelixHandler implements HelixHandler {
       workerInstance.deleteTopicPartition(topic,
           Integer.parseInt(partition));
     } catch (Throwable t) {
+      deleteTopicPartitionFailureMeter.mark();
       LOGGER.error("deleteTopicPartition Failed. topic: {}, partition: {}", topic, partition, t);
+      // exception should be rare, helix will mark this as ERROR.
+      throw t;
     }
   }
 
@@ -141,7 +159,7 @@ public class ControllerWorkerHelixHandler implements HelixHandler {
         LOGGER.error("uReplicator Worker shutdown failed", e);
       }
     }
-    if (helixManager.isConnected()) {
+    if (helixManager != null && helixManager.isConnected()) {
       helixManager.disconnect();
     }
     LOGGER.info("Shutdown ControllerWorkerHelixHandler finished");
