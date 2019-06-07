@@ -168,16 +168,20 @@ public class ManagerWorkerHelixHandler implements HelixHandler {
     LOGGER.info("Handling resource online {}", message.getResourceName());
     String routeName = String.format("%s-%s-%s", srcCluster, dstCluster, routeId);
     String helixCluster = WorkerUtils.getControllerWorkerHelixClusterName(routeName);
-    LOGGER.error("Join controller-worker cluster {}", helixCluster);
+    LOGGER.info("Join controller-worker cluster {}", helixCluster);
     controllerWorkerHelixHandler = new ControllerWorkerHelixHandler(helixProps,
         helixCluster, srcCluster, dstCluster, routeId, federatedDeploymentName, workerInstance);
     try {
       controllerWorkerHelixHandler.start();
     } catch (Exception e) {
       LOGGER.error("Start controllerWorkerHelixHandler failed", e);
+      controllerWorkerHelixHandler.shutdown();
+      // helix will mark this as ERROR and this can be captured by manager's validation job
+      throw new RuntimeException(e);
     }
     currentSrcCluster = srcCluster;
     currentDstCluster = dstCluster;
+    currentRouteId = routeId;
     LOGGER.info("Handling resource online {} finished", message.getResourceName());
   }
 
@@ -196,9 +200,10 @@ public class ManagerWorkerHelixHandler implements HelixHandler {
         routeId.equalsIgnoreCase(currentRouteId)) {
       return true;
     } else {
-      LOGGER.error("Inconsistent online request, srcCluster: {}, dstCluster: {}, routeId: {}.",
-          srcCluster,
-          dstCluster, routeId);
+      LOGGER.error(
+          "Inconsistent request, srcCluster: {}:{}, dstCluster: {}:{}, routeId: {}:{}.",
+          srcCluster, currentSrcCluster,
+          dstCluster, currentDstCluster, routeId, currentRouteId);
       return false;
     }
   }

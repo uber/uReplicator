@@ -16,6 +16,7 @@
 package com.uber.stream.ureplicator.worker;
 
 import com.uber.stream.kafka.mirrormaker.common.core.OnlineOfflineStateModel;
+import com.uber.stream.kafka.mirrormaker.common.utils.HelixSetupUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.ZkStarter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -25,6 +26,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import kafka.utils.ZkUtils;
+import org.I0Itec.zkclient.ZkClient;
+import org.apache.helix.HelixAdmin;
+import org.apache.helix.HelixManager;
+import org.apache.helix.manager.zk.ZKHelixAdmin;
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.builder.CustomModeISBuilder;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -203,5 +209,18 @@ public class TestUtils {
     return conf;
   }
 
-
+  public static ZKHelixAdmin initHelixClustersForWorkerTest(Properties properties, String route) throws InterruptedException {
+    String zkRoot = properties.getProperty("zkServer");
+    Thread.sleep(500);
+    ZkClient zkClient = ZkUtils.createZkClient(ZkStarter.DEFAULT_ZK_STR, 1000, 1000);
+    zkClient.createPersistent("/ureplicator");
+    zkClient.close();
+    ZKHelixAdmin helixAdmin = new ZKHelixAdmin(zkRoot);
+    String deployment = properties.getProperty("federated.deployment.name");
+    String managerHelixClusterName = WorkerUtils.getManagerWorkerHelixClusterName(deployment);
+    String controllerHelixClusterName = WorkerUtils.getControllerWorkerHelixClusterName(route);
+    HelixSetupUtils.setup(managerHelixClusterName, zkRoot, "0");
+    HelixSetupUtils.setup(controllerHelixClusterName, zkRoot, "0");
+    return helixAdmin;
+  }
 }
