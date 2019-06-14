@@ -15,6 +15,7 @@
  */
 package com.uber.stream.ureplicator.worker;
 
+import com.codahale.metrics.Gauge;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartitionCountObserver;
 import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import com.uber.stream.ureplicator.common.MetricsReporterConf;
@@ -27,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang.StringUtils;
@@ -112,9 +114,7 @@ public class WorkerInstance {
    */
   public void start(String srcCluster, String dstCluster, String routeId,
       String federatedDeploymentName) {
-    if (isShuttingDown.get()) {
-      LOGGER.error("WorkerInstance start failure, can't restart a shutdown instance");
-    }
+    isShuttingDown.set(false);
 
     initializeProperties(srcCluster, dstCluster);
     // Init blocking queue
@@ -142,6 +142,7 @@ public class WorkerInstance {
     producerManager = new ProducerManager(consumerStream, producerProps,
         workerConf.getAbortOnSendFailure(), messageTransformer, checkpointManager, this);
     producerManager.start();
+    registerMetrics();
   }
 
   /**
@@ -199,8 +200,8 @@ public class WorkerInstance {
     if (!isShuttingDown.compareAndSet(false, true)) {
       return;
     }
-    LOGGER.info("Start clean shutdown");
 
+    LOGGER.info("Start clean shutdown");
     if (observer != null) {
       try {
         LOGGER.info("Shutdown observer");
@@ -230,10 +231,12 @@ public class WorkerInstance {
     for (ConsumerIterator iterator : consumerStream) {
       iterator.cleanCurrentChunk();
     }
+    removeMetrics();
     KafkaUReplicatorMetricsReporter.stop();
 
     topicMapping.clear();
     LOGGER.info("Kafka uReplicator worker shutdown successfully");
+
   }
 
   private int calculateQueueId(TopicPartition topicPartition, int numOfProducer) {
@@ -289,7 +292,8 @@ public class WorkerInstance {
     consumerProps.setProperty(Constants.COMMIT_ZOOKEEPER_SERVER_CONFIG, commitZk);
   }
 
-  private void initializeMetricsReporter(String srcCluster, String dstCluster, String routeId, String federatedDeploymentName) {
+  private void initializeMetricsReporter(String srcCluster, String dstCluster, String routeId,
+      String federatedDeploymentName) {
     List<String> additionalInfo = new ArrayList<>();
     additionalInfo.add(workerConf.getMetricsPrefix());
     if (workerConf.getFederatedEnabled()) {
@@ -335,6 +339,35 @@ public class WorkerInstance {
     return mapping;
   }
 
+  private void registerMetrics() {
+    if (KafkaUReplicatorMetricsReporter.get() == null) {
+      return;
+    }
+    for (int index = 0; index < messageQueue.size(); index++) {
+      int finalIndex = index;
+      Gauge<Integer> gauge = () -> messageQueue.get(finalIndex).size();
+      KafkaUReplicatorMetricsReporter.get()
+          .registerMetric("TotalBlockingQueueSize." + String.valueOf(finalIndex), gauge);
+    }
+    Gauge<Integer> ownedPartitions = () -> fetcherManager.getTopicPartitions().size();
+    KafkaUReplicatorMetricsReporter.get()
+        .registerMetric("OwnedPartitionsCount", ownedPartitions);
+    LOGGER.info("registerMetrics finished");
+  }
+
+  private void removeMetrics() {
+    if (KafkaUReplicatorMetricsReporter.get() == null) {
+      return;
+    }
+    for (int index = 0; index < messageQueue.size(); index++) {
+      final String finalStr = String.valueOf(index);
+      KafkaUReplicatorMetricsReporter.get()
+          .removeMetric("TotalBlockingQueueSize." + finalStr);
+    }
+    KafkaUReplicatorMetricsReporter.get()
+        .removeMetric("OwnedPartitionsCount");
+  }
+
   public void additionalConfigs(String srcCluster, String dstCluster) {
   }
 
@@ -347,5 +380,14 @@ public class WorkerInstance {
    */
   protected void onProducerCompletionWithoutException(RecordMetadata metadata, int srcPartition,
       long srcOffset) {
+  }
+
+  /**
+   * Set per second number of messages allowed to process
+   *
+   * @param messageRatePerSecond message rate per second
+   */
+  public void setMessageRatePerSecond(Double messageRatePerSecond) {
+    this.fetcherManager.setMessageRate(messageRatePerSecond);
   }
 }

@@ -20,7 +20,6 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
 import com.codahale.metrics.jmx.JmxReporter;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.io.Closeables;
 import java.net.InetSocketAddress;
@@ -28,7 +27,8 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Holds a singleton MetricRegistry to be shared across uReplicator.
@@ -39,7 +39,7 @@ import org.apache.log4j.Logger;
 public class KafkaUReplicatorMetricsReporter {
 
   private static KafkaUReplicatorMetricsReporter METRICS_REPORTER_INSTANCE = null;
-  private static final Logger LOGGER = Logger.getLogger(KafkaUReplicatorMetricsReporter.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(KafkaUReplicatorMetricsReporter.class);
   private static volatile boolean DID_INIT = false;
   // prefix for non federated mode :
   // stats.##dc##.counter.##component##.hostname
@@ -190,7 +190,7 @@ public class KafkaUReplicatorMetricsReporter {
     if (!_registry.getNames().contains(metricName)) {
       _registry.register(metricName, metric);
     } else {
-      LOGGER.warn("Failed to register an existed metric: {}" + metricName);
+      LOGGER.warn("Failed to register an existed metric: {}", metricName);
     }
   }
 

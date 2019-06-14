@@ -16,6 +16,7 @@
 package com.uber.stream.ureplicator.worker;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.util.concurrent.RateLimiter;
 import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import java.util.ArrayList;
 import java.util.List;
@@ -55,14 +56,15 @@ public class ConsumerFetcherThread extends ShutdownableThread {
   private final int offsetMonitorMs;
   private final int fetchBackOffMs;
   private final int pollTimeoutMs;
-
+  private final RateLimiter rateLimiter;
   /**
    * Constructor
    *
    * @param threadName fetcher thread name
    * @param properties kafka consumer configuration properties
+   * @param rateLimiter consumer rate limiter
    */
-  public ConsumerFetcherThread(String threadName, CustomizedConsumerConfig properties) {
+  public ConsumerFetcherThread(String threadName, CustomizedConsumerConfig properties, RateLimiter rateLimiter) {
     super(threadName, true);
     this.fetchBackOffMs = properties.getFetcherThreadBackoffMs();
     this.offsetMonitorMs = properties.getOffsetMonitorInterval();
@@ -70,6 +72,7 @@ public class ConsumerFetcherThread extends ShutdownableThread {
     this.kafkaConsumer = new KafkaConsumer(properties);
     KafkaUReplicatorMetricsReporter.get()
         .registerKafkaMetrics("consumer." + threadName, kafkaConsumer.metrics());
+    this.rateLimiter = rateLimiter;
   }
 
   @Override
@@ -105,6 +108,12 @@ public class ConsumerFetcherThread extends ShutdownableThread {
       logTopicPartitionInfo();
     } catch (Throwable e) {
       LOGGER.error("[{}]: Catch Throwable exception: ", getName(), e.getMessage(), e);
+      // reset offset to fetchoffset to avoid data losss
+      for (PartitionOffsetInfo offsetInfo : partitionMap.values()) {
+        if (offsetInfo.fetchOffset() >= 0) {
+          kafkaConsumer.seek(offsetInfo.topicPartition(), offsetInfo.fetchOffset());
+        }
+      }
     }
   }
 
@@ -118,6 +127,9 @@ public class ConsumerFetcherThread extends ShutdownableThread {
 
       List<ConsumerRecord> records = consumerRecords.records(tp);
       if (records.size() != 0 && !partitionOffsetInfo.fetchedEndBounded()) {
+        if (rateLimiter != null) {
+          rateLimiter.acquire(records.size());
+        }
         partitionOffsetInfo.enqueue(records);
       }
     }

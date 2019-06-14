@@ -58,7 +58,8 @@ public class ProducerManager {
       } catch (Exception e) {
         LOGGER.error("Start ProducerThread {} failed, exiting uReplicator", thread.getName());
         workerInstance.cleanShutdown();
-        return;
+        // System.exit to make sure worker stopped completely
+        System.exit(-1);
       }
     }
   }
