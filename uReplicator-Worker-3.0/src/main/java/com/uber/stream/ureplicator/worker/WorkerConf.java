@@ -56,7 +56,7 @@ public class WorkerConf extends PropertiesConfiguration {
   private static final int DEFAULT_OFFSET_COMMIT_INTERVAL_MS = 60000;
 
   private static final String ABORT_ON_SEND_FAILURE = "abort_on_send_failure";
-  private static final boolean DEFAULT_ABORT_ON_SEND_FAILURE = false;
+  private static final boolean DEFAULT_ABORT_ON_SEND_FAILURE = true;
 
   private static final String ENABLE_FILTER = "enable_filter";
   private static final boolean DEFAULT_ENABLE_FILTER = false;
@@ -72,6 +72,8 @@ public class WorkerConf extends PropertiesConfiguration {
   private static final String GRAPHITE_PORT = "graphite_port";
   // DEFAULT_GRAPHITE_PORT = 0 means don't create graphite reporter
   private static final int DEFAULT_GRAPHITE_PORT = 0;
+
+  private static final String WORKER_PORT = "worker_port";
 
   public WorkerConf() {
     super();
@@ -176,6 +178,11 @@ public class WorkerConf extends PropertiesConfiguration {
     return getProperty(GRAPHITE_PORT, DEFAULT_GRAPHITE_PORT);
   }
 
+  public Integer getWorkerPort() {
+    return getProperty(WORKER_PORT, 0);
+  }
+
+
   public void setFederatedEnabled(boolean federatedEnabled) {
     setProperty(FEDERATED_ENABLED, String.valueOf(federatedEnabled));
   }
@@ -241,6 +248,10 @@ public class WorkerConf extends PropertiesConfiguration {
     setProperty(GRAPHITE_PORT, graphitePort);
   }
 
+  public void setWorkerPort(int workerPort) {
+    setProperty(WORKER_PORT, workerPort);
+  }
+  
   public static Options constructWorkerOptions() {
     final Options workerOptions = new Options();
     workerOptions.addOption("help", false, "Help")
@@ -265,7 +276,8 @@ public class WorkerConf extends PropertiesConfiguration {
         .addOption(METRICS_PREFIX, true,
             "metrics prefix")
         .addOption(GRAPHITE_HOST, true, "graphite host")
-        .addOption(GRAPHITE_PORT, true, "graphite port");
+        .addOption(GRAPHITE_PORT, true, "graphite port")
+        .addOption(WORKER_PORT, true, "worker port");
     return workerOptions;
   }
 

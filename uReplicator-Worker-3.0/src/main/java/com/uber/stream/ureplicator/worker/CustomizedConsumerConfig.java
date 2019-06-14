@@ -47,6 +47,10 @@ public class CustomizedConsumerConfig extends Properties {
   public static String CONSUMER_TIMEOUT_MS = "consumer.timeout.ms";
   public static int DEFAULT_CONSUMER_TIMEOUT_MS = 300;
 
+  public static String CONSUMER_NUM_OF_MESSAGES_RATE = "consumer.num.of.messages.rate";
+  public static int DEFAULT_CONSUMER_NUM_OF_MESSAGES_RATE= 0;
+
+
   public int getFetcherThreadBackoffMs() {
     return getInt(FETCHER_THREAD_BACKOFF_MS, DEFAULT_FETCH_THREAD_BACKOFF_MS);
   }
@@ -73,6 +77,10 @@ public class CustomizedConsumerConfig extends Properties {
 
   public int getConsumerTimeoutMs() {
     return getInt(CONSUMER_TIMEOUT_MS, DEFAULT_CONSUMER_TIMEOUT_MS);
+  }
+
+  public int getConsumerNumOfMessageRate() {
+    return getInt(CONSUMER_NUM_OF_MESSAGES_RATE, DEFAULT_CONSUMER_NUM_OF_MESSAGES_RATE);
   }
 
   public int getInt(String key, int defaultValue) {

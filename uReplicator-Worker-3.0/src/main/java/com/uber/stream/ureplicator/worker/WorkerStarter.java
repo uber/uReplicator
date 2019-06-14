@@ -24,6 +24,10 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
+import org.restlet.Application;
+import org.restlet.Component;
+import org.restlet.Context;
+import org.restlet.data.Protocol;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,6 +87,9 @@ public class WorkerStarter {
         throw e;
       }
     }
+
+    runRestApplication();
+
     // wait until shutdown
     try {
       shutdownLatch.await();
@@ -90,6 +97,27 @@ public class WorkerStarter {
     } catch (InterruptedException e) {
       LOGGER.info("Shutting down worker due to interrupted exception");
     }
+  }
+
+  // run rest application
+  public void runRestApplication() throws Exception {
+    if (workerConf.getWorkerPort() == 0) {
+      return;
+    }
+    Component _component = new Component();
+    _component.getServers().add(Protocol.HTTP, workerConf.getWorkerPort());
+    _component.getClients().add(Protocol.FILE);
+    _component.getClients().add(Protocol.JAR);
+
+    Context applicationContext = _component.getContext().createChildContext();
+    LOGGER.info("Injecting workerInstance to the api context, port {}", workerConf.getWorkerPort());
+    applicationContext.getAttributes().put(WorkerInstance.class.toString(), workerInstance);
+
+    Application restletApplication = new RestletApplication(null);
+    restletApplication.setContext(applicationContext);
+
+    _component.getDefaultHost().attach(restletApplication);
+    _component.start();
   }
 
   public void shutdown() {

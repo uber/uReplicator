@@ -82,7 +82,7 @@ public class CompactFetcherThreadTest {
 
 
     ConsumerFetcherThread fetcherThread = new ConsumerFetcherThread(threadName,
-        properties);
+        properties, null);
     fetcherThread.start();
 
     TestUtils.produceMessages(bootstrapServer, testTopic1, 10);

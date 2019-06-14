@@ -15,6 +15,10 @@
  */
 package com.uber.stream.ureplicator.worker;
 
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.Timer;
+import com.codahale.metrics.UniformReservoir;
 import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import com.uber.stream.ureplicator.worker.ConsumerIterator.ConsumerTimeoutException;
 import com.uber.stream.ureplicator.worker.interfaces.ICheckPointManager;
@@ -23,6 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -47,6 +52,8 @@ public class ProducerThread extends Thread {
   private final Map<TopicPartition, Long> consumedOffsets = new HashMap<>();
   private final WorkerInstance workerInstance;
   protected AtomicBoolean isShuttingDown = new AtomicBoolean(false);
+  protected Timer flushLatencyMsTimer = new Timer(new UniformReservoir());
+  protected Timer commitLatencyMsTimer = new Timer(new UniformReservoir());
 
   /**
    * Constructor
@@ -83,6 +90,16 @@ public class ProducerThread extends Thread {
         workerInstance);
     String threadName = Constants.PRODUCER_THREAD_PREFIX + threadId;
     setName(threadName);
+    registerMetrics(clientId);
+
+  }
+
+  private void registerMetrics(String clientId) {
+    KafkaUReplicatorMetricsReporter.get()
+        .registerMetric("producer." + clientId + ".flushLatencyMs", flushLatencyMsTimer);
+    KafkaUReplicatorMetricsReporter.get()
+        .registerMetric("producer." + clientId + ".commitLatencyMs", commitLatencyMsTimer);
+
     KafkaUReplicatorMetricsReporter.get()
         .registerKafkaMetrics("producer." + clientId, producer.getMetrics());
   }
@@ -115,22 +132,24 @@ public class ProducerThread extends Thread {
       }
     } finally {
       LOGGER.info("[{}]Thread exited.", getName());
+      shutdownLatch.countDown();
       if (!isShuttingDown.get()) {
         LOGGER.error(
             "[{}]Thread exited abnormally, stopping the whole uReplicator.", getName());
-        // start clean shutdown worker
+        // TODO: add timeout for clean shutdown
+        workerInstance.cleanShutdown();
+        System.exit(-1);
       }
-      shutdownLatch.countDown();
-      workerInstance.cleanShutdown();
     }
   }
 
   private synchronized void flushAndCommitOffset(boolean forceCommit) {
     try {
+      Long flushStartTime = System.currentTimeMillis();
       if (consumedOffsets.size() != 0 && producer.maybeFlush(forceCommit)) {
-        checkpointManager.commitOffset(consumedOffsets);
+        flushLatencyMsTimer.update(System.currentTimeMillis() - flushStartTime, TimeUnit.MILLISECONDS);
+        commitLatencyMsTimer.time(() -> checkpointManager.commitOffset(consumedOffsets));
         consumedOffsets.clear();
-        LOGGER.info("[{}]commitOffset finished", getName());
       }
     } catch (InterruptedException e) {
       LOGGER.error("[{}]Caught InterruptedException on flush.", getName(), e);

@@ -19,6 +19,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.util.concurrent.RateLimiter;
 import com.uber.stream.ureplicator.worker.interfaces.IConsumerFetcherManager;
 import java.util.ArrayList;
 import java.util.List;
@@ -67,6 +68,7 @@ public class FetcherManagerGroupByLeaderId extends ShutdownableThread implements
   private final CustomizedConsumerConfig consumerProperties;
   private final int refreshLeaderBackoff;
   private final int numberOfConsumerFetcher;
+  private final RateLimiter messageLimiter;
 
   @VisibleForTesting
   protected Consumer kafkaConsumer;
@@ -90,6 +92,22 @@ public class FetcherManagerGroupByLeaderId extends ShutdownableThread implements
     this.refreshLeaderBackoff = consumerProperties.getLeaderRefreshMs();
     this.fetcherThreadMap = fetcherThreadMap;
     this.kafkaConsumer = kafkaConsumer;
+    if (consumerProperties.getConsumerNumOfMessageRate() > 0) {
+      this.messageLimiter = RateLimiter.create(consumerProperties.getConsumerNumOfMessageRate());
+    } else {
+      this.messageLimiter = null;
+    }
+  }
+
+  public void setMessageRate(Double rate) {
+    if (messageLimiter == null) {
+      throw new RuntimeException(String
+          .format("Ratelimiter not defined because of consumer properties %s not configured",
+              CustomizedConsumerConfig.CONSUMER_NUM_OF_MESSAGES_RATE));
+    } else {
+      messageLimiter.setRate(rate);
+    }
+
   }
 
   public void addTopicPartition(TopicPartition topicPartition, PartitionOffsetInfo partitionInfo) {
@@ -148,7 +166,8 @@ public class FetcherManagerGroupByLeaderId extends ShutdownableThread implements
         if (fetcherThread == null) {
           try {
             LOGGER.info("Creating fetcher thread {}", fetchThreadName);
-            fetcherThread = new ConsumerFetcherThread(fetchThreadName, consumerProperties);
+            fetcherThread = new ConsumerFetcherThread(fetchThreadName, consumerProperties,
+                messageLimiter);
             fetcherThread.start();
             fetcherThreadMap.put(fetchThreadName, fetcherThread);
             LOGGER.info("Fetcher fetcher thread {} created", fetchThreadName);
@@ -187,7 +206,7 @@ public class FetcherManagerGroupByLeaderId extends ShutdownableThread implements
         fetcherThread.awaitShutdown();
       }
     }
-    
+
     synchronized (updateMapLock) {
       super.awaitShutdown();
       kafkaConsumer.close();

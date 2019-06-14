@@ -30,4 +30,6 @@ public interface IConsumerFetcherManager {
   Set<PartitionOffsetInfo> getTopicPartitions();
 
   void shutdown();
+
+  void setMessageRate(Double permitsPerSecond);
 }

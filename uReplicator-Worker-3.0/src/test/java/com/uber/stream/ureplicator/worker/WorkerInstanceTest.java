@@ -15,27 +15,21 @@
  */
 package com.uber.stream.ureplicator.worker;
 
-import com.uber.stream.kafka.mirrormaker.common.utils.HelixSetupUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.KafkaStarterUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.ZkStarter;
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
 import kafka.server.KafkaServerStartable;
 import kafka.utils.ZkUtils;
 import org.I0Itec.zkclient.ZkClient;
-import org.apache.helix.HelixManager;
 import org.apache.helix.manager.zk.ZKHelixAdmin;
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.IdealState;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -123,7 +117,7 @@ public class WorkerInstanceTest {
       workerInstance = null;
 
       workerInstance = new WorkerInstance(conf);
-      workerInstance.start(null, null, null,null);
+      workerInstance.start(null, null, null, null);
 
       workerInstance.addTopicPartition(topicName1, 0);
       workerInstance.addTopicPartition(topicName1, 1);
@@ -134,11 +128,11 @@ public class WorkerInstanceTest {
       TestUtils.produceMessages(srcBootstrapServer, topicName1, 20, 2);
       TestUtils.produceMessages(srcBootstrapServer, topicName2, 20, 2);
 
-      records = TestUtils.consumeMessage(dstBootstrapServer, topicName1, 4000);
+      records = TestUtils.consumeMessage(dstBootstrapServer, topicName1, 5000);
 
       Assert.assertEquals(records.size(), 20);
 
-      records = TestUtils.consumeMessage(dstBootstrapServer, topicName2, 4000);
+      records = TestUtils.consumeMessage(dstBootstrapServer, topicName2, 5000);
       Assert.assertEquals(records.size(), 25);
 
       LOGGER.info("Shutdown worker instance");
@@ -253,9 +247,36 @@ public class WorkerInstanceTest {
         .getResourceExternalView(managerHelixClusterName, routeForHelix);
     Assert.assertEquals(externalView.getStateMap("0").get("0"), "OFFLINE");
 
-    runnable.shutdown();
-    String offset = commitZkClient.readData("/consumers/ureplicator-cluster1-cluster2/offsets/"+ topicName1 + "/0").toString();
+    String offset = commitZkClient
+        .readData("/consumers/ureplicator-cluster1-cluster2/offsets/" + topicName1 + "/0")
+        .toString();
     Assert.assertEquals(offset, "10");
+
+    idealState = TestUtils
+        .buildManagerWorkerCustomIdealState(routeForHelix, Collections.singletonList(instanceId),
+            "ONLINE");
+    helixAdmin.setResourceIdealState(managerHelixClusterName, routeForHelix, idealState);
+    Thread.sleep(2000);
+    externalView = helixAdmin
+        .getResourceExternalView(managerHelixClusterName, routeForHelix);
+    Assert.assertEquals(externalView.getStateMap("0").get("0"), "ONLINE");
+
+    idealState = TestUtils
+        .buildControllerWorkerCustomIdealState(topicName1, partitionInstanceMap, "ONLINE");
+    helixAdmin.setResourceIdealState(controllerHelixClusterName, topicName1, idealState);
+    Thread.sleep(2000);
+    externalView = helixAdmin.getResourceExternalView(controllerHelixClusterName, topicName1);
+    Assert.assertEquals(externalView.getStateMap("0").get("0"), "ONLINE");
+    Assert.assertEquals(externalView.getStateMap("1").get("0"), "ONLINE");
+
+    records = TestUtils.consumeMessage(dstBootstrapServer, topicName1, 5000);
+    Assert.assertEquals(records.size(), 20);
+
+    runnable.shutdown();
+    offset = commitZkClient
+        .readData("/consumers/ureplicator-cluster1-cluster2/offsets/" + topicName1 + "/0")
+        .toString();
+    Assert.assertEquals(offset, "20");
   }
 
 
