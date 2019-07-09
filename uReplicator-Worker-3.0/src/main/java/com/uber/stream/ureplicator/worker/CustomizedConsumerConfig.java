@@ -26,29 +26,29 @@ public class CustomizedConsumerConfig extends Properties {
     super.putAll(p);
   }
 
-  public static String FETCHER_THREAD_BACKOFF_MS = "refresh.backoff.ms";
-  public static int DEFAULT_FETCH_THREAD_BACKOFF_MS = 200;
+  public static final String FETCHER_THREAD_BACKOFF_MS = "refresh.backoff.ms";
+  public static final int DEFAULT_FETCH_THREAD_BACKOFF_MS = 200;
 
-  public static String NUMBER_OF_CONSUMER_FETCHERS = "num.consumer.fetchers";
-  public static int DEFAULT_NUMBER_OF_CONSUMER_FETCHERS = 3;
+  public static final String NUMBER_OF_CONSUMER_FETCHERS = "num.consumer.fetchers";
+  public static final int DEFAULT_NUMBER_OF_CONSUMER_FETCHERS = 3;
 
-  public static String CONSUMER_MAX_QUEUE_SIZE = "queued.max.message.chunks";
-  public static int DEFAULT_CONSUMER_MAX_QUEUE_SIZE = 5;
+  public static final String CONSUMER_MAX_QUEUE_SIZE = "queued.max.message.chunks";
+  public static final int DEFAULT_CONSUMER_MAX_QUEUE_SIZE = 5;
 
-  public static String OFFSET_MONITOR_INTERVAL = "offset.monitor.ms";
-  public static int DEFAULT_OFFSET_MONITOR_INTERVAL = 60 * 1000;
+  public static final String OFFSET_MONITOR_INTERVAL = "offset.monitor.ms";
+  public static final int DEFAULT_OFFSET_MONITOR_INTERVAL = 60 * 1000;
 
-  public static String POLL_TIMEOUT_MS = "poll.timeout.ms";
-  public static int DEFAULT_POLL_TIMEOUT_MS = 100;
+  public static final String POLL_TIMEOUT_MS = "poll.timeout.ms";
+  public static final int DEFAULT_POLL_TIMEOUT_MS = 100;
 
-  public static String LEADER_REFRESH_MS = "refresh.leader.ms";
-  public static int DEFAULT_LEADER_REFRESH_MS = 100;
+  public static final String LEADER_REFRESH_MS = "refresh.leader.ms";
+  public static final int DEFAULT_LEADER_REFRESH_MS = 100;
 
-  public static String CONSUMER_TIMEOUT_MS = "consumer.timeout.ms";
-  public static int DEFAULT_CONSUMER_TIMEOUT_MS = 300;
+  public static final String CONSUMER_TIMEOUT_MS = "consumer.timeout.ms";
+  public static final int DEFAULT_CONSUMER_TIMEOUT_MS = 300;
 
-  public static String CONSUMER_NUM_OF_MESSAGES_RATE = "consumer.num.of.messages.rate";
-  public static int DEFAULT_CONSUMER_NUM_OF_MESSAGES_RATE= 0;
+  public static final String CONSUMER_NUM_OF_MESSAGES_RATE = "consumer.num.of.messages.rate";
+  public static final int DEFAULT_CONSUMER_NUM_OF_MESSAGES_RATE= 0;
 
 
   public int getFetcherThreadBackoffMs() {

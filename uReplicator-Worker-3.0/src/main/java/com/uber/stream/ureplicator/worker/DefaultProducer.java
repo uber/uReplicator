@@ -41,7 +41,7 @@ public class DefaultProducer {
   private final AtomicInteger recordCount = new AtomicInteger(0);
   private final boolean abortOnSendFailure;
   private final WorkerInstance workerInstance;
-  private final ReentrantLock flushCommitLock = new ReentrantLock();
+  private final Object flushCommitLock = new Object();
 
   private boolean producerAbort = false;
   private long lastOffsetCommitMs = System.currentTimeMillis();

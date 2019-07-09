@@ -46,7 +46,7 @@ public class RateLimiterResource extends ServerResource {
     if (StringUtils.isEmpty(rate)) {
       getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
       return new StringRepresentation(
-          String.format("Failed to add new rate limit due to missing parameter messagerate\n"));
+          String.format("Failed to add new rate limit due to missing parameter messagerate%n"));
     }
     try {
       workerInstance.setMessageRatePerSecond(Double.parseDouble(rate));
@@ -55,9 +55,9 @@ public class RateLimiterResource extends ServerResource {
       getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
       LOGGER.error("Set messageRate to {} failed", rate, e);
       return new StringRepresentation(
-          String.format("Failed to add new topic, with exception: %s\n", e));
+          String.format("Failed to add new topic, with exception: %s%n", e));
     }
     return new StringRepresentation(
-        String.format("Successfully set rate: %s\n", rate));
+        String.format("Successfully set rate: %s%n", rate));
   }
 }

@@ -51,8 +51,8 @@ public class ZookeeperCheckpointManager implements ICheckPointManager {
 
   public void commitOffset(Map<TopicPartition, Long> topicPartitionOffsets) {
     LOGGER.trace("Committing offset to zookeepr for topics: {}", topicPartitionOffsets.keySet());
-    for (TopicPartition tp : topicPartitionOffsets.keySet()) {
-      commitOffsetToZookeeper(tp, topicPartitionOffsets.get(tp));
+    for (Map.Entry<TopicPartition, Long> entry : topicPartitionOffsets.entrySet()) {
+      commitOffsetToZookeeper(entry.getKey(), entry.getValue());
     }
     LOGGER.info("commitOffset finished, number of topics: {}", topicPartitionOffsets.size());
   }
