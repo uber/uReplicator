@@ -83,7 +83,7 @@ public class WorkerInstance {
     String numOfProducerStr = producerProps.getProperty(Constants.PRODUCER_NUMBER_OF_PRODUCERS,
         Constants.DEFAULT_NUMBER_OF_PRODUCERS);
     maxQueueSize = consumerProps.getConsumerMaxQueueSize();
-    numOfProducer = Math.max(1, Integer.valueOf(numOfProducerStr));
+    numOfProducer = Math.max(1, Integer.parseInt(numOfProducerStr));
   }
 
   /**
@@ -196,7 +196,7 @@ public class WorkerInstance {
     fetcherManager.removeTopicPartition(topicPartition);
   }
 
-  public synchronized void cleanShutdown() {
+  public void cleanShutdown() {
     if (!isShuttingDown.compareAndSet(false, true)) {
       return;
     }
@@ -240,7 +240,7 @@ public class WorkerInstance {
   }
 
   private int calculateQueueId(TopicPartition topicPartition, int numOfProducer) {
-    return Math.abs(topicPartition.hashCode()) % numOfProducer;
+    return Math.abs(topicPartition.hashCode() % numOfProducer);
   }
 
   private void initializeConsumerStream() {

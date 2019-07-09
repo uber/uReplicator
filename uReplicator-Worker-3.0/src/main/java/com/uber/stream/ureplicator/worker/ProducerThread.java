@@ -177,7 +177,7 @@ public class ProducerThread extends Thread {
       String defaultValue) {
     String propertyValue = properties.getProperty(propertyName, defaultValue);
     properties.setProperty(propertyName, propertyValue);
-    if (properties.getProperty(propertyName) != defaultValue) {
+    if (!properties.getProperty(propertyName).equalsIgnoreCase(defaultValue)) {
       LOGGER.info("Property {} is overridden to {} - data loss or message reordering is possible.",
           propertyName, propertyValue);
     }

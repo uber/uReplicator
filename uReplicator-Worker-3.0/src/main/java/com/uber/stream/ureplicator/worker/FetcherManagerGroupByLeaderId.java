@@ -153,8 +153,9 @@ public class FetcherManagerGroupByLeaderId extends ShutdownableThread implements
       Map<TopicPartition, PartitionOffsetInfo> partitionAndOffsets) {
     LOGGER.info("Enter add fetcher thread for partitions {}", partitionAndOffsets.keySet());
     synchronized (fetcherMapLock) {
-      for (TopicPartition tp : partitionAndOffsets.keySet()) {
-        PartitionOffsetInfo offsetInfo = partitionAndOffsets.get(tp);
+      for (Map.Entry<TopicPartition, PartitionOffsetInfo> entry : partitionAndOffsets.entrySet()) {
+        TopicPartition tp = entry.getKey();
+        PartitionOffsetInfo offsetInfo = entry.getValue();
         Integer leaderId = partitionLeaderMap.getOrDefault(tp, null);
         if (leaderId == null) {
           continue;
@@ -188,7 +189,7 @@ public class FetcherManagerGroupByLeaderId extends ShutdownableThread implements
   }
 
   private int getFetcherId(TopicPartition tp) {
-    return Math.abs(tp.hashCode()) % numberOfConsumerFetcher;
+    return Math.abs(tp.hashCode() % numberOfConsumerFetcher);
   }
 
   /**

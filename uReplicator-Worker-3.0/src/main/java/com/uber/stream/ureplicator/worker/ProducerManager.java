@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +32,7 @@ public class ProducerManager {
 
   private final Map<String, ProducerThread> producerThreadMap = new HashMap<>();
   private final WorkerInstance workerInstance;
+  private final AtomicBoolean isInit = new AtomicBoolean(false);
 
   public ProducerManager(
       List<ConsumerIterator> consumerStream,
@@ -40,6 +42,7 @@ public class ProducerManager {
       ICheckPointManager checkpointManager,
       WorkerInstance workerInstance) {
     this.workerInstance = workerInstance;
+    this.isInit.set(false);
     String clientIdPrefix = producerProps
         .getProperty(ProducerConfig.CLIENT_ID_CONFIG, "uReplicator");
     for (int index = 0; index < consumerStream.size(); index++) {
@@ -51,7 +54,11 @@ public class ProducerManager {
     }
   }
 
-  public void start() {
+  public synchronized void start() {
+    if (!isInit.compareAndSet(false, true)) {
+      LOGGER.error("ProducerManager already running, number of producerThread {}.", producerThreadMap.size());
+      return;
+    }
     for (ProducerThread thread : producerThreadMap.values()) {
       try {
         thread.start();
@@ -64,10 +71,11 @@ public class ProducerManager {
     }
   }
 
-  public void cleanShutdown() {
+  public synchronized void cleanShutdown() {
     for (ProducerThread thread : producerThreadMap.values()) {
       thread.shutdown();
     }
     producerThreadMap.clear();
+    isInit.set(false);
   }
 }

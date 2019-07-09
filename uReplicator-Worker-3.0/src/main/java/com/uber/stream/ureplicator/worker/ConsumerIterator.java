@@ -89,7 +89,7 @@ public class ConsumerIterator extends IteratorTemplate<ConsumerRecord> {
     current.set(null);
   }
 
-  public class ConsumerTimeoutException extends RuntimeException {
+  public static class ConsumerTimeoutException extends RuntimeException {
 
   }
 

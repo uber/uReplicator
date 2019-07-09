@@ -23,6 +23,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+
+import javax.annotation.concurrent.GuardedBy;
+import javax.annotation.concurrent.ThreadSafe;
 import kafka.utils.ShutdownableThread;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -34,22 +37,26 @@ import org.slf4j.LoggerFactory;
 /**
  * Fetcher thread that fetches data for multiple topic partitions
  */
+@ThreadSafe
 public class ConsumerFetcherThread extends ShutdownableThread {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsumerFetcherThread.class);
 
-  // TODO: use GuardedBy
   // updateMapLock guards partitionMap and kafkaConsumer
   private final Object updateMapLock = new Object();
+  @GuardedBy("partitionMapLock")
+  private final Map<TopicPartition, PartitionOffsetInfo> partitionMap = new ConcurrentHashMap<>();
   // partitionMapLock guards partitionAddMap and partitionDeleteMap
   private final Object partitionMapLock = new Object();
-  private final Map<TopicPartition, PartitionOffsetInfo> partitionMap = new ConcurrentHashMap<>();
   // partitionAddMap stores the topic partition pending add
   // partitionDeleteMap stores the topic partition pending delete
   // the purpose of using these two fields is for non-blocking add/delete topic partition
   // since partitionMap need to be guard to avoid concurrent topic partition assign on kafkaConsumer
+  @GuardedBy("updateMapLock")
   private final Map<TopicPartition, PartitionOffsetInfo> partitionAddMap = new ConcurrentHashMap<>();
+  @GuardedBy("updateMapLock")
   private final Map<TopicPartition, Boolean> partitionDeleteMap = new ConcurrentHashMap<>();
+  @GuardedBy("updateMapLock")
   private final Map<TopicPartition, Long> partitionResetOffsetMap = new ConcurrentHashMap<>();
   private final KafkaConsumer kafkaConsumer;
   private long lastDumpTime = 0L;
@@ -57,6 +64,7 @@ public class ConsumerFetcherThread extends ShutdownableThread {
   private final int fetchBackOffMs;
   private final int pollTimeoutMs;
   private final RateLimiter rateLimiter;
+
   /**
    * Constructor
    *
@@ -64,7 +72,8 @@ public class ConsumerFetcherThread extends ShutdownableThread {
    * @param properties kafka consumer configuration properties
    * @param rateLimiter consumer rate limiter
    */
-  public ConsumerFetcherThread(String threadName, CustomizedConsumerConfig properties, RateLimiter rateLimiter) {
+  public ConsumerFetcherThread(String threadName, CustomizedConsumerConfig properties,
+      RateLimiter rateLimiter) {
     super(threadName, true);
     this.fetchBackOffMs = properties.getFetcherThreadBackoffMs();
     this.offsetMonitorMs = properties.getOffsetMonitorInterval();
@@ -77,9 +86,9 @@ public class ConsumerFetcherThread extends ShutdownableThread {
 
   @Override
   public void doWork() {
-    try {
-      ConsumerRecords records = null;
-      synchronized (partitionMapLock) {
+    synchronized (partitionMapLock) {
+      try {
+        ConsumerRecords records = null;
         boolean topicChanged = refreshPartitionMap();
         if (topicChanged) {
           LOGGER.info("[{}]Assignment changed, partitionMap {}, partitionResetOffsetMap: {} ",
@@ -87,8 +96,9 @@ public class ConsumerFetcherThread extends ShutdownableThread {
               partitionMap.keySet(),
               partitionResetOffsetMap);
           kafkaConsumer.assign(partitionMap.keySet());
-          for (TopicPartition tp : partitionResetOffsetMap.keySet()) {
-            long offset = partitionResetOffsetMap.get(tp);
+          for (Map.Entry<TopicPartition, Long> entry : partitionResetOffsetMap.entrySet()) {
+            TopicPartition tp = entry.getKey();
+            long offset = entry.getValue();
             if (offset >= 0) {
               kafkaConsumer.seek(tp, offset);
             }
@@ -98,20 +108,20 @@ public class ConsumerFetcherThread extends ShutdownableThread {
         if (partitionMap.size() != 0) {
           records = kafkaConsumer.poll(pollTimeoutMs);
         }
-      }
-      if (partitionMap.size() == 0 || records == null || records.isEmpty()) {
-        Thread.sleep(fetchBackOffMs);
-        return;
-      }
+        if (partitionMap.size() == 0 || records == null || records.isEmpty()) {
+          partitionMapLock.wait(fetchBackOffMs);
+          return;
+        }
 
-      processFetchedData(records);
-      logTopicPartitionInfo();
-    } catch (Throwable e) {
-      LOGGER.error("[{}]: Catch Throwable exception: ", getName(), e.getMessage(), e);
-      // reset offset to fetchoffset to avoid data losss
-      for (PartitionOffsetInfo offsetInfo : partitionMap.values()) {
-        if (offsetInfo.fetchOffset() >= 0) {
-          kafkaConsumer.seek(offsetInfo.topicPartition(), offsetInfo.fetchOffset());
+        processFetchedData(records);
+        logTopicPartitionInfo();
+      } catch (Throwable e) {
+        LOGGER.error("[{}]: Catch Throwable exception: ", getName(), e.getMessage(), e);
+        // reset offset to fetchoffset to avoid data loss
+        for (PartitionOffsetInfo offsetInfo : partitionMap.values()) {
+          if (offsetInfo.fetchOffset() >= 0) {
+            kafkaConsumer.seek(offsetInfo.topicPartition(), offsetInfo.fetchOffset());
+          }
         }
       }
     }
@@ -165,12 +175,12 @@ public class ConsumerFetcherThread extends ShutdownableThread {
   private boolean refreshPartitionMap() {
     synchronized (updateMapLock) {
       boolean partitionChange = false;
-
-      for (TopicPartition addTp : partitionAddMap.keySet()) {
-        if (!partitionMap.containsKey(addTp)) {
+      for (Map.Entry<TopicPartition, PartitionOffsetInfo> addTp : partitionAddMap.entrySet()) {
+        TopicPartition tp = addTp.getKey();
+        if (!partitionMap.containsKey(tp)) {
           // Avoid duplicate message
-          partitionMap.put(addTp, partitionAddMap.get(addTp));
-          partitionResetOffsetMap.put(addTp, partitionAddMap.get(addTp).startingOffset());
+          partitionMap.put(tp, addTp.getValue());
+          partitionResetOffsetMap.put(tp, partitionAddMap.get(tp).startingOffset());
           partitionChange = true;
         }
       }
@@ -191,7 +201,8 @@ public class ConsumerFetcherThread extends ShutdownableThread {
     LOGGER.trace("[{}]: Enter addPartitions set {}", getName(),
         partitionAndOffsets.keySet());
     synchronized (updateMapLock) {
-      for (TopicPartition tp : partitionAndOffsets.keySet()) {
+      for (Map.Entry<TopicPartition, PartitionOffsetInfo> entry : partitionAndOffsets.entrySet()) {
+        TopicPartition tp = entry.getKey();
         if (partitionMap.containsKey(tp)) {
           LOGGER.warn("[{}]: TopicPartition {} already in current thread", getName(), tp);
         }
@@ -245,6 +256,7 @@ public class ConsumerFetcherThread extends ShutdownableThread {
       partitionDeleteMap.clear();
       partitionAddMap.clear();
       partitionResetOffsetMap.clear();
+      KafkaUReplicatorMetricsReporter.get().removeMetric("consumer." + getName());
     }
     LOGGER.info("[{}] Shutdown fetcher thread finished", getName());
   }

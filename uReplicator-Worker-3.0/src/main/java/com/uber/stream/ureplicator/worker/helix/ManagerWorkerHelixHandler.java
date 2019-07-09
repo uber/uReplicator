@@ -107,7 +107,7 @@ public class ManagerWorkerHelixHandler implements HelixHandler {
     LOGGER.info("Register MangerWorkerHelixManager finished");
   }
 
-  public void shutdown() {
+  public synchronized void shutdown() {
     LOGGER.info("Shutting down MangerWorkerHelixManager");
     if (controllerWorkerHelixHandler != null) {
       controllerWorkerHelixHandler.shutdown();
