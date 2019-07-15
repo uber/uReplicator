@@ -82,7 +82,7 @@ public class CompactFetcherThreadTest {
 
 
     ConsumerFetcherThread fetcherThread = new ConsumerFetcherThread(threadName,
-        properties, null);
+        properties, null, queue);
     fetcherThread.start();
 
     TestUtils.produceMessages(bootstrapServer, testTopic1, 10);
@@ -90,10 +90,10 @@ public class CompactFetcherThreadTest {
 
     Map<TopicPartition, PartitionOffsetInfo> addPartitions = new HashMap<>();
     TopicPartition tp1 = new TopicPartition(testTopic1, 0);
-    PartitionOffsetInfo pi1 = new PartitionOffsetInfo(tp1,0L, null, queue);
+    PartitionOffsetInfo pi1 = new PartitionOffsetInfo(tp1,0L, null);
     addPartitions.put(tp1, pi1);
     TopicPartition tp2 = new TopicPartition(testTopic2, 0);
-    PartitionOffsetInfo pi2 = new PartitionOffsetInfo(tp2,5L, null, queue);
+    PartitionOffsetInfo pi2 = new PartitionOffsetInfo(tp2,5L, null);
     addPartitions.put(tp2, pi2);
 
     fetcherThread.addPartitions(addPartitions);
@@ -131,7 +131,7 @@ public class CompactFetcherThreadTest {
     Assert.assertEquals(5, records.messageSize());
 
     LOGGER.info("removePartitions/addPartitions to test out of range");
-    PartitionOffsetInfo pi3 = new PartitionOffsetInfo(tp2, 15L, null, queue);
+    PartitionOffsetInfo pi3 = new PartitionOffsetInfo(tp2, 15L, null);
     addPartitions.remove(tp1);
     addPartitions.put(tp2, pi3);
 

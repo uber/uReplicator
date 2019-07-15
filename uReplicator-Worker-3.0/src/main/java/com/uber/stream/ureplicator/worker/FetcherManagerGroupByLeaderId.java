@@ -16,295 +16,74 @@
 package com.uber.stream.ureplicator.worker;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.util.concurrent.RateLimiter;
-import com.uber.stream.ureplicator.worker.interfaces.IConsumerFetcherManager;
+
+import com.uber.stream.ureplicator.common.KafkaClusterObserver;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import kafka.utils.ShutdownableThread;
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * FetcherManagerGroupByLeaderId creates the CompactConsumerFetcherThreads. It groups partitions
- * into small groups using topic partition leader id  and create fetcher thread for each group. Once
- * CompactConsumerFetcherManager is created, start() and stopAllConnections() can be called
- * repeatedly until shutdown() is called.
+ * FetcherManagerGroupByLeaderId extends FetcherManager and changed fetcher thread distribution
+ * logic by overriding addTopicPartitionsToFetcherThread. Topic partitions distribution
+ * based on destination cluster leaderId. This has more tolerance on single broker slow down.
  */
-public class FetcherManagerGroupByLeaderId extends ShutdownableThread implements
-    IConsumerFetcherManager {
+public class FetcherManagerGroupByLeaderId extends FetcherManager {
 
   private static final Logger LOGGER = LoggerFactory
       .getLogger(FetcherManagerGroupByLeaderId.class);
 
-  private final String fetcherThreadPrefix = "CompactConsumerFetcherThread";
-
-  // fetcherMapLock guards addFetcherForPartitions and removeFetcherForPartitions
-  private final Object fetcherMapLock = new Object();
-  // updateMapLock guards partitionAddMap and partitionDeleteMap
-  private final Object updateMapLock = new Object();
-  private final Map<TopicPartition, Integer> partitionLeaderMap = new ConcurrentHashMap<>();
-  private final Map<TopicPartition, PartitionOffsetInfo> partitionMap = new ConcurrentHashMap<>();
-
-  // partitionAddMap stores the topic partition pending add
-  // partitionDeleteMap stores the topic partition pending delete
-  // the purpose of using these two fields is for non-blocking add/delete topic partition
-  private final Map<TopicPartition, PartitionOffsetInfo> partitionAddMap = new ConcurrentHashMap<>();
-  private final Map<TopicPartition, Boolean> partitionDeleteMap = new ConcurrentHashMap<>();
-
-  private final Map<String, ConsumerFetcherThread> fetcherThreadMap;
-  private final CustomizedConsumerConfig consumerProperties;
-  private final int refreshLeaderBackoff;
-  private final int numberOfConsumerFetcher;
-  private final RateLimiter messageLimiter;
-
   @VisibleForTesting
-  protected Consumer kafkaConsumer;
+  protected KafkaClusterObserver clusterObserver;
 
   public FetcherManagerGroupByLeaderId(String threadName,
-      CustomizedConsumerConfig consumerProperties) {
-    this(threadName, consumerProperties, new ConcurrentHashMap<>(),
-        new KafkaConsumer(consumerProperties));
+      CustomizedConsumerConfig consumerProperties,
+      List<BlockingQueue<FetchedDataChunk>> messageQueue,
+      KafkaClusterObserver clusterObserver) {
+    this(threadName, consumerProperties, new ConcurrentHashMap<>(), messageQueue, clusterObserver);
   }
 
   @VisibleForTesting
   protected FetcherManagerGroupByLeaderId(String threadName,
       CustomizedConsumerConfig consumerProperties,
-      Map<String, ConsumerFetcherThread> fetcherThreadMap, Consumer kafkaConsumer) {
-    super(threadName, true);
-    this.consumerProperties = consumerProperties;
-
-    // uReplicator manages commit offset itself
-    consumerProperties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
-    this.numberOfConsumerFetcher = consumerProperties.getNumberOfConsumerFetcher();
-    this.refreshLeaderBackoff = consumerProperties.getLeaderRefreshMs();
-    this.fetcherThreadMap = fetcherThreadMap;
-    this.kafkaConsumer = kafkaConsumer;
-    if (consumerProperties.getConsumerNumOfMessageRate() > 0) {
-      this.messageLimiter = RateLimiter.create(consumerProperties.getConsumerNumOfMessageRate());
-    } else {
-      this.messageLimiter = null;
-    }
+      Map<String, ConsumerFetcherThread> fetcherThreadMap,
+      List<BlockingQueue<FetchedDataChunk>> messageQueue,
+      KafkaClusterObserver clusterObserver) {
+    super(threadName, consumerProperties, fetcherThreadMap, messageQueue);
+    this.clusterObserver = clusterObserver;
   }
 
-  public void setMessageRate(Double rate) {
-    if (messageLimiter == null) {
-      throw new RuntimeException(String
-          .format("Ratelimiter not defined because of consumer properties %s not configured",
-              CustomizedConsumerConfig.CONSUMER_NUM_OF_MESSAGES_RATE));
-    } else {
-      messageLimiter.setRate(rate);
-    }
-
-  }
-
-  public void addTopicPartition(TopicPartition topicPartition, PartitionOffsetInfo partitionInfo) {
-    synchronized (updateMapLock) {
-      if (!partitionMap.containsKey(topicPartition)) {
-        partitionAddMap.put(topicPartition, partitionInfo);
-      }
-      if (partitionDeleteMap.containsKey(topicPartition)) {
-        partitionDeleteMap.remove(topicPartition);
-      }
-    }
-  }
-
-  public void removeTopicPartition(TopicPartition topicPartition) {
-    synchronized (updateMapLock) {
-      if (partitionMap.containsKey(topicPartition)) {
-        partitionDeleteMap.put(topicPartition, true);
-      }
-      if (partitionAddMap.containsKey(topicPartition)) {
-        partitionAddMap.remove(topicPartition);
-      }
-    }
-  }
-
-  private void removeFetcherForPartitions(Set<TopicPartition> topicPartition) {
-    LOGGER.info("Enter remove fetcher thread for partitions {}", topicPartition);
-    synchronized (fetcherMapLock) {
-      List<String> fetcherThreadList = ImmutableList.copyOf(fetcherThreadMap.keySet());
-      for (String fetcherThreadName : fetcherThreadList) {
-        ConsumerFetcherThread fetcherThread = fetcherThreadMap.get(fetcherThreadName);
-        fetcherThread.removePartitions(topicPartition);
-        if (fetcherThread.getTopicPartitions().isEmpty()) {
-          fetcherThread.shutdown();
-          fetcherThreadMap.remove(fetcherThreadName);
-          LOGGER.info("Shutting down fetcher thread {}", fetcherThreadName);
-        }
-      }
-    }
-    LOGGER.info("Remove fetcher thread for partitions {} finished", topicPartition);
-  }
-
-  private void addFetcherForPartitions(
-      Map<TopicPartition, PartitionOffsetInfo> partitionAndOffsets) {
-    LOGGER.info("Enter add fetcher thread for partitions {}", partitionAndOffsets.keySet());
-    synchronized (fetcherMapLock) {
-      for (Map.Entry<TopicPartition, PartitionOffsetInfo> entry : partitionAndOffsets.entrySet()) {
-        TopicPartition tp = entry.getKey();
-        PartitionOffsetInfo offsetInfo = entry.getValue();
-        Integer leaderId = partitionLeaderMap.getOrDefault(tp, null);
-        if (leaderId == null) {
-          continue;
-        }
-
-        String fetchThreadName = getFetcherThreadName(leaderId, getFetcherId(tp));
-        ConsumerFetcherThread fetcherThread = fetcherThreadMap
-            .getOrDefault(fetchThreadName, null);
-        if (fetcherThread == null) {
-          try {
-            LOGGER.info("Creating fetcher thread {}", fetchThreadName);
-            fetcherThread = new ConsumerFetcherThread(fetchThreadName, consumerProperties,
-                messageLimiter);
-            fetcherThread.start();
-            fetcherThreadMap.put(fetchThreadName, fetcherThread);
-            LOGGER.info("Fetcher fetcher thread {} created", fetchThreadName);
-          } catch (Exception e) {
-            LOGGER.error("Failed to create new fetcher thread {}", getName(), e);
-            continue;
-          }
-        }
-        fetcherThread.addPartitions(ImmutableMap.of(tp, offsetInfo));
-      }
-    }
-    LOGGER.info("Add fetcher thread for partitions {} finished", partitionAndOffsets.keySet());
-  }
-
-
-  private String getFetcherThreadName(int leaderBroker, int fetcherId) {
-    return String.format("%s-%d-%d", fetcherThreadPrefix, leaderBroker, fetcherId);
-  }
-
-  private int getFetcherId(TopicPartition tp) {
-    return Math.abs(tp.hashCode() % numberOfConsumerFetcher);
-  }
-
-  /**
-   * shutdown all CompactConsumerFetcherThreads
-   */
-  public void shutdown() {
-    LOGGER.info("CompactConsumerFetcherManager shutdown");
-    super.initiateShutdown();
-
-    synchronized (fetcherMapLock) {
-      for (ConsumerFetcherThread fetcherThread : fetcherThreadMap.values()) {
-        fetcherThread.initiateShutdown();
-      }
-      for (ConsumerFetcherThread fetcherThread : fetcherThreadMap.values()) {
-        fetcherThread.awaitShutdown();
-      }
-    }
-
-    synchronized (updateMapLock) {
-      super.awaitShutdown();
-      kafkaConsumer.close();
-      partitionMap.clear();
-      partitionAddMap.clear();
-      partitionDeleteMap.clear();
-      partitionLeaderMap.clear();
-      LOGGER.info("CompactConsumerFetcherManager stopConnections finished");
-    }
-  }
-
-  /**
-   * Gets current serving topic partition
-   *
-   * @return serving topic partition and offset info
-   */
-  public Set<PartitionOffsetInfo> getTopicPartitions() {
-    return ImmutableSet.copyOf(partitionMap.values());
+  private String getFetcherThreadName(int leaderBroker) {
+    return String.format("%s-%d", FETCHER_THREAD_PREFIX, leaderBroker % numberOfConsumerFetcher);
   }
 
   @Override
-  public void doWork() {
-    synchronized (updateMapLock) {
-      Map<TopicPartition, PartitionOffsetInfo> partitionNewLeaderMap = new ConcurrentHashMap<>();
-      List<TopicPartition> partitionsWithLeader = findLeaderForNoLeaderPartitions(
-          ImmutableList.copyOf(partitionAddMap.keySet()));
-      for (TopicPartition tp : partitionsWithLeader) {
-        partitionNewLeaderMap.put(tp, partitionAddMap.get(tp));
-        partitionMap.put(tp, partitionNewLeaderMap.get(tp));
-        partitionAddMap.remove(tp);
-      }
+  public Map<TopicPartition, PartitionOffsetInfo> addTopicPartitionsToFetcherThread(
+      Map<TopicPartition, PartitionOffsetInfo> topicPartitions) {
 
-      if (partitionNewLeaderMap.size() != 0) {
-        addFetcherForPartitions(partitionNewLeaderMap);
-        partitionNewLeaderMap.clear();
-      }
-
-      if (partitionAddMap.size() != 0) {
-        LOGGER.info("topic partitions can't find leader: {}", partitionAddMap.keySet());
-      }
-
-      // FIXME: propagate topic partition change to controller
-      // Remove topic partition already finished
-      for (PartitionOffsetInfo partition : partitionMap.values()) {
-        if (partition.consumedEndBounded()) {
-          partitionDeleteMap.put(partition.topicPartition(), true);
-        }
-      }
-
-      for (TopicPartition partition : partitionDeleteMap.keySet()) {
-        if (partitionMap.containsKey(partition)) {
-          partitionMap.remove(partition);
-          partitionLeaderMap.remove(partition);
-        }
-      }
-
-      if (partitionDeleteMap.size() != 0) {
-        removeFetcherForPartitions(partitionDeleteMap.keySet());
-      }
-      partitionDeleteMap.clear();
+    Map<TopicPartition, PartitionOffsetInfo> result = new HashMap<>();
+    if (topicPartitions == null || topicPartitions.size() == 0) {
+      return result;
     }
-    try {
-      Thread.sleep(refreshLeaderBackoff);
-    } catch (InterruptedException e) {
-      LOGGER.error("[{}]InterruptedException on sleep", getName());
-    }
-  }
 
-  private List<TopicPartition> findLeaderForNoLeaderPartitions(
-      List<TopicPartition> topicPartitions) {
-    List<TopicPartition> partitionsWithLeader = new ArrayList<>();
-    if (topicPartitions.size() == 0) {
-      return partitionsWithLeader;
-    }
-    Map<String, List<PartitionInfo>> topicInfo = kafkaConsumer.listTopics();
+    Map<TopicPartition, Integer> topicsWithLeader = clusterObserver
+        .findLeaderForPartitions(new ArrayList<>(topicPartitions.keySet()));
 
-    for (TopicPartition tp : topicPartitions) {
-      Integer leader = findLeaderId(tp, topicInfo.get(tp.topic()));
-      if (leader != null) {
-        partitionsWithLeader.add(tp);
-        partitionLeaderMap.put(tp, leader);
+    for (Map.Entry<TopicPartition, PartitionOffsetInfo> entry : topicPartitions.entrySet()) {
+      Integer leaderId = topicsWithLeader.get(entry.getKey());
+      if (leaderId == null) {
+        continue;
       }
+      String fetcherThreadName = getFetcherThreadName(leaderId);
+      addFetcherForTopicPartition(entry.getKey(), entry.getValue(), fetcherThreadName);
+      result.putIfAbsent(entry.getKey(), entry.getValue());
     }
-    return partitionsWithLeader;
-  }
-
-  private Integer findLeaderId(TopicPartition topicPartition,
-      List<PartitionInfo> partitionInfoList) {
-    if (partitionInfoList == null) {
-      return null;
-    }
-    Optional<PartitionInfo> optInfo = partitionInfoList.stream()
-        .filter(x -> x.partition() == topicPartition.partition()).findFirst();
-
-    if (optInfo.isPresent() && optInfo.get().leader() != null) {
-      return optInfo.get().leader().id();
-    }
-    return null;
+    return result;
   }
 }

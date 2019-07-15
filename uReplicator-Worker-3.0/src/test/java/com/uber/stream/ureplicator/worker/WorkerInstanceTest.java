@@ -17,6 +17,8 @@ package com.uber.stream.ureplicator.worker;
 
 import com.uber.stream.kafka.mirrormaker.common.utils.KafkaStarterUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.ZkStarter;
+import com.uber.stream.ureplicator.common.KafkaClusterObserver;
+import com.uber.stream.ureplicator.worker.interfaces.IConsumerFetcherManager;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -140,7 +142,55 @@ public class WorkerInstanceTest {
     } finally {
       workerInstance.cleanShutdown();
     }
+  }
 
+  @Test
+  public void testWorkerInstanceWithFetcherManagerGroupByLeaderId() throws InterruptedException {
+    class CustomizedWorkerInstance extends WorkerInstance {
+
+      public CustomizedWorkerInstance(WorkerConf workerConf) {
+        super(workerConf);
+      }
+
+      @Override
+      public IConsumerFetcherManager createFetcherManager() {
+        KafkaClusterObserver observer = new KafkaClusterObserver(dstBootstrapServer);
+        return new FetcherManagerGroupByLeaderId("FetcherManagerGroupByHashId", consumerProps, messageQueue, observer);
+      }
+    }
+    WorkerConf conf = TestUtils.initWorkerConf();
+    conf.setFederatedEnabled(false);
+    WorkerInstance workerInstance = new CustomizedWorkerInstance(conf);
+    try {
+      String topicName1 = "testWorkerInstanceWithFetcherManagerGroupByLeaderId1";
+      KafkaStarterUtils.createTopic(topicName1, 2, srcClusterZK, "2");
+      KafkaStarterUtils.createTopic(topicName1, 1, dstClusterZK, "1");
+      workerInstance.start(null, null, null, null);
+      workerInstance.addTopicPartition(topicName1, 0);
+      workerInstance.addTopicPartition(topicName1, 1);
+
+      LOGGER.info("Add topic partition finished");
+      Thread.sleep(1000);
+
+      TestUtils.produceMessages(srcBootstrapServer, topicName1, 20, 2);
+      LOGGER.info("Produce messages finished");
+
+      List<ConsumerRecord<Byte[], Byte[]>> records = TestUtils
+          .consumeMessage(dstBootstrapServer, topicName1, 5000);
+      Assert.assertEquals(records.size(), 20);
+      workerInstance.cleanShutdown();
+
+      TestUtils.produceMessages(srcBootstrapServer, topicName1, 20, 2);
+
+      workerInstance.start(null, null, null, null);
+      workerInstance.addTopicPartition(topicName1, 0);
+      records = TestUtils
+          .consumeMessage(dstBootstrapServer, topicName1, 5000);
+      Assert.assertEquals(records.size(), 10);
+
+    } finally {
+      workerInstance.cleanShutdown();
+    }
   }
 
   public class WorkerStarterRunnable implements Runnable {
@@ -207,6 +257,8 @@ public class WorkerInstanceTest {
     Thread.sleep(1000);
     ExternalView externalView = helixAdmin
         .getResourceExternalView(managerHelixClusterName, routeForHelix);
+    Assert.assertNotNull(externalView);
+    Assert.assertNotNull(externalView.getStateMap("0"));
     Assert.assertEquals(externalView.getStateMap("0").get("0"), "ONLINE");
 
     Map<String, String> partitionInstanceMap = new HashMap<>();
@@ -241,7 +293,7 @@ public class WorkerInstanceTest {
         .buildManagerWorkerCustomIdealState(routeForHelix, Collections.singletonList(instanceId),
             "OFFLINE");
     helixAdmin.setResourceIdealState(managerHelixClusterName, routeForHelix, idealState);
-    Thread.sleep(1000);
+    Thread.sleep(1500);
     externalView = helixAdmin
         .getResourceExternalView(managerHelixClusterName, routeForHelix);
     Assert.assertEquals(externalView.getStateMap("0").get("0"), "OFFLINE");

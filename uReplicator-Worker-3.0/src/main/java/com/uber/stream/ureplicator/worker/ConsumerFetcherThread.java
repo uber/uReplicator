@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 
 import javax.annotation.concurrent.GuardedBy;
@@ -64,16 +65,17 @@ public class ConsumerFetcherThread extends ShutdownableThread {
   private final int fetchBackOffMs;
   private final int pollTimeoutMs;
   private final RateLimiter rateLimiter;
-
+  private final BlockingQueue<FetchedDataChunk> chunkQueue;
   /**
    * Constructor
    *
    * @param threadName fetcher thread name
    * @param properties kafka consumer configuration properties
    * @param rateLimiter consumer rate limiter
+   * @param chunkQueue blocking queue to transport fetched messages
    */
   public ConsumerFetcherThread(String threadName, CustomizedConsumerConfig properties,
-      RateLimiter rateLimiter) {
+      RateLimiter rateLimiter, BlockingQueue<FetchedDataChunk> chunkQueue) {
     super(threadName, true);
     this.fetchBackOffMs = properties.getFetcherThreadBackoffMs();
     this.offsetMonitorMs = properties.getOffsetMonitorInterval();
@@ -82,6 +84,7 @@ public class ConsumerFetcherThread extends ShutdownableThread {
     KafkaUReplicatorMetricsReporter.get()
         .registerKafkaMetrics("consumer." + threadName, kafkaConsumer.metrics());
     this.rateLimiter = rateLimiter;
+    this.chunkQueue = chunkQueue;
   }
 
   @Override
@@ -140,7 +143,11 @@ public class ConsumerFetcherThread extends ShutdownableThread {
         if (rateLimiter != null) {
           rateLimiter.acquire(records.size());
         }
-        partitionOffsetInfo.enqueue(records);
+        FetchedDataChunk dataChunk = new FetchedDataChunk(partitionOffsetInfo, records);
+        int size = records.size();
+        long offset = records.get(size - 1).offset();
+        chunkQueue.put(dataChunk);
+        partitionOffsetInfo.setFetchOffset(offset + 1);
       }
     }
   }

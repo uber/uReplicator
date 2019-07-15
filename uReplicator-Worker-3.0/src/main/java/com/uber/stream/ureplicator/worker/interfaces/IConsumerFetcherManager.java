@@ -27,7 +27,7 @@ public interface IConsumerFetcherManager {
 
   void removeTopicPartition(TopicPartition topicPartition);
 
-  Set<PartitionOffsetInfo> getTopicPartitions();
+  Set<TopicPartition> getTopicPartitions();
 
   void shutdown();
 
