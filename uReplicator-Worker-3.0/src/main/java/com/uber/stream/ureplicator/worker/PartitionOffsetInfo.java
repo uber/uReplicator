@@ -15,10 +15,8 @@
  */
 package com.uber.stream.ureplicator.worker;
 
-import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 
 public class PartitionOffsetInfo {
@@ -28,17 +26,14 @@ public class PartitionOffsetInfo {
   private final Long startingOffset;
   private final Long endingOffset;
   private final TopicPartition topicPartition;
-  private final BlockingQueue<FetchedDataChunk> chunkQueue;
 
-  public PartitionOffsetInfo(TopicPartition topicPartition, Long startingOffset, Long endingOffset,
-      BlockingQueue<FetchedDataChunk> chunkQueue) {
+  public PartitionOffsetInfo(TopicPartition topicPartition, Long startingOffset, Long endingOffset) {
     this.fetchOffset = startingOffset != null ? new AtomicLong(startingOffset) : new AtomicLong(0);
     this.consumeOffset =
         startingOffset != null ? new AtomicLong(startingOffset) : new AtomicLong(0);
     this.startingOffset = startingOffset;
     this.endingOffset = endingOffset;
     this.topicPartition = topicPartition;
-    this.chunkQueue = chunkQueue;
   }
 
   public Long consumeOffset() {
@@ -62,15 +57,8 @@ public class PartitionOffsetInfo {
     this.consumeOffset.set(consumeOffset);
   }
 
-  public void enqueue(List<ConsumerRecord> consumerRecords) throws InterruptedException {
-    if (consumerRecords == null || consumerRecords.size() == 0) {
-      return;
-    }
-    int size = consumerRecords.size();
-    long offset = consumerRecords.get(size - 1).offset();
-    FetchedDataChunk dataChunk = new FetchedDataChunk(this, consumerRecords);
-    chunkQueue.put(dataChunk);
-    this.fetchOffset.set(offset + 1);
+  public void setFetchOffset(Long fetchOffset) {
+    this.fetchOffset.set(fetchOffset);
   }
 
   public TopicPartition topicPartition() {

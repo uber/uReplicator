@@ -41,8 +41,8 @@ public class CustomizedConsumerConfig extends Properties {
   public static final String POLL_TIMEOUT_MS = "poll.timeout.ms";
   public static final int DEFAULT_POLL_TIMEOUT_MS = 100;
 
-  public static final String LEADER_REFRESH_MS = "refresh.leader.ms";
-  public static final int DEFAULT_LEADER_REFRESH_MS = 100;
+  public static final String FETCHER_MANAGER_REFRESH_MS = "fetcher.manager.refresh.ms";
+  public static final int DEFAULT_FETCHER_MANAGER_REFRESH_MS = 100;
 
   public static final String CONSUMER_TIMEOUT_MS = "consumer.timeout.ms";
   public static final int DEFAULT_CONSUMER_TIMEOUT_MS = 300;
@@ -71,8 +71,8 @@ public class CustomizedConsumerConfig extends Properties {
     return getInt(POLL_TIMEOUT_MS, DEFAULT_POLL_TIMEOUT_MS);
   }
 
-  public int getLeaderRefreshMs() {
-    return getInt(LEADER_REFRESH_MS, DEFAULT_LEADER_REFRESH_MS);
+  public int getFetcherManagerRefreshMs() {
+    return getInt(FETCHER_MANAGER_REFRESH_MS, DEFAULT_FETCHER_MANAGER_REFRESH_MS);
   }
 
   public int getConsumerTimeoutMs() {

@@ -47,13 +47,13 @@ public class WorkerInstance {
 
   protected final WorkerConf workerConf;
   protected final Map<String, String> topicMapping;
-  private final Properties producerProps;
-  private final CustomizedConsumerConfig consumerProps;
-  private final Properties clusterProps;
-  private final List<BlockingQueue<FetchedDataChunk>> messageQueue = new ArrayList<>();
-  private final List<ConsumerIterator> consumerStream = new ArrayList<>();
-  private final int numOfProducer;
-  private final int maxQueueSize;
+  protected final Properties producerProps;
+  protected final CustomizedConsumerConfig consumerProps;
+  protected final Properties clusterProps;
+  protected final List<BlockingQueue<FetchedDataChunk>> messageQueue = new ArrayList<>();
+  protected final List<ConsumerIterator> consumerStream = new ArrayList<>();
+  protected final int numOfProducer;
+  protected final int maxQueueSize;
 
   private String topicObserverZk;
   private IConsumerFetcherManager fetcherManager;
@@ -135,14 +135,25 @@ public class WorkerInstance {
       checkpointManager = new ZookeeperCheckpointManager(consumerProps, groupId);
     }
 
-    fetcherManager = new FetcherManagerGroupByLeaderId("fetcher-manager-thread",
-        consumerProps);
+    fetcherManager = createFetcherManager();
     fetcherManager.start();
 
-    producerManager = new ProducerManager(consumerStream, producerProps,
-        workerConf.getAbortOnSendFailure(), messageTransformer, checkpointManager, this);
+    producerManager = createProducerManager();
     producerManager.start();
     registerMetrics();
+  }
+
+  /**
+   * Creates fetcher manager, can be override to FetcherManagerGroupByLeaderId
+   * @return
+   */
+  public IConsumerFetcherManager createFetcherManager() {
+    return new FetcherManager("FetcherManagerGroupByHashId", consumerProps, messageQueue);
+  }
+
+  public ProducerManager createProducerManager() {
+    return new ProducerManager(consumerStream, producerProps,
+        workerConf.getAbortOnSendFailure(), messageTransformer, checkpointManager, this);
   }
 
   /**
@@ -177,11 +188,9 @@ public class WorkerInstance {
         startingOffset != null ? startingOffset
             : checkpointManager.fetchOffset(topicPartition);
 
-    int queueId = calculateQueueId(topicPartition, numOfProducer);
-    LOGGER.info("Adding topic: {}, partition {}, starting offset {}, checkQueueId {}",
-        topic, partition, offset, queueId);
-    PartitionOffsetInfo offsetInfo = new PartitionOffsetInfo(topicPartition, offset, endingOffset,
-        messageQueue.get(queueId));
+    LOGGER.info("Adding topic: {}, partition {}, starting offset {}",
+        topic, partition, offset);
+    PartitionOffsetInfo offsetInfo = new PartitionOffsetInfo(topicPartition, offset, endingOffset);
     fetcherManager.addTopicPartition(topicPartition, offsetInfo);
   }
 
@@ -231,6 +240,8 @@ public class WorkerInstance {
     for (ConsumerIterator iterator : consumerStream) {
       iterator.cleanCurrentChunk();
     }
+    messageQueue.clear();
+    consumerStream.clear();
     removeMetrics();
     KafkaUReplicatorMetricsReporter.stop();
 
@@ -239,11 +250,9 @@ public class WorkerInstance {
 
   }
 
-  private int calculateQueueId(TopicPartition topicPartition, int numOfProducer) {
-    return Math.abs(topicPartition.hashCode() % numOfProducer);
-  }
-
   private void initializeConsumerStream() {
+    messageQueue.clear();
+    consumerStream.clear();
     int consumerTimeout = consumerProps.getConsumerTimeoutMs();
     for (int i = 0; i < numOfProducer; i++) {
       messageQueue.add(new LinkedBlockingQueue<>(maxQueueSize));
