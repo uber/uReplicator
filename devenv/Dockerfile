@@ -1,4 +1,4 @@
-FROM java:openjdk-8-jre
+FROM openjdk:8
 #
 # Copyright (C) 2015-2017 Uber Technologies, Inc. (streaming-data@uber.com)
 #
@@ -17,7 +17,7 @@ FROM java:openjdk-8-jre
 
 ENV DEBIAN_FRONTEND noninteractive
 ENV SCALA_VERSION 2.11
-ENV KAFKA_VERSION 0.10.2.2
+ENV KAFKA_VERSION 2.3.0
 ENV KAFKA_HOME /opt/kafka_"$SCALA_VERSION"-"$KAFKA_VERSION"
 ENV DOWNLOAD_ZOOKEEPER http://archive.apache.org/dist/zookeeper/zookeeper-3.4.3/zookeeper-3.4.3.tar.gz
 
