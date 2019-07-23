@@ -68,8 +68,9 @@ public class KafkaClusterObserver implements Closeable {
     }
 
     for (TopicPartition tp : topicPartitions) {
-      if (topicInfo.containsKey(tp.topic())) {
+      if (!topicInfo.containsKey(tp.topic())) {
         LOGGER.error("unable to find topic {} in cluster observer", tp.topic());
+        continue;
       }
       Integer leader = findLeaderId(tp, topicInfo.get(tp.topic()));
       if (leader != null) {
