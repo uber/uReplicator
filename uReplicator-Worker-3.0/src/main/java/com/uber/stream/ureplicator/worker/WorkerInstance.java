@@ -207,6 +207,7 @@ public class WorkerInstance {
 
   public void cleanShutdown() {
     if (!isShuttingDown.compareAndSet(false, true)) {
+      LOGGER.info("worker instance already shutdown");
       return;
     }
 
