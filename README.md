@@ -1,6 +1,6 @@
 uReplicator 
 ============
-[![Build Status](https://travis-ci.org/uber/uReplicator.svg?branch=master)](https://travis-ci.org/uber/uReplicator)
+[![Build Status](https://travis-ci.com/uber/uReplicator.svg?branch=master)](https://travis-ci.com/uber/uReplicator)
 
 ## Update
 
