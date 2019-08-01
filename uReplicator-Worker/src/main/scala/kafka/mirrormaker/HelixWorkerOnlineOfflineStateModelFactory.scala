@@ -15,6 +15,7 @@
  */
 package kafka.mirrormaker
 
+import com.uber.stream.kafka.mirrormaker.common.core.TopicPartitionCountObserver
 import kafka.utils.Logging
 import org.apache.helix.NotificationContext
 import org.apache.helix.model.Message

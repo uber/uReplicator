@@ -16,9 +16,12 @@
 package com.uber.stream.kafka.mirrormaker.manager;
 
 import com.uber.stream.kafka.mirrormaker.manager.core.ControllerHelixManager;
-import com.uber.stream.kafka.mirrormaker.manager.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import com.uber.stream.kafka.mirrormaker.manager.rest.ManagerRestApplication;
 import com.uber.stream.kafka.mirrormaker.manager.validation.KafkaClusterValidationManager;
+import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
+import com.uber.stream.ureplicator.common.MetricsReporterConf;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -45,7 +48,7 @@ public class ManagerStarter {
   public ManagerStarter(ManagerConf conf) {
     LOGGER.info("Trying to init ManagerStarter with config: {}", conf);
     _config = conf;
-    HelixKafkaMirrorMakerMetricsReporter.init(conf);
+    initializeMetricsReporter(conf);
     _component = new Component();
     _kafkaValidationManager = new KafkaClusterValidationManager(_config);
     _controllerHelixManager = new ControllerHelixManager(_kafkaValidationManager, _config);
@@ -59,8 +62,10 @@ public class ManagerStarter {
     Context applicationContext = _component.getContext().createChildContext();
     LOGGER.info("Injecting conf and helix to the api context");
     applicationContext.getAttributes().put(ManagerConf.class.toString(), _config);
-    applicationContext.getAttributes().put(ControllerHelixManager.class.toString(), _controllerHelixManager);
-    applicationContext.getAttributes().put(KafkaClusterValidationManager.class.toString(), _kafkaValidationManager);
+    applicationContext.getAttributes()
+        .put(ControllerHelixManager.class.toString(), _controllerHelixManager);
+    applicationContext.getAttributes()
+        .put(KafkaClusterValidationManager.class.toString(), _kafkaValidationManager);
     Application managerRestApp = new ManagerRestApplication(null);
     managerRestApp.setContext(applicationContext);
 
@@ -129,5 +134,19 @@ public class ManagerStarter {
       LOGGER.error("Cannot start uReplicator-Manager: ", e);
     }
   }
-
+  
+  private void initializeMetricsReporter(ManagerConf conf) {
+    String[] dcEnv = KafkaUReplicatorMetricsReporter.parseEnvironment(conf.getEnvironment());
+    if (dcEnv != null) {
+      List<String> additionalInfo = new ArrayList<>();
+      additionalInfo.add(conf.getMetricsPrefix());
+      additionalInfo.add(dcEnv[1]);
+      MetricsReporterConf metricsReporterConf = new MetricsReporterConf(dcEnv[0],
+          additionalInfo, conf.getManagerInstanceId(), conf.getGraphiteHost(),
+          conf.getGraphitePort());
+      KafkaUReplicatorMetricsReporter.init(metricsReporterConf);
+    } else {
+      LOGGER.warn("Skip initializeMetricsReporter because of environment not found in managerConf");
+    }
+  }
 }

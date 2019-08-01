@@ -27,8 +27,8 @@ import com.uber.stream.kafka.mirrormaker.common.core.WorkloadInfoRetriever;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.common.modules.TopicPartitionLag;
-import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
 
+import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -147,17 +147,17 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
 
   private void registerMetrics() {
     try {
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("worker.liveInstances",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("worker.liveInstances",
           _numLiveInstances);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("worker.idleInstances",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("worker.idleInstances",
           _numIdleInstances);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("worker.blacklistedInstances",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("worker.blacklistedInstances",
           _numBlacklistedInstances);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("worker.blacklistedTopicPartitions",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("worker.blacklistedTopicPartitions",
           _numBlacklistedTopicPartitions);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("worker.rebalance.rate",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("worker.rebalance.rate",
           _rebalanceRate);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("worker.rebalance.timer",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("worker.rebalance.timer",
           _rebalanceTimer);
     } catch (Exception e) {
       LOGGER.error("Error registering metrics!", e);

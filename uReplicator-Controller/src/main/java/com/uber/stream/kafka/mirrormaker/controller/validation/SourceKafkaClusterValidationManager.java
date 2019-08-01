@@ -20,7 +20,7 @@ import com.codahale.metrics.Counter;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
 import com.uber.stream.kafka.mirrormaker.controller.core.KafkaBrokerTopicObserver;
-import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
+import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -159,19 +159,19 @@ public class SourceKafkaClusterValidationManager {
 
   private void registerMetrics() {
     try {
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(
+      KafkaUReplicatorMetricsReporter.get().registerMetric(
           "kafkaAndIdealstatesDiscrepancy.missing.topics",
           _numMissingTopics);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(
+      KafkaUReplicatorMetricsReporter.get().registerMetric(
           "kafkaAndIdealstatesDiscrepancy.mismatched.topics",
           _numMismatchedTopics);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(
+      KafkaUReplicatorMetricsReporter.get().registerMetric(
           "kafkaAndIdealstatesDiscrepancy.mismatched.topicPartitions",
           _numMismatchedTopicPartitions);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(
+      KafkaUReplicatorMetricsReporter.get().registerMetric(
           "kafkaAndIdealstatesDiscrepancy.autoExpansion.topics",
           _numAutoExpandedTopics);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(
+      KafkaUReplicatorMetricsReporter.get().registerMetric(
           "kafkaAndIdealstatesDiscrepancy.autoExpansion.topicPartitions",
           _numAutoExpandedTopicPartitions);
     } catch (Exception e) {
@@ -209,7 +209,7 @@ public class SourceKafkaClusterValidationManager {
       if (!_mismatchedTopicPartitionsCounter.containsKey(topic)) {
         Counter topicPartitionCounter = new Counter();
         try {
-          HelixKafkaMirrorMakerMetricsReporter.get().getRegistry().register(
+          KafkaUReplicatorMetricsReporter.get().getRegistry().register(
               getMismatchedTopicMetricName(topic), topicPartitionCounter);
         } catch (Exception e) {
           LOGGER.error("Error registering metrics!", e);
