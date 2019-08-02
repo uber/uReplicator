@@ -62,6 +62,8 @@ public class WorkerInstance {
   private ICheckPointManager checkpointManager;
   // use to observe destination topic partition
   protected TopicPartitionCountObserver observer;
+  protected String srcCluster;
+  protected String dstCluster;
 
   /**
    * Main constructor
@@ -87,24 +89,6 @@ public class WorkerInstance {
   }
 
   /**
-   * Sets message transformer
-   *
-   * @param messageTransformer customized message transformer
-   */
-  public void setMessageTransformer(IMessageTransformer messageTransformer) {
-    this.messageTransformer = messageTransformer;
-  }
-
-  /**
-   * Sets checkpoint manager
-   *
-   * @param checkpointManager checkpoint manager
-   */
-  public void setCheckpointManager(ICheckPointManager checkpointManager) {
-    this.checkpointManager = checkpointManager;
-  }
-
-  /**
    * Starts worker instance, srcCluster and dstCluster for non federated mode is empty
    *
    * @param srcCluster source cluster name
@@ -115,7 +99,8 @@ public class WorkerInstance {
   public void start(String srcCluster, String dstCluster, String routeId,
       String federatedDeploymentName) {
     isShuttingDown.set(false);
-
+    this.srcCluster = srcCluster;
+    this.dstCluster = dstCluster;
     initializeProperties(srcCluster, dstCluster);
     // Init blocking queue
     initializeConsumerStream();
@@ -123,17 +108,9 @@ public class WorkerInstance {
     initializeMetricsReporter(srcCluster, dstCluster, routeId, federatedDeploymentName);
     additionalConfigs(srcCluster, dstCluster);
 
-    if (messageTransformer == null) {
-      messageTransformer = new DefaultMessageTransformer(observer, topicMapping);
-    }
+    messageTransformer = createMessageTransformer();
 
-    if (checkpointManager == null) {
-      String groupId = consumerProps.getProperty(ConsumerConfig.GROUP_ID_CONFIG, "uReplicator");
-      if (workerConf.getFederatedEnabled()) {
-        groupId = "ureplicator-" + srcCluster + "-" + dstCluster;
-      }
-      checkpointManager = new ZookeeperCheckpointManager(consumerProps, groupId);
-    }
+    checkpointManager = createCheckpointManager();
 
     fetcherManager = createFetcherManager();
     fetcherManager.start();
@@ -143,9 +120,20 @@ public class WorkerInstance {
     registerMetrics();
   }
 
+  public IMessageTransformer createMessageTransformer() {
+    return new DefaultMessageTransformer(observer, topicMapping);
+  }
+
+  public ICheckPointManager createCheckpointManager() {
+    String groupId = consumerProps.getProperty(ConsumerConfig.GROUP_ID_CONFIG, "uReplicator");
+    if (workerConf.getFederatedEnabled()) {
+      groupId = "ureplicator-" + srcCluster + "-" + dstCluster;
+    }
+    return new ZookeeperCheckpointManager(consumerProps, groupId);
+  }
+
   /**
    * Creates fetcher manager, can be override to FetcherManagerGroupByLeaderId
-   * @return
    */
   public IConsumerFetcherManager createFetcherManager() {
     return new FetcherManager("FetcherManagerGroupByHashId", consumerProps, messageQueue);
@@ -241,6 +229,13 @@ public class WorkerInstance {
     for (ConsumerIterator iterator : consumerStream) {
       iterator.cleanCurrentChunk();
     }
+
+    if (checkpointManager != null) {
+      checkpointManager.shutdown();
+      checkpointManager = null;
+    }
+    messageTransformer = null;
+
     messageQueue.clear();
     consumerStream.clear();
     removeMetrics();

@@ -119,9 +119,9 @@ public class ZookeeperCheckpointManager implements ICheckPointManager {
     }
   }
 
+  @Override
   public void shutdown() {
     commitZkClient.close();
     KafkaUReplicatorMetricsReporter.get().removeMetric(COMMIT_FAILURE_METER_NAME);
-
   }
 }
