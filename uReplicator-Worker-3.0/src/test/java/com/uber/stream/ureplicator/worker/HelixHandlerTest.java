@@ -56,7 +56,7 @@ public class HelixHandlerTest {
     // setup helix controller
     String route = String.format("%s-%s-0", TestUtils.SRC_CLUSTER, TestUtils.DST_CLUSTER);
     String routeForHelix = String.format("@%s@%s", TestUtils.SRC_CLUSTER, TestUtils.DST_CLUSTER);
-    ZKHelixAdmin helixAdmin = TestUtils.initHelixClustersForWorkerTest(helixProps, route);
+    ZKHelixAdmin helixAdmin = TestUtils.initHelixClustersForWorkerTest(helixProps, route, null);
     String deployment = helixProps.getProperty("federated.deployment.name");
     String managerHelixClusterName = WorkerUtils.getManagerWorkerHelixClusterName(deployment);
     String controllerHelixClusterName = WorkerUtils.getControllerWorkerHelixClusterName(route);

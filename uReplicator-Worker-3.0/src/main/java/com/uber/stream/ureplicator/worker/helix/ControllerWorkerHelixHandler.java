@@ -72,7 +72,12 @@ public class ControllerWorkerHelixHandler implements HelixHandler {
 
   public void start() throws Exception {
     try {
-      workerInstance.start(srcCluster, dstCluster, routeId, federatedDeploymentName);
+      try {
+        workerInstance.start(srcCluster, dstCluster, routeId, federatedDeploymentName);
+      } catch (Throwable e) {
+        LOGGER.error("Start workerInstance failed", e);
+        throw e;
+      }
       KafkaUReplicatorMetricsReporter.get()
           .registerMetric(METRIC_ADD_TOPIC_PARTITION_FAILURE, addTopicPartitionFailureMeter);
       KafkaUReplicatorMetricsReporter.get()
