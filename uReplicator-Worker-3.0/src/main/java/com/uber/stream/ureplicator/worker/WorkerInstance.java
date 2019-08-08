@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang.StringUtils;
@@ -43,7 +42,8 @@ public class WorkerInstance {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WorkerInstance.class);
 
-  protected AtomicBoolean isShuttingDown = new AtomicBoolean(false);
+  protected final AtomicBoolean isShuttingDown = new AtomicBoolean(false);
+  protected final AtomicBoolean isRunning = new AtomicBoolean(false);
 
   protected final WorkerConf workerConf;
   protected final Map<String, String> topicMapping;
@@ -88,6 +88,10 @@ public class WorkerInstance {
     numOfProducer = Math.max(1, Integer.parseInt(numOfProducerStr));
   }
 
+  public boolean isRunning() {
+    return isRunning.get();
+  }
+
   /**
    * Starts worker instance, srcCluster and dstCluster for non federated mode is empty
    *
@@ -98,6 +102,14 @@ public class WorkerInstance {
    */
   public void start(String srcCluster, String dstCluster, String routeId,
       String federatedDeploymentName) {
+    if (!isRunning.compareAndSet(false, true)) {
+      LOGGER.error(
+          "Instance already running, srcCluster: {}, dstCluster:{}",
+          this.srcCluster, this.dstCluster);
+      throw new InternalError(String
+          .format("Instance already running, srcCluster: %s, dstCluster:%s", this.srcCluster,
+              this.dstCluster));
+    }
     isShuttingDown.set(false);
     this.srcCluster = srcCluster;
     this.dstCluster = dstCluster;
@@ -194,56 +206,63 @@ public class WorkerInstance {
   }
 
   public void cleanShutdown() {
-    if (!isShuttingDown.compareAndSet(false, true)) {
+    cleanShutdown(false);
+  }
+
+  public void cleanShutdown(boolean force) {
+    if (force || isShuttingDown.compareAndSet(false, true)) {
+
+      if (producerManager != null) {
+        LOGGER.info("Shutdown producer manager");
+        producerManager.cleanShutdown();
+      }
+
+      LOGGER.info("Start clean shutdown");
+      if (observer != null) {
+        try {
+          LOGGER.info("Shutdown observer");
+
+          observer.shutdown();
+        } catch (Exception e) {
+          LOGGER.error("Failed to shut down observer", e);
+        } finally {
+          observer = null;
+        }
+      }
+
+      if (fetcherManager != null) {
+        try {
+          LOGGER.info("Shutdown Consumer");
+          fetcherManager.shutdown();
+        } catch (Exception e) {
+          LOGGER.error("Failed to shut down consumer", e);
+        }
+      }
+
+      for (ConsumerIterator iterator : consumerStream) {
+        iterator.cleanCurrentChunk();
+      }
+
+      if (checkpointManager != null) {
+        checkpointManager.shutdown();
+        checkpointManager = null;
+      }
+      messageTransformer = null;
+
+      messageQueue.clear();
+      consumerStream.clear();
+      removeMetrics();
+
+      LOGGER.info("stopping metrics reporter");
+      KafkaUReplicatorMetricsReporter.stop();
+
+      topicMapping.clear();
+      LOGGER.info("Kafka uReplicator worker shutdown successfully");
+      isRunning.set(false);
+    } else {
       LOGGER.info("worker instance already shutdown");
       return;
     }
-
-    LOGGER.info("Start clean shutdown");
-    if (observer != null) {
-      try {
-        LOGGER.info("Shutdown observer");
-
-        observer.shutdown();
-      } catch (Exception e) {
-        LOGGER.error("Failed to shut down observer", e);
-      } finally {
-        observer = null;
-      }
-    }
-
-    if (fetcherManager != null) {
-      try {
-        LOGGER.info("Shutdown Consumer");
-        fetcherManager.shutdown();
-      } catch (Exception e) {
-        LOGGER.error("Failed to shut down consumer", e);
-      }
-    }
-
-    if (producerManager != null) {
-      LOGGER.info("Shutdown producer manager");
-      producerManager.cleanShutdown();
-    }
-
-    for (ConsumerIterator iterator : consumerStream) {
-      iterator.cleanCurrentChunk();
-    }
-
-    if (checkpointManager != null) {
-      checkpointManager.shutdown();
-      checkpointManager = null;
-    }
-    messageTransformer = null;
-
-    messageQueue.clear();
-    consumerStream.clear();
-    removeMetrics();
-    KafkaUReplicatorMetricsReporter.stop();
-
-    topicMapping.clear();
-    LOGGER.info("Kafka uReplicator worker shutdown successfully");
-
   }
 
   private void initializeConsumerStream() {

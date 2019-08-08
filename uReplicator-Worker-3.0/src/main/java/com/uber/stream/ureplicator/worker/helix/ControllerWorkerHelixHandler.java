@@ -72,12 +72,7 @@ public class ControllerWorkerHelixHandler implements HelixHandler {
 
   public void start() throws Exception {
     try {
-      try {
-        workerInstance.start(srcCluster, dstCluster, routeId, federatedDeploymentName);
-      } catch (Throwable e) {
-        LOGGER.error("Start workerInstance failed", e);
-        throw e;
-      }
+      workerInstance.start(srcCluster, dstCluster, routeId, federatedDeploymentName);
       KafkaUReplicatorMetricsReporter.get()
           .registerMetric(METRIC_ADD_TOPIC_PARTITION_FAILURE, addTopicPartitionFailureMeter);
       KafkaUReplicatorMetricsReporter.get()
@@ -97,8 +92,8 @@ public class ControllerWorkerHelixHandler implements HelixHandler {
           .registerStateModelFactory(OnlineOfflineStateFactory.STATE_MODE_DEF,
               new OnlineOfflineStateFactory(this));
     } catch (Exception e) {
-      LOGGER.error("Add instance to helix cluster failed. instanceId: {}, helixCluster: {}",
-          workerInstanceId, helixClusterName, e);
+      LOGGER.error("Add instance to helix cluster failed. helixCluster: {}",
+          helixClusterName, e);
       throw e;
     }
     LOGGER.info("Register ControllerWorkerHelixHandler finished");

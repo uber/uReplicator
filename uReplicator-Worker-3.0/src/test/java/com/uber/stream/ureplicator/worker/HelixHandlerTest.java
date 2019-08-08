@@ -15,22 +15,21 @@
  */
 package com.uber.stream.ureplicator.worker;
 
-import com.google.common.collect.ImmutableMap;
 import com.uber.stream.kafka.mirrormaker.common.utils.ZkStarter;
 import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import com.uber.stream.ureplicator.worker.helix.ManagerWorkerHelixHandler;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Properties;
 import org.apache.helix.manager.zk.ZKHelixAdmin;
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.IdealState;
-import org.apache.helix.model.InstanceConfig;
 import org.easymock.EasyMock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 /**
@@ -40,16 +39,91 @@ public class HelixHandlerTest {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(HelixHandlerTest.class);
 
-  WorkerInstance mockWorker = EasyMock.createMock(WorkerInstance.class);
+  static WorkerInstance mockWorker = EasyMock.createMock(WorkerInstance.class);
 
-  @BeforeTest
+  @BeforeMethod
   public void setup() {
     ZkStarter.startLocalZkServer();
     KafkaUReplicatorMetricsReporter.init(null);
   }
 
   @Test
+  public void testManagerWorkerHelixInconsistentMessages() throws Exception {
+
+    WorkerConf workerConf = TestUtils.initWorkerConf();
+    Properties helixProps = WorkerUtils.loadAndValidateHelixProps(workerConf.getHelixConfigFile());
+    // setup helix controller
+    String route = String.format("%s-%s-0", TestUtils.SRC_CLUSTER, TestUtils.DST_CLUSTER);
+    String routeForHelix = String.format("@%s@%s", TestUtils.SRC_CLUSTER, TestUtils.DST_CLUSTER);
+    String rout2 = String.format("%s-%s-0", TestUtils.SRC_CLUSTER_2, TestUtils.DST_CLUSTER);
+    String route2ForHelix = String.format("@%s@%s", TestUtils.SRC_CLUSTER_2, TestUtils.DST_CLUSTER);
+
+    ZKHelixAdmin helixAdmin = TestUtils.initHelixClustersForWorkerTest(helixProps, route, rout2);
+    String deployment = helixProps.getProperty("federated.deployment.name");
+    String managerHelixClusterName = WorkerUtils.getManagerWorkerHelixClusterName(deployment);
+    String instanceId = helixProps.getProperty("instanceId");
+
+    EasyMock.reset(mockWorker);
+    mockWorker.start(TestUtils.SRC_CLUSTER, TestUtils.DST_CLUSTER, "0", deployment);
+    EasyMock.expectLastCall().times(1);
+
+    mockWorker.start(TestUtils.SRC_CLUSTER_2, TestUtils.DST_CLUSTER, "0", deployment);
+    EasyMock.expectLastCall().times(1);
+
+    mockWorker.cleanShutdown();
+    EasyMock.expectLastCall().anyTimes();
+
+    EasyMock.expect(mockWorker.isRunning()).andReturn(false).anyTimes();
+
+    EasyMock.replay(mockWorker);
+
+
+    ManagerWorkerHelixHandler managerWorkerHelixHandler = new ManagerWorkerHelixHandler(workerConf,
+        helixProps,
+        mockWorker);
+    managerWorkerHelixHandler.start();
+
+    TestUtils
+        .updateRouteWithValidation(managerHelixClusterName, routeForHelix, instanceId, helixAdmin,
+            "ONLINE", "ONLINE");
+    TestUtils
+        .updateRouteWithValidation(managerHelixClusterName, route2ForHelix, instanceId, helixAdmin,
+            "ONLINE", "ERROR");
+    // mark offline to error not propagate to worker
+    TestUtils
+        .updateRouteWithValidation(managerHelixClusterName, route2ForHelix, instanceId, helixAdmin,
+            "OFFLINE", "ERROR");
+
+    managerWorkerHelixHandler.shutdown();
+
+    // set the first route to offline
+    IdealState idealState = TestUtils
+        .buildManagerWorkerCustomIdealState(routeForHelix, Collections.singletonList(instanceId),
+            "OFFLINE");
+    helixAdmin.setResourceIdealState(managerHelixClusterName, routeForHelix, idealState);
+
+    managerWorkerHelixHandler = new ManagerWorkerHelixHandler(workerConf,
+        helixProps,
+        mockWorker);
+    managerWorkerHelixHandler.start();
+
+    Thread.sleep(1000);
+
+    ExternalView externalView = helixAdmin
+        .getResourceExternalView(managerHelixClusterName, route2ForHelix);
+    Assert.assertNotNull(externalView);
+    Assert.assertNotNull(externalView.getStateMap("0"));
+    LOGGER.info("ExternalView: {}", externalView);
+    Assert.assertEquals(externalView.getStateMap("0").get("0"), "OFFLINE");
+
+    TestUtils
+        .updateRouteWithValidation(managerHelixClusterName, route2ForHelix, instanceId, helixAdmin,
+            "ONLINE", "ONLINE");
+  }
+
+  @Test
   public void testHelixHandlerCatchesException() throws Exception {
+
     String mockTopic = "testHelixHandlerCatchesException";
     WorkerConf workerConf = TestUtils.initWorkerConf();
     Properties helixProps = WorkerUtils.loadAndValidateHelixProps(workerConf.getHelixConfigFile());
@@ -64,17 +138,20 @@ public class HelixHandlerTest {
 
     EasyMock.reset(mockWorker);
 
+    EasyMock.expect(mockWorker.isRunning()).andReturn(false).anyTimes();
+
     mockWorker.start(TestUtils.SRC_CLUSTER, TestUtils.DST_CLUSTER, "0", deployment);
     EasyMock.expectLastCall().andThrow(new RuntimeException("start mockWorker failed")).times(1);
 
     mockWorker.start(TestUtils.SRC_CLUSTER, TestUtils.DST_CLUSTER, "0", deployment);
-    EasyMock.expectLastCall().times(2);
+    EasyMock.expectLastCall().times(3);
 
     mockWorker.cleanShutdown();
     EasyMock.expectLastCall().anyTimes();
 
+
     mockWorker.addTopicPartition(mockTopic, 0);
-    EasyMock.expectLastCall().andThrow(new RuntimeException("add topic partition failed")).times(1);
+    EasyMock.expectLastCall().andThrow(new RuntimeException("add topic partition failed")).times(2);
 
     mockWorker.addTopicPartition(mockTopic, 0);
     EasyMock.expectLastCall().times(1);
@@ -87,14 +164,9 @@ public class HelixHandlerTest {
     LOGGER.info("starting managerWorkerHelixHandler");
     managerWorkerHelixHandler.start();
 
-    IdealState idealState = TestUtils
-        .buildManagerWorkerCustomIdealState(routeForHelix, Collections.singletonList(instanceId),
-            "ONLINE");
-    helixAdmin.addResource(managerHelixClusterName, routeForHelix, idealState);
-    Thread.sleep(1000);
-    ExternalView externalView = helixAdmin
-        .getResourceExternalView(managerHelixClusterName, routeForHelix);
-    Assert.assertEquals(externalView.getStateMap("0").get(instanceId), "ERROR");
+    TestUtils
+        .updateRouteWithValidation(managerHelixClusterName, routeForHelix, instanceId, helixAdmin,
+            "ONLINE", "ERROR");
 
     LOGGER.info("shutting down managerWorkerHelixHandler");
     managerWorkerHelixHandler.shutdown();
@@ -106,31 +178,61 @@ public class HelixHandlerTest {
     managerWorkerHelixHandler.start();
     Thread.sleep(1000);
 
+    ExternalView externalView = helixAdmin
+        .getResourceExternalView(managerHelixClusterName, routeForHelix);
+    Assert.assertEquals(externalView.getStateMap("0").get(instanceId), "ONLINE");
+
+    TestUtils.updateTopicWithValidation(controllerHelixClusterName, mockTopic, Arrays.asList(0),
+        Arrays.asList(instanceId),
+        helixAdmin, "ONLINE", "ERROR");
+    LOGGER.info("shutting down managerWorkerHelixHandler");
+
+    managerWorkerHelixHandler.shutdown();
+
+    // expected error since  mockWorker.addTopicPartition(mockTopic, 0) expect two error
+    managerWorkerHelixHandler = new ManagerWorkerHelixHandler(workerConf,
+        helixProps,
+        mockWorker);
+    LOGGER.info("starting managerWorkerHelixHandler again");
+    managerWorkerHelixHandler.start();
+    Thread.sleep(1000);
     externalView = helixAdmin
         .getResourceExternalView(managerHelixClusterName, routeForHelix);
     Assert.assertEquals(externalView.getStateMap("0").get(instanceId), "ONLINE");
 
-    idealState = TestUtils.buildControllerWorkerCustomIdealState(mockTopic, ImmutableMap.of("0", instanceId), "ONLINE");
-    helixAdmin.addResource(controllerHelixClusterName, mockTopic, idealState);
-    Thread.sleep(1000);
-     externalView = helixAdmin
+    externalView = helixAdmin
         .getResourceExternalView(controllerHelixClusterName, mockTopic);
-    LOGGER.info("{}", externalView);
-    Assert.assertEquals(externalView.getStateMap("0").get(instanceId), "ERROR");
 
-    LOGGER.info("shutting down managerWorkerHelixHandler");
+    Assert.assertNotNull(externalView);
+    Assert.assertNotNull(externalView.getStateMap("0"));
+    Assert.assertEquals(externalView.getStateMap("0").get(instanceId),
+        "ERROR");
+
+
     managerWorkerHelixHandler.shutdown();
 
+    // expected error since mockWorker.addTopicPartition(mockTopic, 0) will success
     managerWorkerHelixHandler = new ManagerWorkerHelixHandler(workerConf,
         helixProps,
         mockWorker);
     LOGGER.info("starting managerWorkerHelixHandler again");
     managerWorkerHelixHandler.start();
     Thread.sleep(1000);
-    Assert.assertEquals(externalView.getStateMap("0").get(instanceId), "ERROR");
+    externalView = helixAdmin
+        .getResourceExternalView(managerHelixClusterName, routeForHelix);
+    Assert.assertEquals(externalView.getStateMap("0").get(instanceId), "ONLINE");
+
+    externalView = helixAdmin
+        .getResourceExternalView(controllerHelixClusterName, mockTopic);
+
+    // expected error since     mockWorker.addTopicPartition(mockTopic, 0) expect two error
+    Assert.assertNotNull(externalView);
+    Assert.assertNotNull(externalView.getStateMap("0"));
+    Assert.assertEquals(externalView.getStateMap("0").get(instanceId),
+        "ONLINE");
   }
 
-  @AfterTest
+  @AfterMethod
   public void shutdown() {
     ZkStarter.stopLocalZkServer();
   }

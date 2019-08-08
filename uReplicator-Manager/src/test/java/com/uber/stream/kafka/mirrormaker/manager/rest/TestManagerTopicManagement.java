@@ -555,39 +555,39 @@ public class TestManagerTopicManagement extends RestTestBase {
     startController(DEPLOYMENT_NAME, CONTROLLER_PORT, 1);
     startWorker(DEPLOYMENT_NAME, 2);
 
-    KafkaStarterUtils.createTopic("testManagerTopicManagement0", ZkStarter.DEFAULT_ZK_STR + "/cluster1");
-    KafkaStarterUtils.createTopic("testManagerTopicManagement0", ZkStarter.DEFAULT_ZK_STR + "/cluster3");
+    KafkaStarterUtils.createTopic("testDeleteManagerTopicManagement0", ZkStarter.DEFAULT_ZK_STR + "/cluster1");
+    KafkaStarterUtils.createTopic("testDeleteManagerTopicManagement0", ZkStarter.DEFAULT_ZK_STR + "/cluster3");
 
     // Create topic
     request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
-        .getTopicCreationRequestUrl("testManagerTopicManagement0", "cluster1", "cluster3");
+        .getTopicCreationRequestUrl("testDeleteManagerTopicManagement0", "cluster1", "cluster3");
     response = HTTP_CLIENT.handle(request);
     Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
-    Assert.assertTrue(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testManagerTopicManagement0"));
+    Assert.assertTrue(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testDeleteManagerTopicManagement0"));
 
     // Delete topic but expect failure due to non-existing topic
     request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
-        .getTopicDeleteRequestUrl("testManagerTopicManagement0", "cluster2", "cluster3");
+        .getTopicDeleteRequestUrl("testDeleteManagerTopicManagement0", "cluster2", "cluster3");
     response = HTTP_CLIENT.handle(request);
     json = JSONObject.parseObject(response.getEntityAsText());
     Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
-    Assert.assertEquals(json.getString("message"), "Failed to delete not existed topic: testManagerTopicManagement0 in pipeline: @cluster2@cluster3");
+    Assert.assertEquals(json.getString("message"), "Failed to delete not existed topic: testDeleteManagerTopicManagement0 in pipeline: @cluster2@cluster3");
 
     // Delete topic but expect failure due to non-whitelisted topic
     request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
-        .getTopicDeleteRequestUrl("testManagerTopicManagement1", "cluster1", "cluster3");
+        .getTopicDeleteRequestUrl("testDeleteManagerTopicManagement1", "cluster1", "cluster3");
     response = HTTP_CLIENT.handle(request);
     json = JSONObject.parseObject(response.getEntityAsText());
     Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
-    Assert.assertEquals(json.getString("message"), "Failed to delete not existed topic: testManagerTopicManagement1 in pipeline: @cluster1@cluster3");
+    Assert.assertEquals(json.getString("message"), "Failed to delete not existed topic: testDeleteManagerTopicManagement1 in pipeline: @cluster1@cluster3");
 
     // Delete topic
     request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
-        .getTopicDeleteRequestUrl("testManagerTopicManagement0", "cluster1", "cluster3");
+        .getTopicDeleteRequestUrl("testDeleteManagerTopicManagement0", "cluster1", "cluster3");
     response = HTTP_CLIENT.handle(request);
     json = JSONObject.parseObject(response.getEntityAsText());
     Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
-    Assert.assertEquals(json.getString("message"), "Successfully delete topic: testManagerTopicManagement0 from cluster1 to cluster3");
+    Assert.assertEquals(json.getString("message"), "Successfully delete topic: testDeleteManagerTopicManagement0 from cluster1 to cluster3");
     Assert.assertEquals(json.getString("status"), "200");
 
     // Delete pipeline but expect failure due to non-existing pipeline
