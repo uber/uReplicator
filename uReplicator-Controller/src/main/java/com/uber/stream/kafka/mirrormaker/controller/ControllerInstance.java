@@ -248,9 +248,6 @@ public class ControllerInstance {
       success = false;
     }
 
-    LOGGER.info("stopping metrics reporter");
-    KafkaUReplicatorMetricsReporter.stop();
-
     if (_clusterInfoBackupManager != null) {
       LOGGER.info("stopping cluster info backup manager");
       _clusterInfoBackupManager.stop();

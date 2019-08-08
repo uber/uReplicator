@@ -18,23 +18,15 @@ package com.uber.stream.ureplicator.worker;
 import com.uber.stream.kafka.mirrormaker.common.utils.KafkaStarterUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.ZkStarter;
 import com.uber.stream.ureplicator.common.KafkaClusterObserver;
-import com.uber.stream.ureplicator.worker.interfaces.ICheckPointManager;
 import com.uber.stream.ureplicator.worker.interfaces.IConsumerFetcherManager;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 import kafka.server.KafkaServerStartable;
 import kafka.utils.ZkUtils;
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.helix.manager.zk.ZKHelixAdmin;
-import org.apache.helix.model.ExternalView;
-import org.apache.helix.model.IdealState;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.easymock.EasyMock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -84,7 +76,7 @@ public class WorkerInstanceTest {
     Properties defaultConfig = KafkaStarterUtils.getDefaultKafkaConfiguration();
     defaultConfig.setProperty("offsets.topic.replication.factor", "2");
 
-    ZkStarter.startLocalZkServer(zkCluster1Port);
+    ZkStarter.startLocalZkServer();
 
     // Starts Source Kafka Cluster1
     srcKafka1 = KafkaStarterUtils.startServer(srcCluster1Port1,
@@ -212,6 +204,7 @@ public class WorkerInstanceTest {
 
       TestUtils.produceMessages(srcCluster1BootstrapServer, topicName1, 20, 2);
 
+      workerInstance = new WorkerInstance(conf);
       workerInstance.start(null, null, null, null);
       workerInstance.addTopicPartition(topicName1, 0);
       records = TestUtils
@@ -291,8 +284,8 @@ public class WorkerInstanceTest {
     workerThread.start();
 
     // assign worker to route1
-    updateRouteWithValidation(managerHelixClusterName, route1ForHelix, instanceId, helixAdmin, "ONLINE");
-    updateTopicWithValidation(controllerHelixClusterName, topicName1, Arrays.asList(0, 1),
+    TestUtils.updateRouteWithValidation(managerHelixClusterName, route1ForHelix, instanceId, helixAdmin, "ONLINE");
+    TestUtils.updateTopicWithValidation(controllerHelixClusterName, topicName1, Arrays.asList(0, 1),
         Arrays.asList("0"), helixAdmin, "ONLINE");
 
     TestUtils.produceMessages(srcCluster1BootstrapServer, topicName1, 20);
@@ -300,14 +293,14 @@ public class WorkerInstanceTest {
         .consumeMessage(dstBootstrapServer, topicName1, 5000);
     Assert.assertEquals(records.size(), 20);
 
-    updateTopicWithValidation(controllerHelixClusterName, topicName1, Arrays.asList(0, 1),
+    TestUtils.updateTopicWithValidation(controllerHelixClusterName, topicName1, Arrays.asList(0, 1),
         Arrays.asList("0"), helixAdmin, "OFFLINE");
 
     TestUtils.produceMessages(srcCluster1BootstrapServer, topicName1, 20);
     records = TestUtils.consumeMessage(dstBootstrapServer, topicName1, 5000);
     Assert.assertEquals(records.size(), 0);
 
-    updateRouteWithValidation(managerHelixClusterName, route1ForHelix, instanceId, helixAdmin, "OFFLINE");
+    TestUtils.updateRouteWithValidation(managerHelixClusterName, route1ForHelix, instanceId, helixAdmin, "OFFLINE");
 
 
     String offset = commitZkClient
@@ -316,17 +309,17 @@ public class WorkerInstanceTest {
     Assert.assertEquals(offset, "10");
 
     // assign worker to route1
-    updateRouteWithValidation(managerHelixClusterName, route1ForHelix, instanceId, helixAdmin, "ONLINE");
-    updateTopicWithValidation(controllerHelixClusterName, topicName1, Arrays.asList(0, 1),
+    TestUtils.updateRouteWithValidation(managerHelixClusterName, route1ForHelix, instanceId, helixAdmin, "ONLINE");
+    TestUtils.updateTopicWithValidation(controllerHelixClusterName, topicName1, Arrays.asList(0, 1),
         Arrays.asList("0"), helixAdmin, "ONLINE");
     records = TestUtils.consumeMessage(dstBootstrapServer, topicName1, 5000);
     Assert.assertEquals(records.size(), 20);
 
 
-    updateRouteWithValidation(managerHelixClusterName, route1ForHelix, instanceId, helixAdmin, "OFFLINE");
+    TestUtils.updateRouteWithValidation(managerHelixClusterName, route1ForHelix, instanceId, helixAdmin, "OFFLINE");
 
-    updateRouteWithValidation(managerHelixClusterName, route2ForHelix, instanceId, helixAdmin, "ONLINE");
-    updateTopicWithValidation(controller2HelixClusterName, topicName3, Arrays.asList(0, 1),
+    TestUtils.updateRouteWithValidation(managerHelixClusterName, route2ForHelix, instanceId, helixAdmin, "ONLINE");
+    TestUtils.updateTopicWithValidation(controller2HelixClusterName, topicName3, Arrays.asList(0, 1),
 
         Arrays.asList("0"), helixAdmin, "ONLINE");
 
@@ -340,44 +333,6 @@ public class WorkerInstanceTest {
         .readData("/consumers/ureplicator-cluster1-cluster2/offsets/" + topicName1 + "/0")
         .toString();
     Assert.assertEquals(offset, "20");
-  }
-
-  private void updateRouteWithValidation(String managerHelixClusterName, String route1ForHelix,
-      String instanceId, ZKHelixAdmin helixAdmin, String state)
-      throws InterruptedException {
-    IdealState idealState = TestUtils
-        .buildManagerWorkerCustomIdealState(route1ForHelix, Collections.singletonList(instanceId),
-            state);
-    helixAdmin.setResourceIdealState(managerHelixClusterName, route1ForHelix, idealState);
-    LOGGER.info("add resource {} for cluster {} finished", route1ForHelix, managerHelixClusterName);
-    Thread.sleep(1500);
-    ExternalView externalView = helixAdmin
-        .getResourceExternalView(managerHelixClusterName, route1ForHelix);
-    Assert.assertNotNull(externalView);
-    LOGGER.info("{}", externalView);
-    Assert.assertNotNull(externalView.getStateMap("0"));
-    Assert.assertEquals(externalView.getStateMap("0").get("0"), state);
-  }
-
-  private void updateTopicWithValidation(String controllerHelixClusterName, String topicName,
-      List<Integer> partitions, List<String> instances, ZKHelixAdmin helixAdmin, String state)
-      throws InterruptedException {
-    Map<String, String> partitionInstanceMap = new HashMap<>();
-    for (int index = 0; index < partitions.size(); index++) {
-      partitionInstanceMap
-          .put(String.valueOf(partitions.get(index)), instances.get(index % instances.size()));
-    }
-    IdealState idealState = TestUtils
-        .buildControllerWorkerCustomIdealState(topicName, partitionInstanceMap, state);
-    helixAdmin.setResourceIdealState(controllerHelixClusterName, topicName, idealState);
-    Thread.sleep(1000);
-    ExternalView externalView = helixAdmin
-        .getResourceExternalView(controllerHelixClusterName, topicName);
-    for (Map.Entry<String, String> entry : partitionInstanceMap.entrySet()) {
-      Assert.assertNotNull(externalView);
-      Assert.assertNotNull(externalView.getStateMap(entry.getKey()));
-      Assert.assertEquals(externalView.getStateMap(entry.getKey()).get(entry.getValue()), state);
-    }
   }
 
   @AfterClass
