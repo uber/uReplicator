@@ -16,6 +16,8 @@
     <module>uReplicator-Manager</module>
     <module>uReplicator-Common</module>
     <module>uReplicator-Worker-3.0</module>
+    <module>Worker-Framework</module>
+
   </modules>
 
   <distributionManagement>
