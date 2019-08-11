@@ -85,7 +85,7 @@ public class TestSourceKafkaClusterValidationManager {
     String validationResult = sourceKafkaClusterValidationManager.validateSourceKafkaCluster();
     System.out.println(validationResult);
     Assert.assertEquals(validationResult,
-        "{\"mismatchedTopicPartitions\":{},\"numMismatchedTopicPartitions\":0,\"numMismatchedTopics\":0,\"numMissingTopics\":0}");
+        "{\"numMissingTopics\":0,\"numMismatchedTopics\":0,\"mismatchedTopicPartitions\":{},\"numMismatchedTopicPartitions\":0}");
     for (int i = 0; i < 2; ++i) {
       Assert.assertEquals(helixMirrorMakerManager.getTopicLists().size(), i);
       String topicName = "testTopic" + i;
@@ -105,7 +105,7 @@ public class TestSourceKafkaClusterValidationManager {
       validationResult = sourceKafkaClusterValidationManager.validateSourceKafkaCluster();
       System.out.println(validationResult);
       Assert.assertEquals(validationResult,
-          "{\"mismatchedTopicPartitions\":{},\"numMismatchedTopicPartitions\":0,\"numMismatchedTopics\":0,\"numMissingTopics\":0}");
+        "{\"numMissingTopics\":0,\"numMismatchedTopics\":0,\"mismatchedTopicPartitions\":{},\"numMismatchedTopicPartitions\":0}");
       helixMirrorMakerManager.addTopicToMirrorMaker(topicName, 1);
     }
 
@@ -179,8 +179,10 @@ public class TestSourceKafkaClusterValidationManager {
     }
     validationResult = sourceKafkaClusterValidationManager.validateSourceKafkaCluster();
     System.out.println(validationResult);
+
     Assert.assertEquals(validationResult,
-        "{\"mismatchedTopicPartitions\":{},\"numMismatchedTopicPartitions\":0,\"numMismatchedTopics\":0,\"numMissingTopics\":0}");
+        "{\"numMissingTopics\":0,\"numMismatchedTopics\":0,\"mismatchedTopicPartitions\":{},\"numMismatchedTopicPartitions\":0}");
+   
   }
 
 }
