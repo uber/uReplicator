@@ -27,14 +27,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public abstract class Processor<In, Out> implements Sink<In>, Chainable<Out> {
 
-  protected final WorkerConf conf;
   protected final AtomicBoolean isRunning = new AtomicBoolean(false);
   protected Sink<Out> nextStageSink;
-
-  public Processor(WorkerConf conf) {
-    this.conf = conf;
-  }
-
 
   @Override
   public void setNextStage(Sink<Out> sink) {

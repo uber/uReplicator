@@ -16,41 +16,44 @@
 package com.uber.streaming.worker.clients;
 
 import com.uber.streaming.worker.Task;
+import java.io.Closeable;
+import java.util.List;
 
 /**
- * Interacts with remote data store for fetch, commit offset. Keeps in-memory cache for latest
- * offset for each components
+ * Interacts with remote data store (ie. zookeeper, kafka __consumer_offsets topic) for fetch,
+ * commit offset.
  */
-public interface CheckpointManager {
+public interface CheckpointManager extends Closeable {
 
   /**
-   * Commits in memory produced offset to data store(ie. zk, kafka __consumer_offsets topic)
+   * Commits offset to data store for all tasks
    */
   void commitOffset();
 
   /**
-   * Updates in-memory fetched offset
+   * Commits offset to data store for specified tasks
    */
-  void updateFetchedOffset(Task task, long fetchedOffset);
+  void commitOffset(List<Task> task);
 
   /**
-   * Updates in-memory produced offset
+   * Updates massage offset on task to mark messages before this offset has been successfully
+   * processed and enqueue to next stage by fetcher
    */
-  void updateProducedOffset(Task task, long producedOffset);
-
-
-  /**
-   * Updates in-memory processed offset
-   */
-  void updateProcessedOffset(Task task, long processedOffset);
+  void setFetchOffset(Task task, long fetchedOffset);
 
   /**
-   * Gets in memory offset cache
+   * Updates offset to be committed.(implementation will decide update either in-memory value or
+   * data store)
    */
-  CheckpointInfo fetchOffsetInfo(Task task);
+  void setCommitOffset(Task task, long commitOffset);
 
   /**
-   * Updates actual consumer start offset
+   * Gets checkpoint info
    */
-  void updateActualStartOffset(Task task, long beginOffset);
+  CheckpointInfo getCheckpointInfo(Task task);
+
+  /**
+   * Gets checkpoint info
+   */
+  CheckpointInfo getCheckpointInfo(Task task, boolean refresh);
 }

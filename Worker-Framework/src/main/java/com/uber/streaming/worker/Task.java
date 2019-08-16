@@ -15,6 +15,7 @@
  */
 package com.uber.streaming.worker;
 
+import java.util.Objects;
 import javax.annotation.Nullable;
 import org.apache.commons.lang.StringUtils;
 
@@ -30,7 +31,6 @@ public final class Task {
   @Nullable
   private final String cluster;
 
-  @Nullable
   private final String consumerGroup;
 
   @Nullable
@@ -77,6 +77,10 @@ public final class Task {
     return consumerGroup;
   }
 
+  public String getConsumerGroup(String defaultConsumerGroup) {
+    return StringUtils.isNotBlank(consumerGroup) ? consumerGroup : defaultConsumerGroup;
+  }
+
   public Workload getWorkload() {
     return workload;
   }
@@ -87,5 +91,28 @@ public final class Task {
 
   public Long getEndOffset() {
     return endOffset;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    Task task = (Task) o;
+    return partition == task.partition &&
+        Objects.equals(topic, task.topic) &&
+        Objects.equals(cluster, task.cluster) &&
+        Objects.equals(consumerGroup, task.consumerGroup) &&
+        Objects.equals(workload, task.workload) &&
+        Objects.equals(startOffset, task.startOffset) &&
+        Objects.equals(endOffset, task.endOffset);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(topic, partition, cluster, consumerGroup, workload, startOffset, endOffset);
   }
 }

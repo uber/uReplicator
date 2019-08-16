@@ -15,9 +15,10 @@
  */
 package com.uber.streaming.worker;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-import com.uber.streaming.worker.clients.ServicesManager;
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang3.NotImplementedException;
 import org.slf4j.Logger;
@@ -32,33 +33,25 @@ public class WorkerInstance implements Worker {
   private static final Logger LOGGER = LoggerFactory.getLogger(WorkerInstance.class);
 
   private AtomicBoolean isRunnig = new AtomicBoolean(false);
-  private final WorkerConf conf;
   private final Fetcher fetcher;
   private final Processor processor;
   private final Dispatcher dispatcher;
-  private final ServicesManager services;
 
-  public WorkerInstance(WorkerConf conf,
+  public WorkerInstance(
       Fetcher fetcher,
       Processor processor,
-      Dispatcher dispatcher, ServicesManager services) {
-    Preconditions.checkNotNull(conf);
+      Dispatcher dispatcher) {
     Preconditions.checkNotNull(fetcher);
     Preconditions.checkNotNull(dispatcher);
-    this.conf = conf;
     this.fetcher = fetcher;
     this.processor = processor;
     this.dispatcher = dispatcher;
-    this.services = services;
   }
 
   public void start() {
     if (!isRunnig.compareAndSet(false, true)) {
       LOGGER.info("WorkerInstance is running");
       return;
-    }
-    if (services != null) {
-      services.start();
     }
     fetcher.start();
     if (processor != null) {
@@ -77,9 +70,6 @@ public class WorkerInstance implements Worker {
       processor.close();
     }
     fetcher.close();
-    if (services != null) {
-      services.close();
-    }
   }
 
   /**
@@ -113,19 +103,11 @@ public class WorkerInstance implements Worker {
   }
 
   public final static class Builder {
-
-    private WorkerConf conf;
     private Fetcher fetcher;
     private Processor processor;
     private Dispatcher dispatcher;
-    private ServicesManager servicesManager;
 
     public Builder() {
-    }
-
-    public Builder setConf(WorkerConf conf) {
-      this.conf = conf;
-      return this;
     }
 
     public Builder setFetcher(Fetcher fetcher) {
@@ -143,13 +125,8 @@ public class WorkerInstance implements Worker {
       return this;
     }
 
-    public Builder setServicesManager(ServicesManager servicesManager) {
-      this.servicesManager = servicesManager;
-      return this;
-    }
 
     public WorkerInstance build() {
-      Preconditions.checkNotNull(conf);
       Preconditions.checkNotNull(fetcher);
       Preconditions.checkNotNull(dispatcher);
 
@@ -159,7 +136,7 @@ public class WorkerInstance implements Worker {
       } else {
         fetcher.setNextStage(dispatcher);
       }
-      return new WorkerInstance(conf, fetcher, processor, dispatcher, servicesManager);
+      return new WorkerInstance(fetcher, processor, dispatcher);
     }
   }
 }

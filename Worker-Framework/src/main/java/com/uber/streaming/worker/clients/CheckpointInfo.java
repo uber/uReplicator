@@ -24,59 +24,51 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class CheckpointInfo {
 
   private final Task task;
-  private final AtomicLong fetchedOffset;
-  private final AtomicLong producedOffset;
-  private final AtomicLong processedOffset;
+
+  // message fetch offset
+  private final AtomicLong fetchOffset;
+  // message offset that is ready to commit
+  private final AtomicLong commitOffset;
+
+  // starting offset for consumer fetcher thread to startwith, -1 means honor commit offset at kafka consumer.
+  private long startingOffset;
+
+  // end offset for task
   private final Long endOffset;
-  // actual starting offset can be different from original starting offset on offset "out of range" scenario.
-  private long actualStartingOffset;
 
   public CheckpointInfo(
       Task task,
       long startingOffset,
       Long endOffset) {
     this.task = task;
-    this.actualStartingOffset = startingOffset;
+    this.startingOffset = startingOffset;
     this.endOffset = endOffset;
-    this.fetchedOffset = new AtomicLong(startingOffset);
-    this.producedOffset = new AtomicLong(startingOffset);
-    this.processedOffset = new AtomicLong(startingOffset);
+    this.fetchOffset = new AtomicLong(startingOffset);
+    this.commitOffset = new AtomicLong(startingOffset);
   }
 
 
-  public void setFetchedOffset(Long fetchedOffset) {
-    this.fetchedOffset.set(fetchedOffset);
+  public void setFetchOffset(Long fetchedOffset) {
+    this.fetchOffset.set(fetchedOffset);
   }
 
-  public void setProducedOffset(Long producedOffset) {
-    this.producedOffset.set(producedOffset);
-  }
-
-  public void setProcessedOffset(Long processedOffset) {
-    this.processedOffset.set(processedOffset);
-  }
-
-  public void updateStartingOffset(Long startingOffset) {
-    this.actualStartingOffset = startingOffset;
+  public void setCommitOffset(Long commitOffset) {
+    this.commitOffset.set(commitOffset);
   }
 
   public boolean bounded(Long currentOffset) {
     return this.endOffset != null && this.endOffset <= currentOffset;
   }
 
-  public long getActualStartingOffset() {
-    return actualStartingOffset;
+  public long getStartingOffset() {
+    return startingOffset;
   }
 
-  public long getFetchedOffset() {
-    return fetchedOffset.get();
+  public long getFetchOffset() {
+    return fetchOffset.get();
   }
 
-  public long getProcessedOffsetOffset() {
-    return processedOffset.get();
-  }
-
-  public long getProducedOffset() {
-    return producedOffset.get();
+  public long getCommitOffset() {
+    return commitOffset.get();
   }
 }

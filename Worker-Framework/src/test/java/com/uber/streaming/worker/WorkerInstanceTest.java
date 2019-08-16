@@ -16,11 +16,11 @@
 package com.uber.streaming.worker;
 
 
-import com.uber.streaming.worker.clients.DefaultServicesManager;
+
+import com.uber.streaming.worker.mocks.MockFetcher;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,35 +33,17 @@ public class WorkerInstanceTest {
 
   @Test
   public void workerInstanceTest() throws IOException {
-    WorkerConf workerConf = new WorkerConf() {
-      @Override
-      public Properties getDispatcherProperties() {
-        return null;
-      }
-
-      @Override
-      public Properties getProcessorProperties() {
-        return null;
-      }
-
-      @Override
-      public Properties getFetcherProperties() {
-        return null;
-      }
-    };
 
     List<String> messagesInQueue = new ArrayList<>();
     WorkerInstance workerInstance = new WorkerInstance.Builder()
-        .setServicesManager(new DefaultServicesManager())
-        .setConf(workerConf)
         .setFetcher(new MockFetcher())
-        .setProcessor(new Processor<String, String>(workerConf) {
+        .setProcessor(new Processor<String, String>() {
           @Override
           public CompletableFuture<Void> enqueue(String dataIn, Task task) {
             return nextStageSink.enqueue(dataIn, task);
           }
         })
-        .setDispatcher(new Dispatcher<String>(workerConf) {
+        .setDispatcher(new Dispatcher<String>() {
           @Override
           public CompletableFuture<Void> enqueue(String dataIn, Task task) {
             // dispatcher to external data source

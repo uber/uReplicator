@@ -26,17 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public abstract class Dispatcher<K> implements Sink<K> {
 
-  protected final WorkerConf conf;
   protected final AtomicBoolean isRunning = new AtomicBoolean(false);
-
-  /**
-   * Constructor
-   *
-   * @param conf worker conf
-   */
-  public Dispatcher(WorkerConf conf) {
-    this.conf = conf;
-  }
 
   @Override
   public void start() {
