@@ -886,7 +886,9 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
     if (cmd.hasOption("port")) {
       controllerConf.setControllerPort(cmd.getOptionValue("port"));
     } else {
-      throw new RuntimeException("Missing option: --port");
+        if (!controllerConf.isFederatedEnabled()) {
+            throw new RuntimeException("Missing option: --port");
+        }
     }
     if (cmd.hasOption("mode")) {
       controllerConf.setControllerMode(cmd.getOptionValue("mode"));
