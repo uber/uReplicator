@@ -34,7 +34,7 @@ DOWNLOAD_CACHE_DIR=$HOME/.kafkamirrormaker/download
 COMMAND=$1
 SYSTEM=$2
 
-DOWNLOAD_KAFKA=http://www.us.apache.org/dist/kafka/0.10.2.2/kafka_2.11-0.10.2.2.tgz
+DOWNLOAD_KAFKA=http://archive.apache.org/dist/kafka/0.10.2.2/kafka_2.11-0.10.2.2.tgz
 DOWNLOAD_ZOOKEEPER=http://archive.apache.org/dist/zookeeper/zookeeper-3.4.3/zookeeper-3.4.3.tar.gz
 
 bootstrap() {
