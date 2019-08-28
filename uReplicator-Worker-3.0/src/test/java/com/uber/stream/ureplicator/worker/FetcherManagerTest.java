@@ -81,14 +81,16 @@ public class FetcherManagerTest {
     mockFetcherThread2.removePartitions(ImmutableSet.of(tp1));
     EasyMock.expectLastCall().once();
 
-    EasyMock.expect(mockFetcherThread1.getTopicPartitions()).andReturn(new HashSet<>());
-    EasyMock.expect(mockFetcherThread2.getTopicPartitions()).andReturn(new HashSet<>());
+    EasyMock.expect(mockFetcherThread1.initiateShutdown()).andReturn(true);
 
-    mockFetcherThread1.shutdown();
+    EasyMock.expect(mockFetcherThread2.initiateShutdown()).andReturn(true);
+
+    mockFetcherThread1.awaitShutdown();
     EasyMock.expectLastCall().once();
 
-    mockFetcherThread2.shutdown();
+    mockFetcherThread2.awaitShutdown();
     EasyMock.expectLastCall().once();
+
 
     EasyMock.replay(kafkaClusterObserver, mockFetcherThread1, mockFetcherThread2);
 
@@ -138,13 +140,6 @@ public class FetcherManagerTest {
     EasyMock.expectLastCall().once();
 
     mockFetcherThread2.removePartitions(ImmutableSet.of(tp1));
-    EasyMock.expectLastCall().once();
-
-    EasyMock.expect(mockFetcherThread1.getTopicPartitions()).andReturn(new HashSet<>());
-    EasyMock.expect(mockFetcherThread2.getTopicPartitions()).andReturn(Collections.singleton(tp2));
-
-
-    mockFetcherThread1.shutdown();
     EasyMock.expectLastCall().once();
 
     EasyMock.replay(mockFetcherThread1, mockFetcherThread2);

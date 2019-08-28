@@ -142,11 +142,6 @@ public class FetcherManager extends ShutdownableThread implements
       for (String fetcherThreadName : fetcherThreadList) {
         ConsumerFetcherThread fetcherThread = fetcherThreadMap.get(fetcherThreadName);
         fetcherThread.removePartitions(topicPartition);
-        if (fetcherThread.getTopicPartitions().isEmpty()) {
-          fetcherThread.shutdown();
-          fetcherThreadMap.remove(fetcherThreadName);
-          LOGGER.info("Shutting down fetcher thread {}", fetcherThreadName);
-        }
       }
     }
     LOGGER.info("Remove fetcher thread for partitions {} finished", topicPartition);
