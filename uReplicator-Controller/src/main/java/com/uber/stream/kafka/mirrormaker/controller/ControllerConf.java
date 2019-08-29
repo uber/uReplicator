@@ -874,7 +874,9 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
     if (cmd.hasOption("helixClusterName")) {
       controllerConf.setHelixClusterName(cmd.getOptionValue("helixClusterName"));
     } else {
-      throw new RuntimeException("Missing option: --helixClusterName");
+      if (!controllerConf.isFederatedEnabled()) {
+        throw new RuntimeException("Missing option: --helixClusterName");
+      }
     }
     if (cmd.hasOption("zookeeper")) {
       controllerConf.setZkStr(cmd.getOptionValue("zookeeper"));

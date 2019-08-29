@@ -879,8 +879,8 @@ public class ControllerHelixManager implements IHelixManager {
     LOGGER.info("Check if {} is online for {}, {}", instance, routeName, routeId);
     try {
       String[] srcDst = routeName.split(SEPARATOR);
-      String controllerWokerHelixClusterName = "/controller-worker-" + srcDst[1] + "-" + srcDst[2] + "-" + routeId;
-      JSONObject json = JSON.parseObject(_zkClient.readData(controllerWokerHelixClusterName + "/CONTROLLER/LEADER").toString());
+      String controllerWorkerHelixClusterName = "/controller-worker-" + srcDst[1] + "-" + srcDst[2] + "-" + routeId;
+      JSONObject json = JSON.parseObject(_zkClient.readData(controllerWorkerHelixClusterName + "/CONTROLLER/LEADER").toString());
       String currLeader = String.valueOf(json.get("id"));
       LOGGER.info("current leader is {}, expect {}", currLeader, instance);
       return currLeader.equals(instance);
@@ -1063,8 +1063,8 @@ public class ControllerHelixManager implements IHelixManager {
     }
 
     String[] srcDst = pipeline.split(SEPARATOR);
-    String controllerWokerHelixClusterName = "controller-worker-" + srcDst[1] + "-" + srcDst[2] + "-" + routeId;
-    HelixManager spectator = HelixManagerFactory.getZKHelixManager(controllerWokerHelixClusterName,
+    String controllerWorkerHelixClusterName = "controller-worker-" + srcDst[1] + "-" + srcDst[2] + "-" + routeId;
+    HelixManager spectator = HelixManagerFactory.getZKHelixManager(controllerWorkerHelixClusterName,
         _instanceId,
         InstanceType.SPECTATOR,
         _helixZkURL);
@@ -1080,7 +1080,7 @@ public class ControllerHelixManager implements IHelixManager {
 
       if (System.currentTimeMillis() - ts1 > 60000) {
         throw new Exception(String.format("Controller %s failed to set up new route cluster %s!",
-            instanceName, controllerWokerHelixClusterName));
+            instanceName, controllerWorkerHelixClusterName));
       }
       Thread.sleep(1000);
     }
