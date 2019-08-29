@@ -15,11 +15,6 @@
  */
 package com.uber.streaming.worker;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-
-@AllArgsConstructor
-@Data
 public class Workload {
 
   private long messageRate;

@@ -24,7 +24,7 @@ import kafka.server.KafkaServerStartable;
 import kafka.zk.KafkaZkClient;
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;

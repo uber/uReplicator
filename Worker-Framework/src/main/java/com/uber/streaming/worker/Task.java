@@ -17,7 +17,7 @@ package com.uber.streaming.worker;
 
 import java.util.Objects;
 import javax.annotation.Nullable;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * unit of work assign by controller

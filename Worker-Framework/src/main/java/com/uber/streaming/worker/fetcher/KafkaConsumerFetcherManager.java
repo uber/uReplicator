@@ -27,7 +27,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.annotation.concurrent.GuardedBy;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
@@ -58,7 +58,7 @@ public class KafkaConsumerFetcherManager implements Fetcher<List<ConsumerRecord>
   private final String defaultConsumerGroup;
 
 
-  protected KafkaConsumerFetcherManager(
+  public KafkaConsumerFetcherManager(
       KafkaConsumerFetcherConfig conf, CheckpointManager checkpointManager) {
     this(conf, checkpointManager, new ConcurrentHashMap<>());
   }
