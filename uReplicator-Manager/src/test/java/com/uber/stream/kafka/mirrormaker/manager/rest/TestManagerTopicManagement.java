@@ -16,11 +16,9 @@
 package com.uber.stream.kafka.mirrormaker.manager.rest;
 
 import com.alibaba.fastjson.JSONObject;
-import com.codahale.metrics.Counter;
 import com.uber.stream.kafka.mirrormaker.common.utils.ZkStarter;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerStarter;
-import com.uber.stream.kafka.mirrormaker.controller.reporter.HelixKafkaMirrorMakerMetricsReporter;
 import com.uber.stream.kafka.mirrormaker.common.utils.KafkaStarterUtils;
 import com.uber.stream.kafka.mirrormaker.manager.utils.ManagerRequestURLBuilder;
 import joptsimple.OptionSet;
@@ -114,10 +112,6 @@ public class TestManagerTopicManagement extends RestTestBase {
           conf.setHelixClusterName("testMirrorMaker");
           conf.addProperty("kafka.cluster.zkStr.cluster1", ZkStarter.DEFAULT_ZK_STR + "/cluster1");
           conf.addProperty("kafka.cluster.zkStr.cluster3", ZkStarter.DEFAULT_ZK_STR + "/cluster3");
-          HelixKafkaMirrorMakerMetricsReporter.init(conf);
-          Counter testCounter0 = new Counter();
-          HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("offsetMonitor.executed", testCounter0);
-
           final ControllerStarter controllerStarter = new ControllerStarter(conf);
           try {
             CONTROLLER_STARTER.add(id, controllerStarter);
@@ -335,6 +329,15 @@ public class TestManagerTopicManagement extends RestTestBase {
     Assert.assertEquals(json.getString("message"), "No topic is added in uReplicator!");
     Assert.assertEquals(json.getString("status"), "200");
 
+    // Create topic but expect not found error
+    request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
+        .getTopicCreationRequestUrl("testManagerTopicManagement0", "cluster1", "cluster3");
+    response = HTTP_CLIENT.handle(request);
+    Assert.assertEquals(response.getStatus(), Status.CLIENT_ERROR_NOT_FOUND);
+    Assert.assertFalse(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testManagerTopicManagement0"));
+
+    KafkaStarterUtils.createTopic("testManagerTopicManagement0", ZkStarter.DEFAULT_ZK_STR + "/cluster3");
+
     // Create topic but expect failure with no controller
     request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
         .getTopicCreationRequestUrl("testManagerTopicManagement0", "cluster1", "cluster3");
@@ -422,6 +425,9 @@ public class TestManagerTopicManagement extends RestTestBase {
     startController(DEPLOYMENT_NAME, CONTROLLER_PORT, 1);
     startWorker(DEPLOYMENT_NAME, 2);
 
+    KafkaStarterUtils.createTopic("testManagerTopicManagement0", ZkStarter.DEFAULT_ZK_STR + "/cluster1");
+    KafkaStarterUtils.createTopic("testManagerTopicManagement0", ZkStarter.DEFAULT_ZK_STR + "/cluster3");
+
     // Create topic
     request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
         .getTopicCreationRequestUrl("testManagerTopicManagement0", "cluster1", "cluster3");
@@ -479,6 +485,9 @@ public class TestManagerTopicManagement extends RestTestBase {
     // Add controller
     startController(DEPLOYMENT_NAME, CONTROLLER_PORT, 1);
     startWorker(DEPLOYMENT_NAME, 2);
+
+    KafkaStarterUtils.createTopic("testManagerTopicManagement0", ZkStarter.DEFAULT_ZK_STR + "/cluster1");
+    KafkaStarterUtils.createTopic("testManagerTopicManagement0", ZkStarter.DEFAULT_ZK_STR + "/cluster3");
 
     // Create topic
     request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
@@ -545,6 +554,9 @@ public class TestManagerTopicManagement extends RestTestBase {
     // Add controller
     startController(DEPLOYMENT_NAME, CONTROLLER_PORT, 1);
     startWorker(DEPLOYMENT_NAME, 2);
+
+    KafkaStarterUtils.createTopic("testManagerTopicManagement0", ZkStarter.DEFAULT_ZK_STR + "/cluster1");
+    KafkaStarterUtils.createTopic("testManagerTopicManagement0", ZkStarter.DEFAULT_ZK_STR + "/cluster3");
 
     // Create topic
     request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)

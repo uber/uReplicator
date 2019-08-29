@@ -22,6 +22,7 @@ import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 import java.util.{Collections, Properties, UUID}
 
+import com.uber.stream.kafka.mirrormaker.common.core.TopicPartitionCountObserver
 import com.yammer.metrics.core.{Gauge, Meter}
 import joptsimple.OptionSet
 import kafka.consumer._
@@ -163,7 +164,8 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
     }
 
     // create producer
-    val producerProps = Utils.loadProps(options.valueOf(workerConfig.getProducerConfigOpt))
+    val producerProps = Utils.
+      loadProps(options.valueOf(workerConfig.getProducerConfigOpt))
     dstCluster match {
       case Some(dstCluster)
       =>

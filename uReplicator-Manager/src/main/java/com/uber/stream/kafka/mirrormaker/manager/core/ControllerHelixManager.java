@@ -29,9 +29,9 @@ import com.uber.stream.kafka.mirrormaker.common.utils.HelixSetupUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.HttpClientUtils;
 import com.uber.stream.kafka.mirrormaker.manager.ManagerConf;
-import com.uber.stream.kafka.mirrormaker.manager.reporter.HelixKafkaMirrorMakerMetricsReporter;
-import com.uber.stream.kafka.mirrormaker.manager.validation.SourceKafkaClusterValidationManager;
+import com.uber.stream.kafka.mirrormaker.manager.validation.KafkaClusterValidationManager;
 
+import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.*;
@@ -68,7 +68,7 @@ public class ControllerHelixManager implements IHelixManager {
   private static final String SEPARATOR = "@";
 
   private final ManagerConf _conf;
-  private final SourceKafkaClusterValidationManager _srcKafkaValidationManager;
+  private final KafkaClusterValidationManager _kafkaValidationManager;
   private final String _helixZkURL;
   private final String _helixClusterName;
   private HelixManager _helixManager;
@@ -108,6 +108,8 @@ public class ControllerHelixManager implements IHelixManager {
   private static final Counter _lowUrgencyValidateWrongCount = new Counter();
   private static final Counter _assignedControllerCount = new Counter();
 
+  private static final int _numOfWorkersBatchSize = 5;
+
   private ReentrantLock _lock = new ReentrantLock();
   private Map<String, Map<String, InstanceTopicPartitionHolder>> _topicToPipelineInstanceMap;
   private Map<String, PriorityQueue<InstanceTopicPartitionHolder>> _pipelineToInstanceMap;
@@ -121,11 +123,11 @@ public class ControllerHelixManager implements IHelixManager {
   private boolean _enableRebalance;
 
   public ControllerHelixManager(
-      SourceKafkaClusterValidationManager srcKafkaValidationManager,
+      KafkaClusterValidationManager kafkaValidationManager,
       ManagerConf managerConf) {
     _conf = managerConf;
     _enableRebalance = managerConf.getEnableRebalance();
-    _srcKafkaValidationManager = srcKafkaValidationManager;
+    _kafkaValidationManager = kafkaValidationManager;
     _initMaxNumPartitionsPerRoute = managerConf.getInitMaxNumPartitionsPerRoute();
     _maxNumPartitionsPerRoute = managerConf.getMaxNumPartitionsPerRoute();
     _initMaxNumWorkersPerRoute = managerConf.getInitMaxNumWorkersPerRoute();
@@ -190,19 +192,19 @@ public class ControllerHelixManager implements IHelixManager {
 
   private void registerMetrics() {
     try {
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("controller.available.counter",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("controller.available.counter",
           _availableController);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("worker.available.counter",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("worker.available.counter",
           _availableWorker);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("topic.non-parity.counter",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("topic.non-parity.counter",
           _nonParityTopic);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("validate.wrong.counter",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("validate.wrong.counter",
           _validateWrongCount);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("rescale.failed.counter",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("rescale.failed.counter",
           _rescaleFailedCount);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("validate.wrong.low.urgency.counter",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("validate.wrong.low.urgency.counter",
           _lowUrgencyValidateWrongCount);
-      HelixKafkaMirrorMakerMetricsReporter.get().registerMetric("controller.assigned.counter",
+      KafkaUReplicatorMetricsReporter.get().registerMetric("controller.assigned.counter",
           _assignedControllerCount);
     } catch (Exception e) {
       LOGGER.error("Error registering metrics!", e);
@@ -219,15 +221,15 @@ public class ControllerHelixManager implements IHelixManager {
       _routeToCounterMap.get(route).put(WORKER_TOTAL_NUMBER, new Counter());
       //_routeToCounterMap.get(routeString).put(WORKER_ERROR_NUMBER, new Counter());
       try {
-        HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(route + ".topic.totalNumber",
+        KafkaUReplicatorMetricsReporter.get().registerMetric(route + ".topic.totalNumber",
             _routeToCounterMap.get(route).get(TOPIC_TOTAL_NUMBER));
         //HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(routeString + ".topic.errorNumber",
         //    _routeToCounterMap.get(routeString).get(TOPIC_ERROR_NUMBER));
-        HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(route + ".controller.totalNumber",
+        KafkaUReplicatorMetricsReporter.get().registerMetric(route + ".controller.totalNumber",
             _routeToCounterMap.get(route).get(CONTROLLER_TOTAL_NUMBER));
         //HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(routeString + "controller.errorNumber",
         //    _routeToCounterMap.get(routeString).get(CONTROLLER_ERROR_NUMBER));
-        HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(route + ".worker.totalNumber",
+        KafkaUReplicatorMetricsReporter.get().registerMetric(route + ".worker.totalNumber",
             _routeToCounterMap.get(route).get(WORKER_TOTAL_NUMBER));
         //HelixKafkaMirrorMakerMetricsReporter.get().registerMetric(routeString + "worker.errorNumber",
         //    _routeToCounterMap.get(routeString).get(WORKER_ERROR_NUMBER));
@@ -526,7 +528,7 @@ public class ControllerHelixManager implements IHelixManager {
       Map<TopicPartition, List<String>> workerRouteToInstanceMap = _workerHelixManager.getWorkerRouteToInstanceMap();
       // Map<Instance, Set<Pipeline>> from IdealState
       Map<String, Set<TopicPartition>> instanceToTopicPartitionsMap = HelixUtils
-          .getInstanceToTopicPartitionsMap(_helixManager, _srcKafkaValidationManager.getClusterToObserverMap());
+          .getInstanceToTopicPartitionsMap(_helixManager, _kafkaValidationManager.getClusterToObserverMap());
 
       List<String> liveInstances = HelixUtils.liveInstances(_helixManager);
       currAvailableControllerList.addAll(liveInstances);
@@ -599,11 +601,11 @@ public class ControllerHelixManager implements IHelixManager {
     return result;
   }
 
-  private String getHostname(String instanceId) {
+  private String getHostname(String instanceId) throws ControllerException {
     Map<String, String> instanceIdAndNameMap = HelixUtils.getInstanceToHostnameMap(_helixManager);
     String hostname =  instanceIdAndNameMap.containsKey(instanceId) ? instanceIdAndNameMap.get(instanceId) : "";
     if (StringUtils.isEmpty(hostname)) {
-      throw new InternalError(String.format("Failed to find hostname for instanceId %s", instanceId));
+      throw new ControllerException(String.format("Failed to find hostname for instanceId %s", instanceId));
     }
     return hostname;
   }
@@ -694,7 +696,7 @@ public class ControllerHelixManager implements IHelixManager {
 
       // Check if any controller in route is down
       Map<String, Set<TopicPartition>> instanceToTopicPartitionsMap = HelixUtils
-          .getInstanceToTopicPartitionsMap(_helixManager, _srcKafkaValidationManager.getClusterToObserverMap());
+          .getInstanceToTopicPartitionsMap(_helixManager, _kafkaValidationManager.getClusterToObserverMap());
       List<String> liveInstances = HelixUtils.liveInstances(_helixManager);
       List<String> instanceToReplace = new ArrayList<>();
       boolean routeControllerDown = false;
@@ -967,8 +969,8 @@ public class ControllerHelixManager implements IHelixManager {
           initWorkerCount = _routeWorkerOverrides.get(routeString);
         }
 
-        String hostname = getHostname(itph.getInstanceName());
         try {
+          String hostname = getHostname(itph.getInstanceName());
           String result = HttpClientUtils.getData(_httpClient, _requestConfig,
               hostname, _controllerPort, "/admin/workloadinfo");
           ControllerWorkloadInfo workloadInfo = JSONObject.parseObject(result, ControllerWorkloadInfo.class);
@@ -996,7 +998,7 @@ public class ControllerHelixManager implements IHelixManager {
                   itph.getWorkerSet().size(), itph.getRouteString(), actualExpectedNumWorkers, itph.getWorkerSet().size() - actualExpectedNumWorkers);
               // TODO: handle exception
               _workerHelixManager.removeWorkersToMirrorMaker(itph, itph.getRoute().getTopic(),
-                  itph.getRoute().getPartition(), itph.getWorkerSet().size() - actualExpectedNumWorkers);
+                  itph.getRoute().getPartition(), _numOfWorkersBatchSize);
             }
             newTotalNumWorker += actualExpectedNumWorkers;
           } else {
@@ -1006,7 +1008,7 @@ public class ControllerHelixManager implements IHelixManager {
           }
         } catch (Exception e) {
           rescaleFailedCount ++;
-          LOGGER.error(String.format("Get workload error when connecting to %s for route %s. No change on number of workers", hostname, itph.getRouteString()), e);
+          LOGGER.error(String.format("Get workload error when connecting to %s for route %s. No change on number of workers", itph.getInstanceName(), itph.getRouteString()), e);
           newTotalNumWorker += itph.getWorkerSet().size();
           rescaleFailedCount ++;
         }
@@ -1024,7 +1026,7 @@ public class ControllerHelixManager implements IHelixManager {
     if (expectedNumWorkers >= _maxNumWorkersPerRoute) {
       return _maxNumWorkersPerRoute;
     }
-    return (int) (Math.ceil((double) (expectedNumWorkers - initWorkerPerRoute) / 5) * 5) + initWorkerPerRoute;
+    return (int) (Math.ceil((double) (expectedNumWorkers - initWorkerPerRoute) / _numOfWorkersBatchSize) * _numOfWorkersBatchSize) + initWorkerPerRoute;
   }
 
   public int getExpectedNumWorkers(int currNumPartitions) {
@@ -1223,7 +1225,7 @@ public class ControllerHelixManager implements IHelixManager {
 
       itph.removeTopicPartition(new TopicPartition(topicName, oldNumPartitions, pipeline));
       itph.addTopicPartition(new TopicPartition(topicName, newNumPartitions, pipeline));
-      _srcKafkaValidationManager.getClusterToObserverMap().get(srcCluster).tryUpdateTopic(topicName);
+      _kafkaValidationManager.getClusterToObserverMap().get(srcCluster).tryUpdateTopic(topicName);
     } finally {
       _lock.unlock();
     }
@@ -1280,7 +1282,7 @@ public class ControllerHelixManager implements IHelixManager {
         _helixAdmin.setResourceIdealState(_helixClusterName, topicName,
             IdealStateBuilder.shrinkCustomIdealStateFor(currIdealState, topicName, instance.getRouteString()));
       }
-      TopicPartition tp = _srcKafkaValidationManager.getClusterToObserverMap().get(src)
+      TopicPartition tp = _kafkaValidationManager.getClusterToObserverMap().get(src)
           .getTopicPartitionWithRefresh(topicName);
       instance.removeTopicPartition(tp);
       _topicToPipelineInstanceMap.get(topicName).remove(pipeline);
@@ -1302,8 +1304,8 @@ public class ControllerHelixManager implements IHelixManager {
         .forResource(topicName).build(), new HashMap<>());
   }
 
-  public SourceKafkaClusterValidationManager getSrcKafkaValidationManager() {
-    return _srcKafkaValidationManager;
+  public KafkaClusterValidationManager getKafkaValidationManager() {
+    return _kafkaValidationManager;
   }
 
   public WorkerHelixManager getWorkerHelixManager() {

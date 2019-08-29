@@ -8,7 +8,7 @@
   <parent>
     <groupId>com.uber.uReplicator</groupId>
     <artifactId>uReplicator</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>2.0.0-SNAPSHOT</version>
   </parent>
   <description>
     Kafka MirrorMaker with Helix is built for resolving high level consumers rebalancing pain point.
@@ -23,6 +23,12 @@
   </properties>
 
   <dependencies>
+    <dependency>
+      <groupId>com.uber.uReplicator</groupId>
+      <artifactId>uReplicator-Common</artifactId>
+      <version>${project.parent.version}</version>
+      <scope>compile</scope>
+    </dependency>
     <dependency>
       <groupId>org.scala-lang</groupId>
       <artifactId>scala-compiler</artifactId>
