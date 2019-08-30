@@ -20,6 +20,8 @@ public final class Constants {
   private Constants() {
   }
 
+  public static final String HEADER_KEY = "uReplicator";
+
   public static final String MANAGER_WORKER_HELIX_PREFIX = "manager-worker-";
   public static final String CONTROLLER_WORKER_HELIX_PREFIX = "controller-worker-";
 

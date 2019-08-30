@@ -27,6 +27,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
+import org.apache.kafka.common.header.Header;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,6 +68,7 @@ public class DefaultProducer {
   public void send(ProducerRecord record, int srcPartition, long srcOffset)
       throws ExecutionException, InterruptedException {
     recordCount.getAndIncrement();
+    record.headers().add(Constants.HEADER_KEY, new byte[0]);
     if (syncProducer) {
       this.producer.send(record).get();
     } else {

@@ -34,6 +34,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.header.Header;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -115,7 +116,7 @@ public class ProducerThread extends Thread {
             ProducerRecord resp = messageTransformer.process(record);
             if (resp == null) {
               numDroppedMessage.getAndIncrement();
-            } else {
+            } else if(needToSend(resp)){
               producer.send(resp, record.partition(), record.offset());
             }
             TopicPartition tp = new TopicPartition(record.topic(), record.partition());
@@ -141,6 +142,14 @@ public class ProducerThread extends Thread {
         System.exit(-1);
       }
     }
+  }
+
+  protected boolean needToSend(ProducerRecord record){
+    Iterable<Header> iterable = record.headers().headers(Constants.HEADER_KEY);
+    if(iterable.iterator().hasNext()){
+      return false;
+    }
+    return true;
   }
 
   private synchronized void flushAndCommitOffset(boolean forceCommit) {

@@ -34,6 +34,7 @@ import org.apache.helix.participant.StateMachineEngine
 import org.apache.helix.{HelixManager, InstanceType}
 import org.apache.kafka.clients.producer.internals.ErrorLoggingCallback
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord, RecordMetadata}
+import org.apache.kafka.common.header.Header
 import org.apache.kafka.common.utils.Utils
 
 import scala.io.Source
@@ -78,6 +79,7 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
   @volatile private var exitingOnSendFailure: Boolean = false
   private var topicMappings = Map.empty[String, String]
 
+  var filterProps: Properties = null
   private var filterEnabled: Boolean = false
 
   private var lastOffsetCommitMs = System.currentTimeMillis()
@@ -145,7 +147,7 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
       info("Disable TopicPartitionCountObserver to use round robin to produce msg")
     }
 
-    val filterProps = {
+    filterProps = {
       try {
         Utils.loadProps(options.valueOf(workerConfig.getFilterConfigOpt))
       } catch {
@@ -212,15 +214,14 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
         }
         val srcClusterZk = clusterProps.getProperty("kafka.cluster.zkStr." + srcCluster, "")
         srcBrokerList = clusterProps.getProperty("kafka.cluster.servers." + srcCluster, "")
-        val commitZkConnection = clusterProps.getProperty("commit.zookeeper.connect", srcClusterZk)
+        //val commitZkConnection = clusterProps.getProperty("commit.zookeeper.connect", srcClusterZk)
         if (srcClusterZk.isEmpty()) {
           error("Cannot find zkStr for source cluster: " + srcCluster)
           throw new Exception("Cannot find zkStr for source cluster: " + srcCluster)
         } else {
           consumerConfigProps.setProperty("zookeeper.connect", srcClusterZk)
-          consumerConfigProps.setProperty("broker.list", srcBrokerList)
-
-          consumerConfigProps.setProperty("commit.zookeeper.connect", commitZkConnection)
+          //consumerConfigProps.setProperty("broker.list", srcBrokerList)
+          //consumerConfigProps.setProperty("commit.zookeeper.connect", commitZkConnection)
           consumerConfigProps.setProperty("group.id", "ureplicator-" + srcCluster + "-" + dstCluster.getOrElse("none"))
           consumerConfigProps.setProperty("client.id", route)
         }
@@ -501,6 +502,11 @@ class WorkerInstance(private val workerConfig: MirrorMakerWorkerConf,
                  srcCluster: Option[String],
                  dstCluster: Option[String],
                  srcOffset: Long): Boolean = {
+    val key = filterProps.getProperty("header.key", "uReplicator")
+    val iterator = record.headers().headers(key)
+    if(iterator.iterator().hasNext){
+      return false
+    }
     true
   }
 
