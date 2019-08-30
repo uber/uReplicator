@@ -47,7 +47,8 @@ public class ProducerManager {
         .getProperty(ProducerConfig.CLIENT_ID_CONFIG, "uReplicator");
     for (int index = 0; index < consumerStream.size(); index++) {
       String threadId = String.valueOf(index);
-      ProducerThread producerThread = new ProducerThread(threadId, clientIdPrefix, producerProps,
+      ProducerThread producerThread = new ProducerThread(threadId, clientIdPrefix,
+          (Properties) producerProps.clone(),
           abortOnSendFailure,
           consumerStream.get(index), messageTransformer, checkpointManager, workerInstance);
       producerThreadMap.put(threadId, producerThread);
@@ -56,7 +57,8 @@ public class ProducerManager {
 
   public synchronized void start() {
     if (!isInit.compareAndSet(false, true)) {
-      LOGGER.error("ProducerManager already running, number of producerThread {}.", producerThreadMap.size());
+      LOGGER.error("ProducerManager already running, number of producerThread {}.",
+          producerThreadMap.size());
       return;
     }
     for (ProducerThread thread : producerThreadMap.values()) {
