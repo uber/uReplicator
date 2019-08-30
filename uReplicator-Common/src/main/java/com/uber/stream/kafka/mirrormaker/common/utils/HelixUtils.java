@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.helix.HelixAdmin;
 import org.apache.helix.HelixDataAccessor;
 import org.apache.helix.HelixManager;
@@ -71,6 +72,19 @@ public class HelixUtils {
           helixManager.getClusterName(), instance);
       if (config != null) {
         retVal.put(instance, config.getHostName());
+      }
+    }
+    return retVal;
+  }
+
+  public static Map<String, Pair<String, Integer>> getInstanceToHostInfoMap(HelixManager helixManager) {
+    List<String> instances = liveInstances(helixManager);
+    HashMap<String, Pair<String, Integer>> retVal = new HashMap<>(instances.size());
+    for (String instance: instances) {
+      InstanceConfig config = helixManager.getConfigAccessor().getInstanceConfig(
+              helixManager.getClusterName(), instance);
+      if (config != null) {
+        retVal.put(instance, Pair.of(config.getHostName(), Integer.valueOf(config.getPort())));
       }
     }
     return retVal;

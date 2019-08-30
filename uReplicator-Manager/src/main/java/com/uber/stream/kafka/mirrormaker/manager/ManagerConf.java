@@ -375,7 +375,6 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
         .addOption("deployment", true, "Manager deployment")
         .addOption("env", true, "Manager env")
         .addOption("instanceId", true, "InstanceId")
-        .addOption("controllerPort", true, "Controller port number")
         .addOption("graphiteHost", true, "GraphiteHost")
         .addOption("graphitePort", true, "GraphitePort")
         .addOption("metricsPrefix", true, "MetricsPrefix")
@@ -443,11 +442,6 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
       } catch (UnknownHostException e) {
         throw new RuntimeException("Missing option: --instanceId");
       }
-    }
-    if (cmd.hasOption("controllerPort")) {
-      managerConf.setControllerPort(cmd.getOptionValue("controllerPort"));
-    } else {
-      throw new RuntimeException("Missing option: --controllerPort");
     }
     if (cmd.hasOption("graphiteHost")) {
       managerConf.setGraphiteHost(cmd.getOptionValue("graphiteHost"));
