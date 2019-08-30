@@ -93,30 +93,12 @@ public class TestManagerConf {
       CommandLineParser parser = new DefaultParser();
       CommandLine cmd = parser.parse(ManagerConf.constructManagerOptions(), args);
       ManagerConf conf = ManagerConf.getManagerConf(cmd);
-      Assert.fail("Expected exception to be thrown");
-    } catch (RuntimeException e) {
-      Assert.assertTrue(e.getMessage().equals("Missing option: --controllerPort"));
-    }
-
-    try {
-      String[] args = new String[]{
-          "-zookeeper", "localhost:2181/test",
-          "-managerPort", "9090",
-          "-deployment", "testing",
-          "-controllerPort", "8080",
-          "-env", "dc.testing"
-      };
-
-      CommandLineParser parser = new DefaultParser();
-      CommandLine cmd = parser.parse(ManagerConf.constructManagerOptions(), args);
-      ManagerConf conf = ManagerConf.getManagerConf(cmd);
       Assert.assertTrue(conf.getSourceClusters().isEmpty());
       Assert.assertTrue(conf.getDestinationClusters().isEmpty());
       Assert.assertEquals(conf.getManagerZkStr(), "localhost:2181/test");
       Assert.assertEquals(conf.getManagerPort().toString(), "9090");
       Assert.assertEquals(conf.getManagerDeployment(), "testing");
       Assert.assertEquals(conf.getManagerInstanceId(), InetAddress.getLocalHost().getHostName());
-      Assert.assertEquals(conf.getControllerPort().toString(), "8080");
       Assert.assertEquals(conf.getC3Host(), "localhost");
       Assert.assertEquals(conf.getC3Port().toString(), "0");
       Assert.assertEquals(conf.getWorkloadRefreshPeriodInSeconds().toString(), "600");
@@ -139,7 +121,6 @@ public class TestManagerConf {
         "-deployment", "testing",
         "-env", "dc1.testing",
         "-instanceId", "instance0",
-        "-controllerPort", "8080",
         "-c3Host", "testhost",
         "-c3Port", "8081",
         "-workloadRefreshPeriodInSeconds", "10",
@@ -164,7 +145,6 @@ public class TestManagerConf {
     Assert.assertEquals(conf.getManagerPort().toString(), "9090");
     Assert.assertEquals(conf.getManagerDeployment(), "testing");
     Assert.assertEquals(conf.getManagerInstanceId(), "instance0");
-    Assert.assertEquals(conf.getControllerPort().toString(), "8080");
     Assert.assertEquals(conf.getC3Host(), "testhost");
     Assert.assertEquals(conf.getC3Port().toString(), "8081");
     Assert.assertEquals(conf.getWorkloadRefreshPeriodInSeconds().toString(), "10");
