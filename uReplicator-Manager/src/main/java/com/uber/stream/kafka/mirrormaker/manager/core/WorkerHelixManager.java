@@ -211,8 +211,8 @@ public class WorkerHelixManager implements IHelixManager {
     _lock.lock();
     try {
       if (_availableWorkerList.size() == 0) {
-        LOGGER.warn("No available worker!");
-        return;
+          LOGGER.info("No available worker!");
+          throw new Exception("No available worker!");
       }
       List<String> instances = new ArrayList<>();
       for (int i = 0; i < numWorkersToAdd && i < _availableWorkerList.size(); i++) {
