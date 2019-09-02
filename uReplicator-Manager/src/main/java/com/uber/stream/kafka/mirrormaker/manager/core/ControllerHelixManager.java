@@ -733,10 +733,11 @@ public class ControllerHelixManager implements IHelixManager {
             if (tpOrRoute.getTopic().startsWith(SEPARATOR)) {
               String pipeline = tpOrRoute.getTopic();
               int routeId = tpOrRoute.getPartition();
-
-              // TODO: check if _availableControllerList is empty
-              String newInstanceName = _availableControllerList.get(0);
-              _availableControllerList.remove(0);
+              if(_availableControllerList.isEmpty()){
+                LOGGER.warn("no available controller to process the route {}@{}", pipeline, routeId);
+                return;
+              }
+              String newInstanceName = _availableControllerList.remove(0);
               LOGGER.info("Controller {} in route {}@{} will be replaced by {}", instance, pipeline, routeId,
                   newInstanceName);
               InstanceTopicPartitionHolder newInstance = new InstanceTopicPartitionHolder(newInstanceName, tpOrRoute);
