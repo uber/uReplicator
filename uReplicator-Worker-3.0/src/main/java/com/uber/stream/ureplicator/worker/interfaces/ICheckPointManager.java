@@ -23,4 +23,6 @@ public interface ICheckPointManager {
   void commitOffset(Map<TopicPartition, Long> topicPartitionOffsets);
 
   Long fetchOffset(TopicPartition topicPartition);
+
+  void shutdown();
 }

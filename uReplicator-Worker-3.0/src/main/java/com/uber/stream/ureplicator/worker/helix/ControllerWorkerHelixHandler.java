@@ -92,8 +92,8 @@ public class ControllerWorkerHelixHandler implements HelixHandler {
           .registerStateModelFactory(OnlineOfflineStateFactory.STATE_MODE_DEF,
               new OnlineOfflineStateFactory(this));
     } catch (Exception e) {
-      LOGGER.error("Add instance to helix cluster failed. instanceId: {}, helixCluster: {}",
-          workerInstanceId, helixClusterName, e);
+      LOGGER.error("Add instance to helix cluster failed. helixCluster: {}",
+          helixClusterName, e);
       throw e;
     }
     LOGGER.info("Register ControllerWorkerHelixHandler finished");

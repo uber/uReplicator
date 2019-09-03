@@ -54,7 +54,7 @@ public class ProducerThread extends Thread {
   protected AtomicBoolean isShuttingDown = new AtomicBoolean(false);
   protected Timer flushLatencyMsTimer = new Timer(new UniformReservoir());
   protected Timer commitLatencyMsTimer = new Timer(new UniformReservoir());
-
+  private final String clientId;
   /**
    * Constructor
    *
@@ -84,7 +84,7 @@ public class ProducerThread extends Thread {
     maybeSetDefaultProperty(producerProps, ProducerConfig.ACKS_CONFIG, "all");
     maybeSetDefaultProperty(producerProps, ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION,
         "1");
-    String clientId = clientIdPrefix + "-" + threadId;
+    clientId = clientIdPrefix + "-" + threadId;
     this.producer = new DefaultProducer(clientId, producerProps,
         abortOnSendFailure,
         workerInstance);
@@ -170,6 +170,8 @@ public class ProducerThread extends Thread {
 
     LOGGER.info("[{}]Flushing last batches and commit offsets", getName());
     flushAndCommitOffset(true);
+    KafkaUReplicatorMetricsReporter.get()
+        .removeKafkaMetrics("producer." + clientId, producer.getMetrics());
     producer.shutdown();
   }
 

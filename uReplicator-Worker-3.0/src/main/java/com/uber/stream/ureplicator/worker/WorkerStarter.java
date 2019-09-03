@@ -40,7 +40,7 @@ public class WorkerStarter {
   private WorkerInstance workerInstance;
   private final WorkerConf workerConf;
 
-  private static final CountDownLatch shutdownLatch = new CountDownLatch(1);
+  protected static final CountDownLatch shutdownLatch = new CountDownLatch(1);
 
   public WorkerStarter(WorkerConf conf) {
     this(conf, new WorkerInstance(conf));

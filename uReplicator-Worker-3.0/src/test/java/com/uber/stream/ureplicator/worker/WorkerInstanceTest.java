@@ -19,69 +19,90 @@ import com.uber.stream.kafka.mirrormaker.common.utils.KafkaStarterUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.ZkStarter;
 import com.uber.stream.ureplicator.common.KafkaClusterObserver;
 import com.uber.stream.ureplicator.worker.interfaces.IConsumerFetcherManager;
-import java.util.Collections;
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 import kafka.server.KafkaServerStartable;
 import kafka.utils.ZkUtils;
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.helix.manager.zk.ZKHelixAdmin;
-import org.apache.helix.model.ExternalView;
-import org.apache.helix.model.IdealState;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 public class WorkerInstanceTest {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WorkerInstanceTest.class);
 
+  // zk cluster 1
+  private int zkCluster1Port = ZkStarter.DEFAULT_ZK_TEST_PORT;
+  private String zkCluster1Str = "localhost:" + zkCluster1Port;
+
+  // zk cluster 2
+  private int zkCluster2Port = ZkStarter.DEFAULT_ZK_TEST_PORT;
+  private String zkCluster2Str = "localhost:" + zkCluster2Port;
+
+  // Source Cluster 1
   private KafkaServerStartable srcKafka1;
   private KafkaServerStartable srcKafka2;
+  private final int srcCluster1Port1 = 19092;
+  private final int srcCluster1Port2 = 19094;
+  private final String srcCluster1ZK = zkCluster1Str + "/" + TestUtils.SRC_CLUSTER;
+  private final String srcCluster1BootstrapServer = String
+      .format("localhost:%d", srcCluster1Port1);
 
+  // Source Cluster 2
+  private KafkaServerStartable srcKafka3;
+  private final int srcCluster2Port = 19095;
+  private final String srcCluster2ZK = zkCluster2Str + "/" + TestUtils.SRC_CLUSTER_2;
+  private final String srcCluster2BootstrapServer = String
+      .format("localhost:%d", srcCluster2Port);
+
+  // Destination Cluster 1
   private KafkaServerStartable dstKafka;
-
-  private final int srcClusterPort1 = 19092;
-  private final int srcClusterPort2 = 19094;
   private final int dstClusterPort = 19093;
-
-  private final String srcBootstrapServer = String.format("localhost:%d", srcClusterPort1);
+  private final String dstClusterZK = zkCluster1Str + "/" + TestUtils.DST_CLUSTER;
   private final String dstBootstrapServer = String.format("localhost:%d", dstClusterPort);
-  private final String srcClusterZK = ZkStarter.DEFAULT_ZK_STR + "/" + TestUtils.SRC_CLUSTER;
-  private final String dstClusterZK = ZkStarter.DEFAULT_ZK_STR + "/" + TestUtils.DST_CLUSTER;
+
 
   private int numberOfPartitions = 2;
 
-  @BeforeTest
+  @BeforeClass
   public void setup() throws Exception {
     Properties defaultConfig = KafkaStarterUtils.getDefaultKafkaConfiguration();
     defaultConfig.setProperty("offsets.topic.replication.factor", "2");
 
     ZkStarter.startLocalZkServer();
-    Thread.sleep(1000);
-    srcKafka1 = KafkaStarterUtils.startServer(srcClusterPort1,
+
+    // Starts Source Kafka Cluster1
+    srcKafka1 = KafkaStarterUtils.startServer(srcCluster1Port1,
         0,
-        srcClusterZK,
+        srcCluster1ZK,
         defaultConfig);
     srcKafka1.startup();
 
-    srcKafka2 = KafkaStarterUtils.startServer(srcClusterPort2,
+    srcKafka2 = KafkaStarterUtils.startServer(srcCluster1Port2,
         1,
-        srcClusterZK,
+        srcCluster1ZK,
         defaultConfig);
     srcKafka2.startup();
 
+    // Starts Source Kafka Cluster2
+    srcKafka3 = KafkaStarterUtils.startServer(srcCluster2Port,
+        0,
+        srcCluster2ZK,
+        KafkaStarterUtils.getDefaultKafkaConfiguration());
+    srcKafka3.startup();
+
+    // Starts Destination Kafka Cluster
     dstKafka = KafkaStarterUtils.startServer(dstClusterPort,
         KafkaStarterUtils.DEFAULT_BROKER_ID,
         dstClusterZK,
         KafkaStarterUtils.getDefaultKafkaConfiguration());
-
     dstKafka.startup();
   }
 
@@ -94,8 +115,8 @@ public class WorkerInstanceTest {
     try {
       String topicName1 = "testNonFederatedWorkerInstance1";
       String topicName2 = "testNonFederatedWorkerInstance2";
-      KafkaStarterUtils.createTopic(topicName1, numberOfPartitions, srcClusterZK, "2");
-      KafkaStarterUtils.createTopic(topicName2, numberOfPartitions, srcClusterZK, "2");
+      KafkaStarterUtils.createTopic(topicName1, numberOfPartitions, srcCluster1ZK, "2");
+      KafkaStarterUtils.createTopic(topicName2, numberOfPartitions, srcCluster1ZK, "2");
       KafkaStarterUtils.createTopic(topicName1, numberOfPartitions, dstClusterZK, "1");
       KafkaStarterUtils.createTopic(topicName2, numberOfPartitions, dstClusterZK, "1");
       workerInstance.start(null, null, null, null);
@@ -106,8 +127,8 @@ public class WorkerInstanceTest {
       LOGGER.info("Add topic partition finished");
       Thread.sleep(1000);
 
-      TestUtils.produceMessages(srcBootstrapServer, topicName1, 20, 2);
-      TestUtils.produceMessages(srcBootstrapServer, topicName2, 20, 2);
+      TestUtils.produceMessages(srcCluster1BootstrapServer, topicName1, 20, 2);
+      TestUtils.produceMessages(srcCluster1BootstrapServer, topicName2, 20, 2);
       LOGGER.info("Produce messages finished");
 
       List<ConsumerRecord<Byte[], Byte[]>> records = TestUtils
@@ -126,8 +147,8 @@ public class WorkerInstanceTest {
       workerInstance.addTopicPartition(topicName2, 1, 0L, 5L, null);
 
       Thread.sleep(1000);
-      TestUtils.produceMessages(srcBootstrapServer, topicName1, 20, 2);
-      TestUtils.produceMessages(srcBootstrapServer, topicName2, 20, 2);
+      TestUtils.produceMessages(srcCluster1BootstrapServer, topicName1, 20, 2);
+      TestUtils.produceMessages(srcCluster1BootstrapServer, topicName2, 20, 2);
 
       records = TestUtils.consumeMessage(dstBootstrapServer, topicName1, 5000);
 
@@ -155,7 +176,8 @@ public class WorkerInstanceTest {
       @Override
       public IConsumerFetcherManager createFetcherManager() {
         KafkaClusterObserver observer = new KafkaClusterObserver(dstBootstrapServer);
-        return new FetcherManagerGroupByLeaderId("FetcherManagerGroupByHashId", consumerProps, messageQueue, observer);
+        return new FetcherManagerGroupByLeaderId("FetcherManagerGroupByHashId", consumerProps,
+            messageQueue, observer);
       }
     }
     WorkerConf conf = TestUtils.initWorkerConf();
@@ -163,7 +185,7 @@ public class WorkerInstanceTest {
     WorkerInstance workerInstance = new CustomizedWorkerInstance(conf);
     try {
       String topicName1 = "testWorkerInstanceWithFetcherManagerGroupByLeaderId1";
-      KafkaStarterUtils.createTopic(topicName1, 2, srcClusterZK, "2");
+      KafkaStarterUtils.createTopic(topicName1, 2, srcCluster1ZK, "2");
       KafkaStarterUtils.createTopic(topicName1, 1, dstClusterZK, "1");
       workerInstance.start(null, null, null, null);
       workerInstance.addTopicPartition(topicName1, 0);
@@ -172,7 +194,7 @@ public class WorkerInstanceTest {
       LOGGER.info("Add topic partition finished");
       Thread.sleep(1000);
 
-      TestUtils.produceMessages(srcBootstrapServer, topicName1, 20, 2);
+      TestUtils.produceMessages(srcCluster1BootstrapServer, topicName1, 20, 2);
       LOGGER.info("Produce messages finished");
 
       List<ConsumerRecord<Byte[], Byte[]>> records = TestUtils
@@ -180,8 +202,9 @@ public class WorkerInstanceTest {
       Assert.assertEquals(records.size(), 20);
       workerInstance.cleanShutdown();
 
-      TestUtils.produceMessages(srcBootstrapServer, topicName1, 20, 2);
+      TestUtils.produceMessages(srcCluster1BootstrapServer, topicName1, 20, 2);
 
+      workerInstance = new WorkerInstance(conf);
       workerInstance.start(null, null, null, null);
       workerInstance.addTopicPartition(topicName1, 0);
       records = TestUtils
@@ -193,39 +216,46 @@ public class WorkerInstanceTest {
     }
   }
 
-  public class WorkerStarterRunnable implements Runnable {
+  @Test
+  public void testFederatedWorkerEndToEnd() throws Exception {
+    class WorkerStarterRunnable implements Runnable {
 
-    private final WorkerStarter starter;
+      private final WorkerStarter starter;
 
-    public WorkerStarterRunnable(WorkerConf workerConf) {
-      starter = new WorkerStarter(workerConf);
-    }
+      public WorkerStarterRunnable(WorkerConf workerConf) {
+        starter = new WorkerStarter(workerConf);
+      }
 
-    @Override
-    public void run() {
-      try {
-        LOGGER.info("Starting WorkerStarter");
-        starter.run();
-      } catch (Exception e) {
-        LOGGER.error("WorkerStarter failed", e);
+      @Override
+      public void run() {
+        try {
+          LOGGER.info("Starting WorkerStarter");
+          starter.run();
+        } catch (Exception e) {
+          LOGGER.error("WorkerStarter failed", e);
+        }
+      }
+
+      public void shutdown() {
+        starter.shutdown();
       }
     }
 
-    public void shutdown() {
-      starter.shutdown();
-    }
-  }
-
-  @Test
-  public void testFederatedWorkerEndToEnd() throws Exception {
+    // create new topic for testing
     String topicName1 = "tessFederatedWorkerEndToEnd1";
     String topicName2 = "tessFederatedWorkerEndToEnd2";
-    KafkaStarterUtils.createTopic(topicName1, numberOfPartitions, srcClusterZK, "2");
-    KafkaStarterUtils.createTopic(topicName2, numberOfPartitions, srcClusterZK, "2");
+    String topicName3 = "tessFederatedWorkerEndToEnd3";
+
+    KafkaStarterUtils.createTopic(topicName1, numberOfPartitions, srcCluster1ZK, "2");
+    KafkaStarterUtils.createTopic(topicName2, numberOfPartitions, srcCluster1ZK, "2");
+    KafkaStarterUtils.createTopic(topicName3, numberOfPartitions, srcCluster2ZK, "1");
     KafkaStarterUtils.createTopic(topicName1, numberOfPartitions, dstClusterZK, "1");
     KafkaStarterUtils.createTopic(topicName2, numberOfPartitions, dstClusterZK, "1");
+    KafkaStarterUtils.createTopic(topicName3, numberOfPartitions, dstClusterZK, "1");
+
+    // init zk client for zk cluster 1
     ZkClient commitZkClient = ZkUtils.createZkClient(
-        "localhost:12026/cluster1",
+        srcCluster1ZK,
         10000,
         10000);
     WorkerConf workerConf = TestUtils.initWorkerConf();
@@ -236,91 +266,66 @@ public class WorkerInstanceTest {
         .format("failed to find property %s in configuration file %s", Constants.HELIX_INSTANCE_ID,
             workerConf.getHelixConfigFile()));
 
-    String route = String.format("%s-%s-0", TestUtils.SRC_CLUSTER, TestUtils.DST_CLUSTER);
-    String routeForHelix = String.format("@%s@%s", TestUtils.SRC_CLUSTER, TestUtils.DST_CLUSTER);
+    // prepare helix cluster
+    String route1 = String.format("%s-%s-0", TestUtils.SRC_CLUSTER, TestUtils.DST_CLUSTER);
+    String route1ForHelix = String.format("@%s@%s", TestUtils.SRC_CLUSTER, TestUtils.DST_CLUSTER);
+    String route2 = String.format("%s-%s-0", TestUtils.SRC_CLUSTER_2, TestUtils.DST_CLUSTER);
+    String route2ForHelix = String.format("@%s@%s", TestUtils.SRC_CLUSTER_2, TestUtils.DST_CLUSTER);
 
-    ZKHelixAdmin helixAdmin = TestUtils.initHelixClustersForWorkerTest(helixProps, route);
+    ZKHelixAdmin helixAdmin = TestUtils.initHelixClustersForWorkerTest(helixProps, route1, route2);
     String deployment = helixProps.getProperty("federated.deployment.name");
     String managerHelixClusterName = WorkerUtils.getManagerWorkerHelixClusterName(deployment);
-    String controllerHelixClusterName = WorkerUtils.getControllerWorkerHelixClusterName(route);
+    String controllerHelixClusterName = WorkerUtils.getControllerWorkerHelixClusterName(route1);
+    String controller2HelixClusterName = WorkerUtils.getControllerWorkerHelixClusterName(route2);
 
     Thread.sleep(1000);
     WorkerStarterRunnable runnable = new WorkerStarterRunnable(workerConf);
     Thread workerThread = new Thread(runnable);
     workerThread.start();
 
-    IdealState idealState = TestUtils
-        .buildManagerWorkerCustomIdealState(routeForHelix, Collections.singletonList(instanceId),
-            "ONLINE");
-    helixAdmin.addResource(managerHelixClusterName, routeForHelix, idealState);
-    LOGGER.info("add resource {} for cluster {} finished", routeForHelix, managerHelixClusterName);
-    Thread.sleep(1000);
-    ExternalView externalView = helixAdmin
-        .getResourceExternalView(managerHelixClusterName, routeForHelix);
-    Assert.assertNotNull(externalView);
-    Assert.assertNotNull(externalView.getStateMap("0"));
-    Assert.assertEquals(externalView.getStateMap("0").get("0"), "ONLINE");
+    // assign worker to route1
+    TestUtils.updateRouteWithValidation(managerHelixClusterName, route1ForHelix, instanceId, helixAdmin, "ONLINE");
+    TestUtils.updateTopicWithValidation(controllerHelixClusterName, topicName1, Arrays.asList(0, 1),
+        Arrays.asList("0"), helixAdmin, "ONLINE");
 
-    Map<String, String> partitionInstanceMap = new HashMap<>();
-    partitionInstanceMap.put("0", "0");
-    partitionInstanceMap.put("1", "0");
-    idealState = TestUtils
-        .buildControllerWorkerCustomIdealState(topicName1, partitionInstanceMap, "ONLINE");
-    helixAdmin.addResource(controllerHelixClusterName, topicName1, idealState);
-    Thread.sleep(1000);
-    externalView = helixAdmin.getResourceExternalView(controllerHelixClusterName, topicName1);
-    Assert.assertEquals(externalView.getStateMap("0").get("0"), "ONLINE");
-    Assert.assertEquals(externalView.getStateMap("1").get("0"), "ONLINE");
-
-    TestUtils.produceMessages(srcBootstrapServer, topicName1, 20);
+    TestUtils.produceMessages(srcCluster1BootstrapServer, topicName1, 20);
     List<ConsumerRecord<Byte[], Byte[]>> records = TestUtils
         .consumeMessage(dstBootstrapServer, topicName1, 5000);
     Assert.assertEquals(records.size(), 20);
 
-    idealState = TestUtils
-        .buildControllerWorkerCustomIdealState(topicName1, partitionInstanceMap, "OFFLINE");
-    helixAdmin.setResourceIdealState(controllerHelixClusterName, topicName1, idealState);
-    Thread.sleep(2000);
-    externalView = helixAdmin.getResourceExternalView(controllerHelixClusterName, topicName1);
-    Assert.assertEquals(externalView.getStateMap("0").get("0"), "OFFLINE");
-    Assert.assertEquals(externalView.getStateMap("1").get("0"), "OFFLINE");
+    TestUtils.updateTopicWithValidation(controllerHelixClusterName, topicName1, Arrays.asList(0, 1),
+        Arrays.asList("0"), helixAdmin, "OFFLINE");
 
-    TestUtils.produceMessages(srcBootstrapServer, topicName1, 20);
+    TestUtils.produceMessages(srcCluster1BootstrapServer, topicName1, 20);
     records = TestUtils.consumeMessage(dstBootstrapServer, topicName1, 5000);
     Assert.assertEquals(records.size(), 0);
 
-    idealState = TestUtils
-        .buildManagerWorkerCustomIdealState(routeForHelix, Collections.singletonList(instanceId),
-            "OFFLINE");
-    helixAdmin.setResourceIdealState(managerHelixClusterName, routeForHelix, idealState);
-    Thread.sleep(1500);
-    externalView = helixAdmin
-        .getResourceExternalView(managerHelixClusterName, routeForHelix);
-    Assert.assertEquals(externalView.getStateMap("0").get("0"), "OFFLINE");
+    TestUtils.updateRouteWithValidation(managerHelixClusterName, route1ForHelix, instanceId, helixAdmin, "OFFLINE");
+
 
     String offset = commitZkClient
         .readData("/consumers/ureplicator-cluster1-cluster2/offsets/" + topicName1 + "/0")
         .toString();
     Assert.assertEquals(offset, "10");
 
-    idealState = TestUtils
-        .buildManagerWorkerCustomIdealState(routeForHelix, Collections.singletonList(instanceId),
-            "ONLINE");
-    helixAdmin.setResourceIdealState(managerHelixClusterName, routeForHelix, idealState);
-    Thread.sleep(2000);
-    externalView = helixAdmin
-        .getResourceExternalView(managerHelixClusterName, routeForHelix);
-    Assert.assertEquals(externalView.getStateMap("0").get("0"), "ONLINE");
-
-    idealState = TestUtils
-        .buildControllerWorkerCustomIdealState(topicName1, partitionInstanceMap, "ONLINE");
-    helixAdmin.setResourceIdealState(controllerHelixClusterName, topicName1, idealState);
-    Thread.sleep(2000);
-    externalView = helixAdmin.getResourceExternalView(controllerHelixClusterName, topicName1);
-    Assert.assertEquals(externalView.getStateMap("0").get("0"), "ONLINE");
-    Assert.assertEquals(externalView.getStateMap("1").get("0"), "ONLINE");
-
+    // assign worker to route1
+    TestUtils.updateRouteWithValidation(managerHelixClusterName, route1ForHelix, instanceId, helixAdmin, "ONLINE");
+    TestUtils.updateTopicWithValidation(controllerHelixClusterName, topicName1, Arrays.asList(0, 1),
+        Arrays.asList("0"), helixAdmin, "ONLINE");
     records = TestUtils.consumeMessage(dstBootstrapServer, topicName1, 5000);
+    Assert.assertEquals(records.size(), 20);
+
+
+    TestUtils.updateRouteWithValidation(managerHelixClusterName, route1ForHelix, instanceId, helixAdmin, "OFFLINE");
+
+    TestUtils.updateRouteWithValidation(managerHelixClusterName, route2ForHelix, instanceId, helixAdmin, "ONLINE");
+    TestUtils.updateTopicWithValidation(controller2HelixClusterName, topicName3, Arrays.asList(0, 1),
+
+        Arrays.asList("0"), helixAdmin, "ONLINE");
+
+    TestUtils.produceMessages(srcCluster2BootstrapServer, topicName3, 20);
+
+    records = TestUtils.consumeMessage(dstBootstrapServer, topicName3, 5000);
     Assert.assertEquals(records.size(), 20);
 
     runnable.shutdown();
@@ -330,8 +335,7 @@ public class WorkerInstanceTest {
     Assert.assertEquals(offset, "20");
   }
 
-
-  @AfterTest
+  @AfterClass
   public void shutdown() {
     LOGGER.info("Run after test");
     srcKafka1.shutdown();

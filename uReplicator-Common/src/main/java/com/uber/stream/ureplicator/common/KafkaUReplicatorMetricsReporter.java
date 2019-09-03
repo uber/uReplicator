@@ -172,6 +172,14 @@ public class KafkaUReplicatorMetricsReporter {
     }
   }
 
+  public void removeKafkaMetrics(String prefix, Map<MetricName, ? extends Metric> metrics) {
+    Preconditions.checkState(DID_INIT, "Not initialized yet");
+    for (MetricName metricName : metrics.keySet()) {
+      String kafkaMetricName = String.format("%s.%s", prefix, metricName.name());
+      removeMetric(kafkaMetricName);
+    }
+  }
+
   public static KafkaUReplicatorMetricsReporter get() {
     Preconditions.checkState(DID_INIT, "Not initialized yet");
     return METRICS_REPORTER_INSTANCE;

@@ -156,19 +156,33 @@ public class ManagerWorkerHelixHandler implements HelixHandler {
     String routeId = message.getPartitionName();
 
     if (!validateRequest(srcCluster, dstCluster, routeId)) {
-      return;
+      throw new IllegalArgumentException(String.format(
+          "Invalid handleRouteAssignmentOnline request, srcCluster: %s, dstCluster: %s, routeId: %s",
+          srcCluster, dstCluster, routeId));
     }
 
+    if (workerInstance.isRunning()) {
+      if (StringUtils.isEmpty(currentSrcCluster) || StringUtils.isEmpty(currentDstCluster)) {
+        LOGGER.error("Previous worker instance failed to shutdown, attempt to shutdown again ");
+        // force clean shutdown previous instance before startup it again
+        workerInstance.cleanShutdown(true);
+      } else {
+        LOGGER.warn("Instance already online. srcCluster: {}, dstCluster: {}, routeId: {}",
+            srcCluster, dstCluster, routeId);
+        return;
+      }
+    }
+    // double check previous helix handler to make sure it has been shutdown
     if (controllerWorkerHelixHandler != null) {
-      LOGGER.warn("Instance already online. srcCluster: {}, dstCluster: {}, routeId: {}",
-          srcCluster, dstCluster, routeId);
-      return;
+      controllerWorkerHelixHandler.shutdown();
+      controllerWorkerHelixHandler = null;
     }
 
     LOGGER.info("Handling resource online {}", message.getResourceName());
     String routeName = String.format("%s-%s-%s", srcCluster, dstCluster, routeId);
     String helixCluster = WorkerUtils.getControllerWorkerHelixClusterName(routeName);
     LOGGER.info("Join controller-worker cluster {}", helixCluster);
+
     controllerWorkerHelixHandler = new ControllerWorkerHelixHandler(helixProps,
         helixCluster, srcCluster, dstCluster, routeId, federatedDeploymentName, workerInstance);
     try {
@@ -176,6 +190,7 @@ public class ManagerWorkerHelixHandler implements HelixHandler {
     } catch (Exception e) {
       LOGGER.error("Start controllerWorkerHelixHandler failed", e);
       controllerWorkerHelixHandler.shutdown();
+      controllerWorkerHelixHandler = null;
       // helix will mark this as ERROR and this can be captured by manager's validation job
       throw new RuntimeException(e);
     }
@@ -201,9 +216,8 @@ public class ManagerWorkerHelixHandler implements HelixHandler {
       return true;
     } else {
       LOGGER.error(
-          "Inconsistent request, srcCluster: {}:{}, dstCluster: {}:{}, routeId: {}:{}.",
-          srcCluster, currentSrcCluster,
-          dstCluster, currentDstCluster, routeId, currentRouteId);
+          "the worker instance has started with different route assignment,  current srcCluster: {}, dstCluster: {}, routeId: {}.",
+          currentSrcCluster, currentDstCluster, currentRouteId);
       return false;
     }
   }
@@ -221,16 +235,18 @@ public class ManagerWorkerHelixHandler implements HelixHandler {
     String dstCluster = clustersInfo[2];
     String routeId = message.getPartitionName();
     if (!validateRequest(srcCluster, dstCluster, routeId)) {
-      return;
+      throw new IllegalArgumentException(String.format(
+          "Invalid handleRouteAssignmentOffline request, srcCluster: %s, dstCluster: %s, routeId: %s",
+          srcCluster, dstCluster, routeId));
     }
     LOGGER.info("Handling resource offline {}", message.getResourceName());
     if (controllerWorkerHelixHandler != null) {
       controllerWorkerHelixHandler.shutdown();
       controllerWorkerHelixHandler = null;
-      currentDstCluster = null;
-      currentSrcCluster = null;
-      currentRouteId = null;
     }
+    currentDstCluster = null;
+    currentSrcCluster = null;
+    currentRouteId = null;
     LOGGER.info("Handling resource offline {} finished", message.getResourceName());
   }
 }
