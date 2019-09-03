@@ -263,7 +263,8 @@ public class ConsumerFetcherThread extends ShutdownableThread {
       partitionDeleteMap.clear();
       partitionAddMap.clear();
       partitionResetOffsetMap.clear();
-      KafkaUReplicatorMetricsReporter.get().removeMetric("consumer." + getName());
+      KafkaUReplicatorMetricsReporter.get()
+          .removeKafkaMetrics("consumer." + getName(), kafkaConsumer.metrics());
     }
     LOGGER.info("[{}] Shutdown fetcher thread finished", getName());
   }

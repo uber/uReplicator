@@ -28,9 +28,9 @@ import java.util.Map;
 import java.util.Properties;
 import kafka.utils.ZkUtils;
 import org.I0Itec.zkclient.ZkClient;
-import org.apache.helix.HelixAdmin;
-import org.apache.helix.HelixManager;
+import org.apache.commons.lang.StringUtils;
 import org.apache.helix.manager.zk.ZKHelixAdmin;
+import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.builder.CustomModeISBuilder;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -43,10 +43,16 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testng.Assert;
 
 public class TestUtils {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(TestUtils.class);
+
   public static final String SRC_CLUSTER = "cluster1";
+  public static final String SRC_CLUSTER_2 = "cluster3";
   public static final String DST_CLUSTER = "cluster2";
   public static final String CONTROLLER_WORKER_HELIX_CLUSTER = String
       .format("controller-worker-%s-%s-0", SRC_CLUSTER, DST_CLUSTER);
@@ -209,7 +215,8 @@ public class TestUtils {
     return conf;
   }
 
-  public static ZKHelixAdmin initHelixClustersForWorkerTest(Properties properties, String route) throws InterruptedException {
+  public static ZKHelixAdmin initHelixClustersForWorkerTest(Properties properties, String route1,
+      String route2) throws InterruptedException {
     String zkRoot = properties.getProperty("zkServer");
     Thread.sleep(500);
     ZkClient zkClient = ZkUtils.createZkClient(ZkStarter.DEFAULT_ZK_STR, 1000, 1000);
@@ -218,9 +225,77 @@ public class TestUtils {
     ZKHelixAdmin helixAdmin = new ZKHelixAdmin(zkRoot);
     String deployment = properties.getProperty("federated.deployment.name");
     String managerHelixClusterName = WorkerUtils.getManagerWorkerHelixClusterName(deployment);
-    String controllerHelixClusterName = WorkerUtils.getControllerWorkerHelixClusterName(route);
+    String controllerHelixClusterName = WorkerUtils.getControllerWorkerHelixClusterName(route1);
+    if (StringUtils.isNotBlank(route2)) {
+      String controllerHelixClusterName2 = WorkerUtils.getControllerWorkerHelixClusterName(route2);
+      HelixSetupUtils.setup(controllerHelixClusterName2, zkRoot, "0");
+    }
+
     HelixSetupUtils.setup(managerHelixClusterName, zkRoot, "0");
     HelixSetupUtils.setup(controllerHelixClusterName, zkRoot, "0");
+
     return helixAdmin;
+  }
+
+  public static void updateRouteWithValidation(String managerHelixClusterName,
+      String routeForHelix,
+      String instanceId, ZKHelixAdmin helixAdmin, String state) throws InterruptedException {
+    updateRouteWithValidation(managerHelixClusterName, routeForHelix, instanceId,
+        helixAdmin, state, null);
+  }
+
+  public static void updateRouteWithValidation(String managerHelixClusterName,
+      String routeForHelix,
+      String instanceId, ZKHelixAdmin helixAdmin, String state, String expectedState)
+      throws InterruptedException {
+    if (StringUtils.isBlank(expectedState)) {
+      expectedState = state;
+    }
+    IdealState idealState = TestUtils
+        .buildManagerWorkerCustomIdealState(routeForHelix, Collections.singletonList(instanceId),
+            state);
+    helixAdmin.setResourceIdealState(managerHelixClusterName, routeForHelix, idealState);
+    Thread.sleep(1000);
+    ExternalView externalView = helixAdmin
+        .getResourceExternalView(managerHelixClusterName, routeForHelix);
+    Assert.assertNotNull(externalView);
+    Assert.assertNotNull(externalView.getStateMap("0"));
+    LOGGER.info("ExternalView: {}", externalView);
+    Assert.assertEquals(externalView.getStateMap("0").get("0"), expectedState);
+  }
+
+  public static void updateTopicWithValidation(String controllerHelixClusterName, String topicName,
+      List<Integer> partitions, List<String> instances, ZKHelixAdmin helixAdmin, String state
+  ) throws InterruptedException {
+    updateTopicWithValidation(controllerHelixClusterName, topicName, partitions, instances,
+        helixAdmin, state, null);
+  }
+
+  public static void updateTopicWithValidation(String controllerHelixClusterName, String topicName,
+      List<Integer> partitions, List<String> instances, ZKHelixAdmin helixAdmin, String state,
+      String expectedState)
+      throws InterruptedException {
+    Map<String, String> partitionInstanceMap = new HashMap<>();
+    if (StringUtils.isBlank(expectedState)) {
+      expectedState = state;
+    }
+    for (int index = 0; index < partitions.size(); index++) {
+      partitionInstanceMap
+          .put(String.valueOf(partitions.get(index)), instances.get(index % instances.size()));
+    }
+    IdealState idealState = TestUtils
+        .buildControllerWorkerCustomIdealState(topicName, partitionInstanceMap, state);
+    LOGGER.info("setResourceIdealState cluster : {}, topic: {} ", controllerHelixClusterName,
+        topicName);
+    helixAdmin.setResourceIdealState(controllerHelixClusterName, topicName, idealState);
+    Thread.sleep(1000);
+    ExternalView externalView = helixAdmin
+        .getResourceExternalView(controllerHelixClusterName, topicName);
+    for (Map.Entry<String, String> entry : partitionInstanceMap.entrySet()) {
+      Assert.assertNotNull(externalView);
+      Assert.assertNotNull(externalView.getStateMap(entry.getKey()));
+      Assert.assertEquals(externalView.getStateMap(entry.getKey()).get(entry.getValue()),
+          expectedState);
+    }
   }
 }
