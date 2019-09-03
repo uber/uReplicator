@@ -15,7 +15,6 @@
  */
 package com.uber.streaming.worker;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import java.io.IOException;
 import java.util.List;
@@ -93,7 +92,7 @@ public class WorkerInstance implements Worker {
   }
 
   /**
-   * Update task info. Method is reserved for update message workload, end offset.
+   * Updates task info. Method is reserved for update message workload, end offset.
    *
    * @param task task info
    */
@@ -102,7 +101,18 @@ public class WorkerInstance implements Worker {
     throw new NotImplementedException("updateTask is not implemented");
   }
 
+  /**
+   * Gets tasks that worker is currently working on
+   *
+   * @return list of tasks
+   */
+  @Override
+  public List<Task> getTasks() {
+    return fetcher.getTasks();
+  }
+
   public final static class Builder {
+
     private Fetcher fetcher;
     private Processor processor;
     private Dispatcher dispatcher;

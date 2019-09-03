@@ -17,6 +17,7 @@ package com.uber.streaming.worker;
 
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * internal interface for worker instance
@@ -53,4 +54,10 @@ interface Worker {
    * @param task
    */
   void updateTask(Task task);
+
+  /**
+   * Get tasks
+   * @return list of tasks
+   */
+  List<Task> getTasks();
 }
