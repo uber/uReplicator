@@ -894,12 +894,16 @@ public class ControllerHelixManager implements IHelixManager {
     try {
       String[] srcDst = routeName.split(SEPARATOR);
       String controllerWorkerHelixClusterName = "/controller-worker-" + srcDst[1] + "-" + srcDst[2] + "-" + routeId;
-      JSONObject json = JSON.parseObject(_zkClient.readData(controllerWorkerHelixClusterName + "/CONTROLLER/LEADER").toString());
+      String leaderPath = controllerWorkerHelixClusterName + "/CONTROLLER/LEADER";
+      if(!_zkClient.exists(leaderPath)){
+        return false;
+      }
+      JSONObject json = JSON.parseObject(_zkClient.readData(leaderPath).toString());
       String currLeader = String.valueOf(json.get("id"));
       LOGGER.info("current leader is {}, expect {}", currLeader, instance);
       return currLeader.equals(instance);
     } catch (Exception e) {
-      LOGGER.info("Got error when checking current leader", e);
+      LOGGER.error("Got error when checking current leader", e);
       return false;
     }
   }
