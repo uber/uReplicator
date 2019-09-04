@@ -19,6 +19,8 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+
+import com.uber.stream.kafka.mirrormaker.controller.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,22 +30,23 @@ import org.slf4j.LoggerFactory;
 public class FileBackUpHandler extends BackUpHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FileBackUpHandler.class);
-  private String localPath = "";
+
+  private final String localPath;
 
   public FileBackUpHandler(String localPath) {
     this.localPath = localPath;
+    FileUtils.mkdirQuietly(this.localPath);
   }
 
   public void writeToFile(String fileName, String data) throws Exception {
     BufferedWriter output = null;
     try {
-      File myfile = new File(localPath + "/" + fileName);
-
+      File myfile = new File(localPath, fileName);
       try {
         output = new BufferedWriter(new FileWriter(myfile));
         output.write(data);
         output.flush();
-        LOGGER.info("Successful backup of file " + fileName);
+        LOGGER.info("Successful backup of file :{}", fileName);
       } catch (IOException e) {
         LOGGER.error("Error writing backup to the file " + fileName, e);
         throw e;
