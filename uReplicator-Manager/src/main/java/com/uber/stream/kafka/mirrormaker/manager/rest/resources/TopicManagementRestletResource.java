@@ -185,7 +185,7 @@ public class TopicManagementRestletResource extends ServerResource {
       try {
         _helixMirrorMakerManager.addTopicToMirrorMaker(srcTopicPartitionInfo.getTopic(),
             srcTopicPartitionInfo.getPartition(), srcCluster, dstCluster, pipeline);
-        LOGGER.info("Successfully whitelist the topic {} f rom {} to {}", topicName, srcCluster, dstCluster);
+        LOGGER.info("Successfully whitelist the topic {} from {} to {}", topicName, srcCluster, dstCluster);
         return getResponseJsonStringRepresentation(Status.SUCCESS_OK,
             String.format("Successfully add new topic: %s from: %s to: %s",
                 srcTopicPartitionInfo.getTopic(), srcCluster, dstCluster));
