@@ -39,7 +39,7 @@ public class HttpClientUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(HttpClientUtils.class);
 
-  public static ResponseHandler<String> createResponseBodyExtractor() {
+  public static ResponseHandler<String> createResponseBodyExtractor(String path) {
     return new ResponseHandler<String>() {
       @Override
       public String handleResponse(final HttpResponse response) throws IOException {
@@ -49,7 +49,7 @@ public class HttpClientUtils {
           return entity != null ? EntityUtils.toString(entity) : null;
         } else {
           throw new ClientProtocolException(
-              "Unexpected response status while getting /topics : " + status);
+              "Unexpected response status while getting : " + path + " , status : " + status);
         }
       }
     };
@@ -79,7 +79,7 @@ public class HttpClientUtils {
     HttpGet httpGet = new HttpGet(uri);
     httpGet.setConfig(requestConfig);
 
-    return httpClient.execute(httpGet, HttpClientUtils.createResponseBodyExtractor());
+    return httpClient.execute(httpGet, HttpClientUtils.createResponseBodyExtractor(path));
   }
 
   public static int postData(final HttpClient httpClient,
