@@ -16,6 +16,7 @@
 package com.uber.stream.kafka.mirrormaker.common.utils;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.net.HostAndPort;
 import com.uber.stream.kafka.mirrormaker.common.Constants;
 import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
 import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
@@ -29,7 +30,6 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.helix.HelixAdmin;
 import org.apache.helix.HelixDataAccessor;
 import org.apache.helix.HelixManager;
@@ -67,7 +67,7 @@ public class HelixUtils {
   public static Map<String, String> getInstanceToHostnameMap(HelixManager helixManager) {
     List<String> instances = liveInstances(helixManager);
     HashMap<String, String> retVal = new HashMap<>(instances.size());
-    for (String instance: instances) {
+    for (String instance : instances) {
       InstanceConfig config = helixManager.getConfigAccessor().getInstanceConfig(
           helixManager.getClusterName(), instance);
       if (config != null) {
@@ -77,14 +77,14 @@ public class HelixUtils {
     return retVal;
   }
 
-  public static Map<String, Pair<String, Integer>> getInstanceToHostInfoMap(HelixManager helixManager) {
+  public static Map<String, HostAndPort> getInstanceToHostInfoMap(HelixManager helixManager) {
     List<String> instances = liveInstances(helixManager);
-    HashMap<String, Pair<String, Integer>> retVal = new HashMap<>(instances.size());
+    HashMap<String, HostAndPort> retVal = new HashMap<>(instances.size());
     for (String instance: instances) {
       InstanceConfig config = helixManager.getConfigAccessor().getInstanceConfig(
               helixManager.getClusterName(), instance);
       if (config != null) {
-        retVal.put(instance, Pair.of(config.getHostName(), Integer.valueOf(config.getPort())));
+        retVal.put(instance, HostAndPort.fromParts(config.getHostName(), Integer.valueOf(config.getPort())));
       }
     }
     return retVal;
