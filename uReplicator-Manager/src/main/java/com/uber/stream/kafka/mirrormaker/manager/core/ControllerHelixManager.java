@@ -113,7 +113,6 @@ public class ControllerHelixManager implements IHelixManager {
   private Map<String, Map<String, InstanceTopicPartitionHolder>> _topicToPipelineInstanceMap;
   private Map<String, PriorityQueue<InstanceTopicPartitionHolder>> _pipelineToInstanceMap;
   private List<String> _availableControllerList;
-  private Map<String, HostAndPort> _hostInfoMap;
 
   private long lastUpdateTimeMs = 0L;
 
@@ -142,7 +141,6 @@ public class ControllerHelixManager implements IHelixManager {
     _pipelineToInstanceMap = new ConcurrentHashMap<>();
     _availableControllerList = new ArrayList<>();
     _routeToCounterMap = new ConcurrentHashMap<>();
-    _hostInfoMap = new ConcurrentHashMap<>();
     _zkClient = new ZkClient(_helixZkURL, 30000, 30000, ZKStringSerializer$.MODULE$);
     registerMetrics();
 
@@ -601,16 +599,11 @@ public class ControllerHelixManager implements IHelixManager {
   }
 
   private HostAndPort getHostInfo(String instanceId) throws ControllerException {
-    HostAndPort hostAndPort = _hostInfoMap.get(instanceId);
-    if(hostAndPort != null){
-      return hostAndPort;
-    }
     Map<String, HostAndPort> instanceIdAndNameMap = HelixUtils.getInstanceToHostInfoMap(_helixManager);
     HostAndPort hostInfo =  instanceIdAndNameMap.containsKey(instanceId) ? instanceIdAndNameMap.get(instanceId) : null;
     if (hostInfo == null) {
       throw new ControllerException(String.format("Failed to find hostInfo for instanceId %s", instanceId));
     }
-    _hostInfoMap.putIfAbsent(instanceId, hostInfo);
     return hostInfo;
   }
 
