@@ -15,13 +15,12 @@
  */
 package com.uber.stream.kafka.mirrormaker.manager.core;
 
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
 import com.uber.stream.kafka.mirrormaker.manager.utils.ControllerUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testng.util.Strings;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -49,7 +48,7 @@ public class AdminHelper {
     public JSONObject getControllerAutobalancingStatus(String srcCluster, String dstCluster) {
         JSONObject retVal = new JSONObject();
         String pipelineFilter = "";
-        if (!Strings.isNullOrEmpty(srcCluster) && !Strings.isNullOrEmpty(dstCluster)) {
+        if (StringUtils.isNotEmpty(srcCluster) && StringUtils.isNotEmpty(dstCluster)) {
             pipelineFilter = ControllerUtils.getPipelineName(srcCluster, dstCluster);
         }
         Map<String, PriorityQueue<InstanceTopicPartitionHolder>> map = helixManager.getPipelineToInstanceMap();
@@ -93,7 +92,7 @@ public class AdminHelper {
     public Map<String, Boolean> setControllerAutobalancing(String srcCluster, String dstCluster, boolean enable) {
         HashMap<String, Boolean> retVal = new HashMap<>();
         String pipelineFilter = "";
-        if (!Strings.isNullOrEmpty(srcCluster) && !Strings.isNullOrEmpty(dstCluster)) {
+        if (StringUtils.isNotEmpty(srcCluster) && StringUtils.isNotEmpty(dstCluster)) {
             pipelineFilter = ControllerUtils.getPipelineName(srcCluster, dstCluster);
         }
         Map<String, PriorityQueue<InstanceTopicPartitionHolder>> map = helixManager.getPipelineToInstanceMap();
