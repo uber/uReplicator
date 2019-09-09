@@ -20,16 +20,7 @@ import com.codahale.metrics.Timer;
 import com.codahale.metrics.Timer.Context;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import kafka.utils.ZKStringSerializer$;
 import kafka.utils.ZkUtils;
 import org.I0Itec.zkclient.IZkChildListener;
@@ -38,6 +29,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.collection.JavaConversions;
 import scala.collection.Seq;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * KafkaBrokerTopicObserver provides topic information on this broker such as all topic names and
@@ -49,24 +47,29 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
       LoggerFactory.getLogger(KafkaBrokerTopicObserver.class);
 
   private static String KAFKA_TOPICS_PATH = "/brokers/topics";
+  private static String KAFKA_INNER_TOPIC = "__consumer_offsets";
+  private final static String METRIC_TEMPLATE = "KafkaBrokerTopicObserver.%s.%s";
+
   private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
 
   private final ZkClient _zkClient;
   private final ZkUtils _zkUtils;
   private final String _kakfaClusterName;
+  private final Object _lock = new Object();
+  //
   private final Map<String, TopicPartition> _topicPartitionInfoMap = new ConcurrentHashMap<>();
   private final Set<String> _nonExistingRequestedTopicCache = new ConcurrentSkipListSet<>();
+  private long _refreshTimeIntervalInMillis;
+  //
   private final AtomicLong _lastRefreshTime = new AtomicLong(0);
-  private final long _refreshTimeIntervalInMillis = TimeUnit.MINUTES.toMillis(5);
   private final Timer _refreshLatency = new Timer();
   private final Counter _kafkaTopicsCounter = new Counter();
-  private final static String METRIC_TEMPLATE = "KafkaBrokerTopicObserver.%s.%s";
-  private final Object _lock = new Object();
 
-  public KafkaBrokerTopicObserver(String brokerClusterName, String zkString) {
+  public KafkaBrokerTopicObserver(String brokerClusterName, String zkString, long refreshTimeIntervalInMillis) {
     LOGGER.info("Trying to init KafkaBrokerTopicObserver {} with ZK: {}", brokerClusterName,
         zkString);
     _kakfaClusterName = brokerClusterName;
+    _refreshTimeIntervalInMillis = refreshTimeIntervalInMillis;
     _zkClient = new ZkClient(zkString, 30000, 30000, ZKStringSerializer$.MODULE$);
     _zkClient.subscribeChildChanges(KAFKA_TOPICS_PATH, this);
     _zkUtils = ZkUtils.apply(_zkClient, false);
@@ -75,7 +78,19 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
       public void run() {
         tryToRefreshCache();
       }
-    }, 0, 60, TimeUnit.SECONDS);
+    }, 0, refreshTimeIntervalInMillis, TimeUnit.MILLISECONDS);
+    registerMetric();
+  }
+
+  private void registerMetric() {
+    try {
+      KafkaUReplicatorMetricsReporter.get().registerMetric(
+              String.format(METRIC_TEMPLATE, _kakfaClusterName, "refreshLatency"), _refreshLatency);
+      KafkaUReplicatorMetricsReporter.get().registerMetric(
+              String.format(METRIC_TEMPLATE, _kakfaClusterName, "kafkaTopicsCounter"), _kafkaTopicsCounter);
+    } catch (Exception e) {
+      LOGGER.error("Failed to register metrics to HelixKafkaMirrorMakerMetricsReporter " + e);
+    }
   }
 
   @Override
@@ -84,6 +99,7 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
     if (!tryToRefreshCache()) {
       synchronized (_lock) {
         LOGGER.info("starting to refresh topic list due to zk child change");
+        currentChilds.remove(KAFKA_INNER_TOPIC);
         Set<String> newAddedTopics = new HashSet<>(currentChilds);
         Set<String> currentServingTopics = getAllTopics();
         newAddedTopics.removeAll(currentServingTopics);
@@ -161,7 +177,8 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
 
     Set<String> servingTopics;
     try {
-      servingTopics = ImmutableSet.copyOf(_zkClient.getChildren(KAFKA_TOPICS_PATH));
+      servingTopics = new HashSet<>(_zkClient.getChildren(KAFKA_TOPICS_PATH));
+      servingTopics.remove(KAFKA_INNER_TOPIC);
     } catch (Exception e) {
       LOGGER.warn("Failed to get topics from kafka zk: {}", e);
       return;

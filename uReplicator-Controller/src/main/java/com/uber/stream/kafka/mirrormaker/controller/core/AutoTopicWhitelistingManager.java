@@ -16,6 +16,7 @@
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
 import com.codahale.metrics.Counter;
+import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import java.util.Arrays;

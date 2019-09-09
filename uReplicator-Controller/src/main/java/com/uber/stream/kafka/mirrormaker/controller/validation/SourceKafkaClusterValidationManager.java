@@ -17,9 +17,9 @@ package com.uber.stream.kafka.mirrormaker.controller.validation;
 
 import com.alibaba.fastjson.JSONObject;
 import com.codahale.metrics.Counter;
+import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
-import com.uber.stream.kafka.mirrormaker.controller.core.KafkaBrokerTopicObserver;
 import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import java.util.HashMap;
 import java.util.HashSet;

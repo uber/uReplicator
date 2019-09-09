@@ -44,7 +44,7 @@ public class TestKafkaBrokerTopicObserver {
 
     // Create Kafka topic
     KafkaStarterUtils.createTopic("testTopic0", KafkaStarterUtils.DEFAULT_ZK_STR);
-    kafkaBrokerTopicObserver = new KafkaBrokerTopicObserver("broker0", KafkaStarterUtils.DEFAULT_ZK_STR);
+    kafkaBrokerTopicObserver = new KafkaBrokerTopicObserver("broker0", KafkaStarterUtils.DEFAULT_ZK_STR, 1);
     try {
       Thread.sleep(1000);
     } catch (Exception e) {
