@@ -59,7 +59,6 @@ public class RestTestBase {
         "-managerPort", port,
         "-deployment", deplymentName,
         "-instanceId", "instance0",
-        "-controllerPort", CONTROLLER_PORT,
         "-c3Host", "testhost",
         "-c3Port", "8081",
         "-workloadRefreshPeriodInSeconds", "10",

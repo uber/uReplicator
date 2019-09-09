@@ -19,6 +19,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.codahale.metrics.Counter;
+import com.google.common.net.HostAndPort;
 import com.uber.stream.kafka.mirrormaker.common.configuration.IuReplicatorConf;
 import com.uber.stream.kafka.mirrormaker.common.core.IHelixManager;
 import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
@@ -40,7 +41,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import kafka.utils.ZKStringSerializer$;
 import org.I0Itec.zkclient.ZkClient;
-import org.apache.commons.lang.StringUtils;
 import org.apache.helix.*;
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.HelixConfigScope.ConfigScopeProperty;
@@ -81,7 +81,6 @@ public class ControllerHelixManager implements IHelixManager {
   private Map<String, TopicWorkload> _pipelineWorkloadMap;
 
   private final CloseableHttpClient _httpClient;
-  private final int _controllerPort;
   private final RequestConfig _requestConfig;
 
   private final int _workloadRefreshPeriodInSeconds;
@@ -150,7 +149,6 @@ public class ControllerHelixManager implements IHelixManager {
     limitedConnMgr.setDefaultMaxPerRoute(100);
     limitedConnMgr.setMaxTotal(100);
     _httpClient = HttpClients.createMinimal(limitedConnMgr);
-    _controllerPort = managerConf.getControllerPort();
     // requestConfig is immutable. These three timeouts are for
     // 1. getting connection from connection manager;
     // 2. establishing connection with server;
@@ -246,14 +244,16 @@ public class ControllerHelixManager implements IHelixManager {
   private void validateInstanceToTopicPartitionsMap(
       Map<String, Set<TopicPartition>> instanceToTopicPartitionsMap,
       Map<String, InstanceTopicPartitionHolder> instanceMap) {
-    LOGGER.info("\n\nFor controller instanceToTopicPartitionsMap:");
-
-
-    Map<String, String> instanceIdAndNameMap = HelixUtils.getInstanceToHostnameMap(_helixManager);
+    LOGGER.info("validateInstanceToTopicPartitionsMap()");
     int validateWrongCount = 0;
     int lowUrgencyValidateWrongCount = 0;
     for (String instanceId : instanceToTopicPartitionsMap.keySet()) {
-      String hostname = instanceIdAndNameMap.containsKey(instanceId) ? instanceIdAndNameMap.get(instanceId) : "";
+      HostAndPort hostInfo = null;
+      try {
+        hostInfo = getHostInfo(instanceId);
+      } catch (ControllerException ex){
+          LOGGER.error("Validate WRONG: Trying to get hostInfo for InstanceId: {} failed ", instanceId);
+      }
       Set<TopicPartition> topicPartitions = instanceToTopicPartitionsMap.get(instanceId);
       Set<TopicPartition> routeSet = new HashSet<>();
       // TODO: one instance suppose to have only one route
@@ -273,8 +273,8 @@ public class ControllerHelixManager implements IHelixManager {
           }
         }
         validateWrongCount++;
-        LOGGER.error("Validate WRONG: Incorrect route found for Hostname: {}, InstanceId: {}, route: {}, pipelines: {}, #workers: {}, worker: {}",
-            hostname, instanceId, routeSet, topicRouteSet, instanceMap.get(instanceId).getWorkerSet().size(), instanceMap.get(instanceId).getWorkerSet());
+        LOGGER.error("Validate WRONG: Incorrect route found for hostInfo: {}, InstanceId: {}, route: {}, pipelines: {}, #workers: {}, worker: {}",
+                hostInfo, instanceId, routeSet, topicRouteSet, instanceMap.get(instanceId).getWorkerSet().size(), instanceMap.get(instanceId).getWorkerSet());
       } else {
         int partitionCount = 0;
         Set<TopicPartition> mismatchTopicPartition = new HashSet<>();
@@ -289,15 +289,15 @@ public class ControllerHelixManager implements IHelixManager {
             }
           }
         }
-        if (mismatchTopicPartition.isEmpty() && StringUtils.isNotEmpty(hostname)) {
-          LOGGER.info("Validate OK: Hostname: {}, InstanceId: {}, route: {}, #topics: {}, #partitions: {}, #workers: {}, worker: {}", hostname, instanceId, routeSet,
+        if (mismatchTopicPartition.isEmpty() && hostInfo != null) {
+          LOGGER.info("Validate OK: hostInfo: {}, InstanceId: {}, route: {}, #topics: {}, #partitions: {}, #workers: {}, worker: {}", hostInfo, instanceId, routeSet,
               topicPartitions.size() - 1, partitionCount, instanceMap.get(instanceId).getWorkerSet().size(), instanceMap.get(instanceId).getWorkerSet());
 
           try {
             // try find topic mismatch between manager and controller
             String topicResult = HttpClientUtils.getData(_httpClient, _requestConfig,
-                hostname, _controllerPort, "/topics");
-            LOGGER.debug("Get topics from {}: {}", hostname, topicResult);
+                    hostInfo.getHost(), hostInfo.getPort(), "/topics");
+            LOGGER.debug("Get topics from {}: {}", hostInfo, topicResult);
             String rawTopicNames = topicResult;
             if (!rawTopicNames.equals("No topic is added in MirrorMaker Controller!")) {
               rawTopicNames = topicResult.substring(25, topicResult.length() - 1);
@@ -321,23 +321,23 @@ public class ControllerHelixManager implements IHelixManager {
 
             if (topicOnlyInManager.size() > 1 || (topicOnlyInManager.size() == 1 && !topicOnlyInManager.iterator().next().startsWith(SEPARATOR))) {
               validateWrongCount++;
-              LOGGER.error("Validate WRONG: Hostname: {}, InstanceId: {}, route: {}, topic only in manager: {}", hostname, instanceId, routeSet, topicOnlyInManager);
+              LOGGER.error("Validate WRONG: hostInfo: {}, InstanceId: {}, route: {}, topic only in manager: {}", hostInfo, instanceId, routeSet, topicOnlyInManager);
             }
 
             if (!controllerTopics.isEmpty()) {
               validateWrongCount++;
-              LOGGER.error("Validate WRONG: Hostname: {}, InstanceId: {}, route: {}, topic only in controller: {}", hostname, instanceId, routeSet, controllerTopics);
+              LOGGER.error("Validate WRONG: hostInfo: {}, InstanceId: {}, route: {}, topic only in controller: {}", hostInfo, instanceId, routeSet, controllerTopics);
             }
           } catch (Exception e) {
             validateWrongCount++;
-            LOGGER.error("Validate WRONG: Get topics error when connecting to {} for route {}", hostname, routeSet, e);
+            LOGGER.error("Validate WRONG: Get topics error when connecting to {} for route {}", hostInfo, routeSet, e);
           }
 
           try {
             // try find worker mismatch between manager and controller
             String instanceResult = HttpClientUtils.getData(_httpClient, _requestConfig,
-                hostname, _controllerPort, "/instances");
-            LOGGER.debug("Get workers from {}: {}", hostname, instanceResult);
+                    hostInfo.getHost(), hostInfo.getPort(), "/instances");
+            LOGGER.debug("Get workers from {}: {}", hostInfo, instanceResult);
             JSONObject instanceResultJson = JSON.parseObject(instanceResult);
             JSONArray allInstances = instanceResultJson.getJSONArray("allInstances");
             Set<String> controllerWorkers = new HashSet<>();
@@ -357,30 +357,27 @@ public class ControllerHelixManager implements IHelixManager {
 
             if (!workerOnlyInManager.isEmpty()) {
               lowUrgencyValidateWrongCount++;
-              LOGGER.warn("Validate WRONG: Hostname: {}, InstanceId: {}, route: {}, worker only in manager: {}", hostname, instanceId, routeSet, workerOnlyInManager);
+              LOGGER.warn("Validate WRONG: hostInfo: {}, InstanceId: {}, route: {}, worker only in manager: {}", hostInfo, instanceId, routeSet, workerOnlyInManager);
             }
 
             if (!controllerWorkers.isEmpty()) {
               validateWrongCount++;
-              LOGGER.error("Validate WRONG: Hostname: {}, InstanceId: {}, route: {}, worker only in controller: {}", hostname, instanceId, routeSet, controllerWorkers);
+              LOGGER.error("Validate WRONG: hostInfo: {}, InstanceId: {}, route: {}, worker only in controller: {}", hostInfo, instanceId, routeSet, controllerWorkers);
             }
           } catch (Exception e) {
             validateWrongCount++;
-            LOGGER.error("Validate WRONG: Get workers error when connecting to {} for route {}", hostname, routeSet, e);
+            LOGGER.error("Validate WRONG: Get workers error when connecting to {} for route {}", hostInfo, routeSet, e);
           }
 
-        } else if (StringUtils.isEmpty(hostname)) {
+        } else if (hostInfo == null) {
           validateWrongCount++;
-          LOGGER.error("Validate WRONG: Trying to get hostname for InstanceId: {} failed ", instanceId);
         } else {
           validateWrongCount++;
-          LOGGER.error("Validate WRONG: mismatch route found for Hostname: {}, InstanceId: {}, route: {}, mismatch: {}, #workers: {}, worker: {}",
-              hostname, instanceId, routeSet, mismatchTopicPartition, instanceMap.get(instanceId).getWorkerSet().size(), instanceMap.get(instanceId).getWorkerSet());
+          LOGGER.error("Validate WRONG: mismatch route found for hostInfo: {}, InstanceId: {}, route: {}, mismatch: {}, #workers: {}, worker: {}",
+                  hostInfo, instanceId, routeSet, mismatchTopicPartition, instanceMap.get(instanceId).getWorkerSet().size(), instanceMap.get(instanceId).getWorkerSet());
         }
       }
     }
-    LOGGER.info("\n\n");
-
     Map<String, Set<String>> topicToRouteMap = new HashMap<>();
     for (String instanceId : instanceToTopicPartitionsMap.keySet()) {
       Set<TopicPartition> topicPartitions = instanceToTopicPartitionsMap.get(instanceId);
@@ -421,7 +418,7 @@ public class ControllerHelixManager implements IHelixManager {
       _nonParityTopic.inc(topicToRouteMap.size() - _nonParityTopic.getCount());
     }
 
-    LOGGER.info("\n\nFor controller _pipelineToInstanceMap:");
+    LOGGER.info("For controller _pipelineToInstanceMap:");
     Map<String, Set<String>> workerMap = new HashMap<>();
     for (String pipeline : _pipelineToInstanceMap.keySet()) {
       PriorityQueue<InstanceTopicPartitionHolder> itphSet = _pipelineToInstanceMap.get(pipeline);
@@ -601,13 +598,13 @@ public class ControllerHelixManager implements IHelixManager {
     return result;
   }
 
-  private String getHostname(String instanceId) throws ControllerException {
-    Map<String, String> instanceIdAndNameMap = HelixUtils.getInstanceToHostnameMap(_helixManager);
-    String hostname =  instanceIdAndNameMap.containsKey(instanceId) ? instanceIdAndNameMap.get(instanceId) : "";
-    if (StringUtils.isEmpty(hostname)) {
-      throw new ControllerException(String.format("Failed to find hostname for instanceId %s", instanceId));
+  private HostAndPort getHostInfo(String instanceId) throws ControllerException {
+    Map<String, HostAndPort> instanceIdAndNameMap = HelixUtils.getInstanceToHostInfoMap(_helixManager);
+    HostAndPort hostInfo =  instanceIdAndNameMap.containsKey(instanceId) ? instanceIdAndNameMap.get(instanceId) : null;
+    if (hostInfo == null) {
+      throw new ControllerException(String.format("Failed to find hostInfo for instanceId %s", instanceId));
     }
-    return hostname;
+    return hostInfo;
   }
 
   public JSONObject getTopicInfoFromController(String topicName) {
@@ -616,9 +613,9 @@ public class ControllerHelixManager implements IHelixManager {
     for (String pipeline : pipelineToInstanceMap.keySet()) {
       InstanceTopicPartitionHolder itph = pipelineToInstanceMap.get(pipeline);
       try {
-        String hostname = getHostname(itph.getInstanceName());
+        HostAndPort hostInfo = getHostInfo(itph.getInstanceName());
         String topicResponseBody = HttpClientUtils.getData(_httpClient, _requestConfig,
-            hostname, _controllerPort, "/topics/" + topicName);
+                hostInfo.getHost(), hostInfo.getPort(), "/topics/" + topicName);
         JSONObject topicsInfoInJson = JSON.parseObject(topicResponseBody);
         resultJson.put(itph.getRouteString(), topicsInfoInJson);
       } catch (Exception e) {
@@ -720,10 +717,11 @@ public class ControllerHelixManager implements IHelixManager {
             if (tpOrRoute.getTopic().startsWith(SEPARATOR)) {
               String pipeline = tpOrRoute.getTopic();
               int routeId = tpOrRoute.getPartition();
-
-              // TODO: check if _availableControllerList is empty
-              String newInstanceName = _availableControllerList.get(0);
-              _availableControllerList.remove(0);
+              if(_availableControllerList.isEmpty()){
+                LOGGER.warn("no available controller to process the route {}@{}", pipeline, routeId);
+                break;
+              }
+              String newInstanceName = _availableControllerList.remove(0);
               LOGGER.info("Controller {} in route {}@{} will be replaced by {}", instance, pipeline, routeId,
                   newInstanceName);
               InstanceTopicPartitionHolder newInstance = new InstanceTopicPartitionHolder(newInstanceName, tpOrRoute);
@@ -880,12 +878,17 @@ public class ControllerHelixManager implements IHelixManager {
     try {
       String[] srcDst = routeName.split(SEPARATOR);
       String controllerWorkerHelixClusterName = "/controller-worker-" + srcDst[1] + "-" + srcDst[2] + "-" + routeId;
-      JSONObject json = JSON.parseObject(_zkClient.readData(controllerWorkerHelixClusterName + "/CONTROLLER/LEADER").toString());
+      String leaderPath = controllerWorkerHelixClusterName + "/CONTROLLER/LEADER";
+      if(!_zkClient.exists(leaderPath)){
+        LOGGER.info("leaderPath : {} not existed", leaderPath);
+        return false;
+      }
+      JSONObject json = JSON.parseObject(_zkClient.readData(leaderPath).toString());
       String currLeader = String.valueOf(json.get("id"));
       LOGGER.info("current leader is {}, expect {}", currLeader, instance);
       return currLeader.equals(instance);
     } catch (Exception e) {
-      LOGGER.info("Got error when checking current leader", e);
+      LOGGER.error("Got error when checking current leader", e);
       return false;
     }
   }
@@ -970,9 +973,9 @@ public class ControllerHelixManager implements IHelixManager {
         }
 
         try {
-          String hostname = getHostname(itph.getInstanceName());
+          HostAndPort hostInfo = getHostInfo(itph.getInstanceName());
           String result = HttpClientUtils.getData(_httpClient, _requestConfig,
-              hostname, _controllerPort, "/admin/workloadinfo");
+                  hostInfo.getHost(), hostInfo.getPort(), "/admin/workloadinfo");
           ControllerWorkloadInfo workloadInfo = JSONObject.parseObject(result, ControllerWorkloadInfo.class);
           TopicWorkload totalWorkload = workloadInfo.getTopicWorkload();
 
@@ -1002,7 +1005,7 @@ public class ControllerHelixManager implements IHelixManager {
             }
             newTotalNumWorker += actualExpectedNumWorkers;
           } else {
-            LOGGER.warn("Get workload on {} for route: {} returns 0. No change on number of workers", hostname, itph.getRouteString());
+            LOGGER.warn("Get workload on {} for route: {} returns 0. No change on number of workers", hostInfo, itph.getRouteString());
             newTotalNumWorker += itph.getWorkerSet().size();
             rescaleFailedCount ++;
           }
@@ -1213,9 +1216,9 @@ public class ControllerHelixManager implements IHelixManager {
       JSONObject entity = new JSONObject();
       entity.put("topic", topicName);
       entity.put("numPartitions", newNumPartitions);
-      String hostname = getHostname(itph.getInstanceName());
+      HostAndPort hostInfo = getHostInfo(itph.getInstanceName());
       int respCode = HttpClientUtils.putData(_httpClient, _requestConfig,
-          hostname, _controllerPort, "/topics", entity);
+              hostInfo.getHost(), hostInfo.getPort(), "/topics", entity);
       if (respCode != 200) {
         LOGGER.info("Got error from controller {} when expanding topic {} with respCode {}",
             itph.getInstanceName(), topicName, respCode);
@@ -1351,8 +1354,9 @@ public class ControllerHelixManager implements IHelixManager {
 
   public boolean getControllerAutobalancingStatus(String controllerInstance) throws ControllerException {
     try {
+      HostAndPort hostInfo = getHostInfo(controllerInstance);
       String result = HttpClientUtils
-          .getData(_httpClient, _requestConfig, controllerInstance, _controllerPort,
+          .getData(_httpClient, _requestConfig, hostInfo.getHost(), hostInfo.getPort(),
               "/admin/" + "autobalancing_status");
       return result.equalsIgnoreCase("enabled");
     } catch (IOException | URISyntaxException ex) {
@@ -1376,8 +1380,9 @@ public class ControllerHelixManager implements IHelixManager {
     JSONObject entity = new JSONObject();
     String cmd = enable ? "enable_autobalancing" : "disable_autobalancing";
     try {
+      HostAndPort hostInfo = getHostInfo(controllerInstance);
       String result = HttpClientUtils
-          .getData(_httpClient, _requestConfig, controllerInstance, _controllerPort,
+          .getData(_httpClient, _requestConfig, hostInfo.getHost(), hostInfo.getPort(),
               "/admin/" + cmd);
     } catch (IOException | URISyntaxException ex) {
       String msg = String.format("Got error from controller %s when trying to do %s",

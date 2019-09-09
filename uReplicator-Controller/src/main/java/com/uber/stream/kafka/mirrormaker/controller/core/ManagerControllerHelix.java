@@ -43,6 +43,7 @@ public class ManagerControllerHelix {
   private final String _helixZkURL;
   private final String _instanceId;
   private final String _hostname;
+  private final String _port;
   private HelixManager _helixZkManager;
 
   private final Object _handlerLock = new Object();
@@ -58,6 +59,7 @@ public class ManagerControllerHelix {
     _helixZkURL = HelixUtils.getAbsoluteZkPathForHelix(_controllerConf.getZkStr());
     _instanceId = controllerConf.getInstanceId();
     _hostname = controllerConf.getHostname();
+    _port = controllerConf.getControllerPort();
   }
 
   public synchronized void start() {
@@ -72,6 +74,7 @@ public class ManagerControllerHelix {
       _helixZkManager.connect();
       InstanceConfig instanceConfig = new InstanceConfig(_instanceId);
       instanceConfig.setHostName(_hostname);
+      instanceConfig.setPort(_port);
       instanceConfig.setInstanceEnabled(true);
       _helixZkManager.getConfigAccessor().setInstanceConfig(_helixClusterName, _instanceId,
           instanceConfig);
