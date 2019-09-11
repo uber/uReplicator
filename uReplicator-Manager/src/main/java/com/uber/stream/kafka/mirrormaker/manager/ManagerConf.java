@@ -47,13 +47,21 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
   private static final String ENV = "manager.environment";
   private static final String MANAGER_INSTANCE_ID = "manager.instance.id";
 
-  private static final String CONTROLLER_PORT = "controller.port";
-
-  private static final String GRAPHITE_HOST = "controller.graphite.host";
-  private static final String GRAPHITE_PORT = "controller.graphite.port";
+  private static final String GRAPHITE_HOST = "manager.graphite.host";
+  private static final String GRAPHITE_PORT = "manager.graphite.port";
 
   private static final String METRICS_PREFIX = "controller.metrics.prefix";
   private static final String DEFAULT_METRICS_PREFIX = "ureplicator2-manager";
+
+  //graphiteReportFreqSec
+  private static final String GRAPHITE_REPORT_FREQ_SEC = "manager.graphite.report.freq.sec";
+  private static final long DEFAULT_GRAPHITE_REPORT_FREQ_SEC = 60;
+  //enabledJmxReporting
+  private static final String ENABLE_JMX_REPORT= "manager.enable.jmx.report";
+  private static final Boolean DEFAULT_ENABLE_JMX_REPORT = true;
+  //enabledGraphiteReporting
+  private static final String ENABLE_GRAPHITE_REPORT = "manager.enable.graphite.report";
+  private static final Boolean DEFAULT_ENABLE_GRAPHITE_REPORT = true;
 
   private static final String C3_HOST = "manager.c3.host";
   private static final String DEFAULT_C3_HOST = "localhost";
@@ -125,10 +133,6 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
     setProperty(MANAGER_INSTANCE_ID, instanceId);
   }
 
-  public void setControllerPort(String port) {
-    setProperty(CONTROLLER_PORT, Integer.valueOf(port));
-  }
-
   public void setEnvironment(String environment) {
     setProperty(ENV, environment);
   }
@@ -143,6 +147,18 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
 
   public void setMetricsPrefix(String metricsPrefix) {
     setProperty(METRICS_PREFIX, metricsPrefix);
+  }
+
+  public void setGraphiteReportFreqSec(String graphiteReportFreqSec){
+    setProperty(GRAPHITE_REPORT_FREQ_SEC, Long.valueOf(graphiteReportFreqSec));
+  }
+
+  public void setEnableJmxReport(String enableJmxReport){
+    setProperty(ENABLE_JMX_REPORT, Boolean.valueOf(enableJmxReport));
+  }
+
+  public void setEnableGraphiteReport(String enableGraphiteReport){
+    setProperty(ENABLE_GRAPHITE_REPORT, Boolean.valueOf(enableGraphiteReport));
   }
 
   public void setC3Host(String C3Host) {
@@ -224,10 +240,6 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
     return (String) getProperty(MANAGER_INSTANCE_ID);
   }
 
-  public Integer getControllerPort() {
-    return (Integer) getProperty(CONTROLLER_PORT);
-  }
-
   public String getEnvironment() {
     return (String) getProperty(ENV);
   }
@@ -247,6 +259,30 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
       return (String) getProperty(METRICS_PREFIX);
     } else {
       return DEFAULT_METRICS_PREFIX;
+    }
+  }
+
+  public Long getGraphiteReportFreqSec() {
+    if (containsKey(GRAPHITE_REPORT_FREQ_SEC)) {
+      return (Long) getProperty(GRAPHITE_REPORT_FREQ_SEC);
+    } else {
+      return DEFAULT_GRAPHITE_REPORT_FREQ_SEC;
+    }
+  }
+
+  public Boolean getEnableJmxReport() {
+    if (containsKey(ENABLE_JMX_REPORT)) {
+      return (Boolean) getProperty(ENABLE_JMX_REPORT);
+    } else {
+      return DEFAULT_ENABLE_JMX_REPORT;
+    }
+  }
+
+  public Boolean getEnableGraphiteReport() {
+    if (containsKey(ENABLE_GRAPHITE_REPORT)) {
+      return (Boolean) getProperty(ENABLE_GRAPHITE_REPORT);
+    } else {
+      return DEFAULT_ENABLE_GRAPHITE_REPORT;
     }
   }
 
@@ -378,6 +414,9 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
         .addOption("graphiteHost", true, "GraphiteHost")
         .addOption("graphitePort", true, "GraphitePort")
         .addOption("metricsPrefix", true, "MetricsPrefix")
+        .addOption("graphiteReportFreqSec", true, "Graphite report frequency in seconds")
+        .addOption("enableJmxReport", true, "enable jmx report")
+        .addOption("enableGraphiteReport", true, "enable graphite report")
         .addOption("c3Host", true, "Chaperone3 Host")
         .addOption("c3Port", true, "Chaperone3 Port")
         .addOption("clusterPrefixLength", true, "Cluster prefix length to extract route name from cluster name")
@@ -455,6 +494,22 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
       managerConf.setMetricsPrefix(cmd.getOptionValue("metricsPrefix"));
     } else {
       managerConf.setMetricsPrefix(DEFAULT_METRICS_PREFIX);
+    }
+    //
+    if (cmd.hasOption("graphiteReportFreqSec")) {
+      managerConf.setGraphiteReportFreqSec(cmd.getOptionValue("graphiteReportFreqSec"));
+    } else{
+      managerConf.setGraphiteReportFreqSec(Long.toString(DEFAULT_GRAPHITE_REPORT_FREQ_SEC));
+    }
+    if (cmd.hasOption("enableJmxReport")) {
+      managerConf.setEnableJmxReport(cmd.getOptionValue("enableJmxReport"));
+    } else {
+      managerConf.setEnableJmxReport(String.valueOf(DEFAULT_ENABLE_JMX_REPORT));
+    }
+    if (cmd.hasOption("enableGraphiteReport")) {
+      managerConf.setEnableGraphiteReport(cmd.getOptionValue("enableGraphiteReport"));
+    } else {
+      managerConf.setEnableGraphiteReport(String.valueOf(DEFAULT_ENABLE_GRAPHITE_REPORT));
     }
     if (cmd.hasOption("c3Host")) {
       managerConf.setC3Host(cmd.getOptionValue("c3Host"));

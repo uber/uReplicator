@@ -15,15 +15,16 @@
  */
 package com.uber.stream.ureplicator.worker;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.configuration.PropertiesConfiguration;
-import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Iterator;
 
 public class WorkerConf extends PropertiesConfiguration {
 
@@ -73,6 +74,16 @@ public class WorkerConf extends PropertiesConfiguration {
   // DEFAULT_GRAPHITE_PORT = 0 means don't create graphite reporter
   private static final int DEFAULT_GRAPHITE_PORT = 0;
 
+  //graphiteReportFreqSec
+  private static final String GRAPHITE_REPORT_FREQ_SEC = "graphite_report_freq_sec";
+  private static final long DEFAULT_GRAPHITE_REPORT_FREQ_SEC = 60;
+  //enabledJmxReporting
+  private static final String ENABLE_JMX_REPORT = "enable_jmx_report";
+  private static final Boolean DEFAULT_ENABLE_JMX_REPORT = true;
+  //enabledGraphiteReporting
+  private static final String ENABLE_GRAPHITE_REPORT = "enable_graphite_report";
+  private static final Boolean DEFAULT_ENABLE_GRAPHITE_REPORT = true;
+
   private static final String WORKER_PORT = "worker_port";
 
   public WorkerConf() {
@@ -92,6 +103,17 @@ public class WorkerConf extends PropertiesConfiguration {
     if (containsKey(key)) {
       try {
         return Integer.parseInt((String) getProperty(key));
+      } catch (Exception e) {
+        LOGGER.warn("Parse {} to integer failed.", getProperty(key), e);
+      }
+    }
+    return defaultVal;
+  }
+
+  private Long getProperty(String key, Long defaultVal) {
+    if (containsKey(key)) {
+      try {
+        return Long.parseLong((String) getProperty(key));
       } catch (Exception e) {
         LOGGER.warn("Parse {} to integer failed.", getProperty(key), e);
       }
@@ -178,6 +200,18 @@ public class WorkerConf extends PropertiesConfiguration {
     return getProperty(GRAPHITE_PORT, DEFAULT_GRAPHITE_PORT);
   }
 
+  public Long getGraphiteReportFreqSec() {
+    return getProperty(GRAPHITE_REPORT_FREQ_SEC, DEFAULT_GRAPHITE_REPORT_FREQ_SEC);
+  }
+
+  public Boolean getEnableJmxReport() {
+    return getProperty(ENABLE_JMX_REPORT, DEFAULT_ENABLE_JMX_REPORT);
+  }
+
+  public Boolean getEnableGraphiteReport() {
+    return getProperty(ENABLE_GRAPHITE_REPORT, DEFAULT_ENABLE_GRAPHITE_REPORT);
+  }
+
   public Integer getWorkerPort() {
     return getProperty(WORKER_PORT, 0);
   }
@@ -251,6 +285,20 @@ public class WorkerConf extends PropertiesConfiguration {
   public void setWorkerPort(int workerPort) {
     setProperty(WORKER_PORT, workerPort);
   }
+
+  @Override
+  public String toString() {
+    StringBuilder sb = new StringBuilder();
+    Iterator keysIter = getKeys();
+    sb.append("\n{\n");
+    while (keysIter.hasNext()) {
+       Object key = keysIter.next();
+       Object value = getProperty(key + "");
+       sb.append("\t" + key + " : " + value + "\n");
+    }
+    sb.append("}\n");
+    return sb.toString();
+  }
   
   public static Options constructWorkerOptions() {
     final Options workerOptions = new Options();
@@ -277,6 +325,11 @@ public class WorkerConf extends PropertiesConfiguration {
             "metrics prefix")
         .addOption(GRAPHITE_HOST, true, "graphite host")
         .addOption(GRAPHITE_PORT, true, "graphite port")
+        //
+        .addOption(GRAPHITE_REPORT_FREQ_SEC, true, "graphite report frequency in seconds")
+        .addOption(ENABLE_JMX_REPORT, true, "enable jmx report")
+        .addOption(ENABLE_GRAPHITE_REPORT, true, "enable graphite report")
+        //
         .addOption(WORKER_PORT, true, "worker port");
     return workerOptions;
   }
