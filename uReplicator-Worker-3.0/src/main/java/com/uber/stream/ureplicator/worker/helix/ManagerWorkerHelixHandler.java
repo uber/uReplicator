@@ -184,7 +184,7 @@ public class ManagerWorkerHelixHandler implements HelixHandler {
     LOGGER.info("Join controller-worker cluster {}", helixCluster);
 
     controllerWorkerHelixHandler = new ControllerWorkerHelixHandler(helixProps,
-        helixCluster, srcCluster, dstCluster, routeId, federatedDeploymentName, workerInstance);
+        helixCluster, instanceId, srcCluster, dstCluster, routeId, federatedDeploymentName, workerInstance);
     try {
       controllerWorkerHelixHandler.start();
     } catch (Exception e) {
