@@ -270,6 +270,7 @@ public class ControllerInstance {
 
     LOGGER.info("stopping resource manager");
     _helixMirrorMakerManager.stop();
+    KafkaUReplicatorMetricsReporter.stop();
 
     return success;
   }

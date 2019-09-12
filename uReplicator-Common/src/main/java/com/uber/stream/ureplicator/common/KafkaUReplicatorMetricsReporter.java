@@ -42,6 +42,10 @@ public class KafkaUReplicatorMetricsReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(KafkaUReplicatorMetricsReporter.class);
   private static KafkaUReplicatorMetricsReporter METRICS_REPORTER_INSTANCE = null;
 
+  // prefix for non federated mode :
+  // stats.##dc##.counter.##component##.hostname
+  // prefix for federated mode:
+  // stats.##dc##.counter.##component##.##federated deployment##.##route id##.hostname
   private static volatile boolean DID_INIT = false;
   private static final String KAFKA_UREPLICATOR_METRICS_REPORTER_PREFIX_FORMAT = "stats.%s.counter.%s.%s";
 
@@ -136,7 +140,7 @@ public class KafkaUReplicatorMetricsReporter {
    * reset metrics report
    */
   public static synchronized void stop() {
-    if(DID_INIT == false){
+    if(!isStart()){
       return;
     }
     try {

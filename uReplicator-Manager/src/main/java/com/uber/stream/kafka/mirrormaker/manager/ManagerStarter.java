@@ -92,6 +92,7 @@ public class ManagerStarter {
       _component.stop();
       LOGGER.info("Stopping helix manager");
       _controllerHelixManager.stop();
+      KafkaUReplicatorMetricsReporter.stop();
     } catch (final Exception e) {
       LOGGER.error("Caught exception", e);
     }
