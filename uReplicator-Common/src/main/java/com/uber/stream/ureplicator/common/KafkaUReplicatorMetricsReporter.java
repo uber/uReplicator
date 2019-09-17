@@ -69,7 +69,7 @@ public class KafkaUReplicatorMetricsReporter {
     _registry = new MetricRegistry();
 
     // Init jmx reporter
-    if (conf.getEnabledGraphiteReport()) {
+    if (conf.getEnabledJmxReport()) {
       _jmxReporter = JmxReporter.forRegistry(this._registry).build();
       _jmxReporter.start();
     } else {
@@ -77,7 +77,7 @@ public class KafkaUReplicatorMetricsReporter {
     }
 
     // Init graphite reporter
-    if (conf.getEnabledJmxReport()) {
+    if (conf.getEnabledGraphiteReport()) {
       Graphite graphite = getGraphite(conf);
       if (graphite == null) {
         _graphiteReporter = null;
@@ -91,7 +91,7 @@ public class KafkaUReplicatorMetricsReporter {
             GraphiteReporter.forRegistry(_registry).prefixedWith(_reporterMetricPrefix)
                 .convertRatesTo(TimeUnit.SECONDS)
                 .convertDurationsTo(TimeUnit.MILLISECONDS).filter(MetricFilter.ALL).build(graphite);
-        _graphiteReporter.start(conf.getGraphiteReportFreqSec(), TimeUnit.SECONDS);
+        _graphiteReporter.start(conf.getGraphiteReportFreqInSec(), TimeUnit.SECONDS);
       }
     } else {
       _graphiteReporter = null;
@@ -203,11 +203,11 @@ public class KafkaUReplicatorMetricsReporter {
     _registry.remove(metricName);
   }
 
-  private static void checkState(){
+  private static void checkState() {
     Preconditions.checkState(DID_INIT, "Not initialized yet");
   }
 
-  public static boolean isStart(){
-    return DID_INIT == true;
+  public static boolean isStart() {
+    return DID_INIT;
   }
 }

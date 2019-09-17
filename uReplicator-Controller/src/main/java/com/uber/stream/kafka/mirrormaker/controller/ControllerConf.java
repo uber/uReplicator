@@ -968,7 +968,6 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
     } else {
       controllerConf.setMetricsPrefix(DEFAULT_METRICS_PREFIX);
     }
-    //
     if (cmd.hasOption("graphiteReportFreqSec")) {
       controllerConf.setGraphiteReportFreqSec(cmd.getOptionValue("graphiteReportFreqSec"));
     } else{

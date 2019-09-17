@@ -50,8 +50,8 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(KafkaBrokerTopicObserver.class);
 
-  private static String KAFKA_TOPICS_PATH = "/brokers/topics";
-  private static Set<String> KAFKA_INNER_TOPICS = ImmutableSet.of("__consumer_offsets", "__transaction_state");
+  private final static String KAFKA_TOPICS_PATH = "/brokers/topics";
+  private final static Set<String> KAFKA_INNER_TOPICS = ImmutableSet.of("__consumer_offsets", "__transaction_state");
   private final static String METRIC_TEMPLATE = "KafkaBrokerTopicObserver.%s.%s";
 
   private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);

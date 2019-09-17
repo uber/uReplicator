@@ -26,7 +26,7 @@ public class MetricsReporterConf {
   private final Integer graphitePort;
   private final Boolean enabledGraphiteReport;
   private final Boolean enabledJmxReport;
-  private final Long graphiteReportFreqSec;
+  private final Long graphiteReportFreqInSec;
 
   /**
    * Main constructor
@@ -52,20 +52,20 @@ public class MetricsReporterConf {
    * @param hostname hostname for instance
    * @param graphiteHost graphite host
    * @param graphitePort graphite port
-   * @param graphiteReportFreqSec graphite report frequency in seconds
+   * @param graphiteReportFreqInSec graphite report frequency in seconds
    * @param enabledJmxReport enable jmx report
    * @param enabledGraphiteReport enable graphite report
    */
 
   public MetricsReporterConf(String region, List<String> additionalInfo,
-                             String hostname, String graphiteHost, Integer graphitePort, Long graphiteReportFreqSec,
+                             String hostname, String graphiteHost, Integer graphitePort, Long graphiteReportFreqInSec,
                              Boolean enabledJmxReport, Boolean enabledGraphiteReport) {
     this.region = region;
     this.additionalInfo = additionalInfo;
     this.hostname = hostname;
     this.graphiteHost = graphiteHost;
     this.graphitePort = graphitePort;
-    this.graphiteReportFreqSec = graphiteReportFreqSec;
+    this.graphiteReportFreqInSec = graphiteReportFreqInSec;
     this.enabledJmxReport = enabledJmxReport;
     this.enabledGraphiteReport = enabledGraphiteReport;
   }
@@ -98,7 +98,7 @@ public class MetricsReporterConf {
     return enabledJmxReport;
   }
 
-  public Long getGraphiteReportFreqSec() {
-    return graphiteReportFreqSec;
+  public Long getGraphiteReportFreqInSec() {
+    return graphiteReportFreqInSec;
   }
 }
