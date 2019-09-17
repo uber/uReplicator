@@ -106,6 +106,25 @@ public class HttpClientUtils {
     return httpClient.execute(httpPost, HttpClientUtils.createResponseCodeExtractor());
   }
 
+  public static String postData(final HttpClient httpClient,
+                             final RequestConfig requestConfig,
+                             final String host,
+                             final int port,
+                             final String path)
+          throws IOException, URISyntaxException {
+    URI uri = new URIBuilder()
+            .setScheme("http")
+            .setHost(host)
+            .setPort(port)
+            .setPath(path)
+            .build();
+
+    HttpPost httpPost = new HttpPost(uri);
+    httpPost.setConfig(requestConfig);
+
+    return httpClient.execute(httpPost, HttpClientUtils.createResponseBodyExtractor(path));
+  }
+
   public static int putData(final HttpClient httpClient,
       final RequestConfig requestConfig,
       final String host,

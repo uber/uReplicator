@@ -63,18 +63,13 @@ public class AdminHelper {
                         status.put("pipeline", pipeline);
                         status.put("hostname", instanceName); //TODO: merge with instanceID change
                         try {
-                            if (helixManager.getControllerAutobalancingStatus(instanceName)) {
-                                status.put("autoBalance", true);
-                                retVal.put(instanceName, status);
-                            } else {
-                                LOGGER.warn("Failed to notify {} but we will continue");
-                                status.put("autoBalance", false);
-                                retVal.put(instanceName, status);
-                            }
+                            boolean autoBalance = helixManager.getControllerAutobalancingStatus(instanceName);
+                            status.put("autoBalance", autoBalance);
                         } catch (ControllerException ex) {
-                            LOGGER.warn("Failed to notify {} but we will continue");
-                            retVal.put(instanceName, false);
+                            LOGGER.error("failed to get controller autobalancing status of instanceName {}, error {}", instanceName, ex);
+                            status.put("autoBalance", false);
                         }
+                        retVal.put(instanceName, status);
                     }
                 }
             }
@@ -104,14 +99,13 @@ public class AdminHelper {
                     for (InstanceTopicPartitionHolder route : routes) {
                         String instanceName = route.getInstanceName();
                         try {
-                            if (helixManager.notifyControllerAutobalancing(instanceName, enable)) {
-                                retVal.put(instanceName, true);
-                            } else {
-                                LOGGER.warn("Failed to notify {} but we will continue");
-                                retVal.put(instanceName, false);
+                            boolean notified = helixManager.notifyControllerAutobalancing(instanceName, enable);
+                            retVal.put(instanceName, notified);
+                            if(!notified) {
+                                LOGGER.warn("Failed to notify instanceName : {}, enable : {} , but we will continue", instanceName, enable);
                             }
                         } catch (ControllerException ex) {
-                            LOGGER.warn("Failed to notify {} but we will continue");
+                            LOGGER.warn("Failed to notify instanceName : {}, enable : {} , but we will continue", instanceName, enable);
                             retVal.put(instanceName, false);
                         }
                     }
