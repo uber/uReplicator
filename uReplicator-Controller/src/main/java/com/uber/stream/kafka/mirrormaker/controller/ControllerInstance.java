@@ -96,7 +96,7 @@ public class ControllerInstance {
       }
       MetricsReporterConf metricsReporterConf = new MetricsReporterConf(dcEnv[0],
           additionalInfo, hostName, conf.getGraphiteHost(),
-          conf.getGraphitePort(), conf.getGraphiteReportFreqSec(), conf.getEnableJmxReport(), conf.getEnableGraphiteReport());
+          conf.getGraphitePort(), conf.getGraphiteReportFreqInSec(), conf.getEnableJmxReport(), conf.getEnableGraphiteReport());
       KafkaUReplicatorMetricsReporter.init(metricsReporterConf);
     } else {
       LOGGER.warn("Skip initializeMetricsReporter because of environment not found in controllerConf");

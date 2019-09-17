@@ -326,7 +326,7 @@ public class WorkerInstance {
     }
     MetricsReporterConf metricsReporterConf = new MetricsReporterConf(workerConf.getRegion(),
         additionalInfo, workerConf.getHostname(), workerConf.getGraphiteHost(),
-        workerConf.getGraphitePort(), workerConf.getGraphiteReportFreqSec(),
+        workerConf.getGraphitePort(), workerConf.getGraphiteReportFreqInSec(),
             workerConf.getEnableJmxReport(), workerConf.getEnableGraphiteReport());
     KafkaUReplicatorMetricsReporter.init(metricsReporterConf);
   }

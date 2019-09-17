@@ -54,8 +54,8 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
   private static final String DEFAULT_METRICS_PREFIX = "kafka-mirror-maker-controller";
 
   //graphiteReportFreqSec
-  private static final String GRAPHITE_REPORT_FREQ_SEC = "controller.graphite.report.freq.sec";
-  private static final long DEFAULT_GRAPHITE_REPORT_FREQ_SEC = 60;
+  private static final String GRAPHITE_REPORT_FREQ_IN_SEC = "controller.graphite.report.freq.in.sec";
+  private static final long DEFAULT_GRAPHITE_REPORT_FREQ_IN_SEC = 60;
   //enabledJmxReporting
   private static final String ENABLE_JMX_REPORT = "controller.enable.jmx.report";
   private static final Boolean DEFAULT_ENABLE_JMX_REPORT = true;
@@ -238,8 +238,8 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
     setProperty(METRICS_PREFIX, metricsPrefix);
   }
 
-  public void setGraphiteReportFreqSec(String graphiteReportFreqSec){
-    setProperty(GRAPHITE_REPORT_FREQ_SEC, Long.valueOf(graphiteReportFreqSec));
+  public void setGraphiteReportFreqInSec(String graphiteReportFreqInSec){
+    setProperty(GRAPHITE_REPORT_FREQ_IN_SEC, Long.valueOf(graphiteReportFreqInSec));
   }
 
   public void setEnableJmxReport(String enableJmxReport){
@@ -497,11 +497,11 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
     }
   }
 
-  public Long getGraphiteReportFreqSec() {
-    if (containsKey(GRAPHITE_REPORT_FREQ_SEC)) {
-      return (Long) getProperty(GRAPHITE_REPORT_FREQ_SEC);
+  public Long getGraphiteReportFreqInSec() {
+    if (containsKey(GRAPHITE_REPORT_FREQ_IN_SEC)) {
+      return (Long) getProperty(GRAPHITE_REPORT_FREQ_IN_SEC);
     } else {
-      return DEFAULT_GRAPHITE_REPORT_FREQ_SEC;
+      return DEFAULT_GRAPHITE_REPORT_FREQ_IN_SEC;
     }
   }
 
@@ -840,7 +840,7 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
         .addOption("graphiteHost", true, "Graphite Host")
         .addOption("graphitePort", true, "Graphite Port")
         .addOption("metricsPrefix", true, "Metrics prefix")
-        .addOption("graphiteReportFreqSec", true, "Graphite report frequency in seconds")
+        .addOption("graphiteReportFreqInSec", true, "Graphite report frequency in seconds")
         .addOption("enableJmxReport", true, "enable jmx report")
         .addOption("enableGraphiteReport", true, "enable graphite report")
         .addOption("c3Host", true, "Chaperone3 Host")
@@ -968,10 +968,10 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
     } else {
       controllerConf.setMetricsPrefix(DEFAULT_METRICS_PREFIX);
     }
-    if (cmd.hasOption("graphiteReportFreqSec")) {
-      controllerConf.setGraphiteReportFreqSec(cmd.getOptionValue("graphiteReportFreqSec"));
+    if (cmd.hasOption("graphiteReportFreqInSec")) {
+      controllerConf.setGraphiteReportFreqInSec(cmd.getOptionValue("graphiteReportFreqInSec"));
     } else{
-      controllerConf.setGraphiteReportFreqSec(Long.toString(DEFAULT_GRAPHITE_REPORT_FREQ_SEC));
+      controllerConf.setGraphiteReportFreqInSec(Long.toString(DEFAULT_GRAPHITE_REPORT_FREQ_IN_SEC));
     }
     if (cmd.hasOption("enableJmxReport")) {
       controllerConf.setEnableJmxReport(cmd.getOptionValue("enableJmxReport"));

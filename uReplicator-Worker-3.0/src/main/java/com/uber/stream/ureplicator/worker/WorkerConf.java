@@ -75,8 +75,8 @@ public class WorkerConf extends PropertiesConfiguration {
   private static final int DEFAULT_GRAPHITE_PORT = 0;
 
   //graphiteReportFreqSec
-  private static final String GRAPHITE_REPORT_FREQ_SEC = "graphite_report_freq_sec";
-  private static final long DEFAULT_GRAPHITE_REPORT_FREQ_SEC = 60;
+  private static final String GRAPHITE_REPORT_FREQ_IN_SEC = "graphite_report_freq_in_sec";
+  private static final long DEFAULT_GRAPHITE_REPORT_FREQ_IN_SEC = 60;
   //enabledJmxReporting
   private static final String ENABLE_JMX_REPORT = "enable_jmx_report";
   private static final Boolean DEFAULT_ENABLE_JMX_REPORT = true;
@@ -200,8 +200,8 @@ public class WorkerConf extends PropertiesConfiguration {
     return getProperty(GRAPHITE_PORT, DEFAULT_GRAPHITE_PORT);
   }
 
-  public Long getGraphiteReportFreqSec() {
-    return getProperty(GRAPHITE_REPORT_FREQ_SEC, DEFAULT_GRAPHITE_REPORT_FREQ_SEC);
+  public Long getGraphiteReportFreqInSec() {
+    return getProperty(GRAPHITE_REPORT_FREQ_IN_SEC, DEFAULT_GRAPHITE_REPORT_FREQ_IN_SEC);
   }
 
   public Boolean getEnableJmxReport() {
@@ -326,7 +326,7 @@ public class WorkerConf extends PropertiesConfiguration {
         .addOption(GRAPHITE_HOST, true, "graphite host")
         .addOption(GRAPHITE_PORT, true, "graphite port")
         //
-        .addOption(GRAPHITE_REPORT_FREQ_SEC, true, "graphite report frequency in seconds")
+        .addOption(GRAPHITE_REPORT_FREQ_IN_SEC, true, "graphite report frequency in seconds")
         .addOption(ENABLE_JMX_REPORT, true, "enable jmx report")
         .addOption(ENABLE_GRAPHITE_REPORT, true, "enable graphite report")
         //

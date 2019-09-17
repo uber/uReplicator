@@ -54,8 +54,8 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
   private static final String DEFAULT_METRICS_PREFIX = "ureplicator2-manager";
 
   //graphiteReportFreqSec
-  private static final String GRAPHITE_REPORT_FREQ_SEC = "manager.graphite.report.freq.sec";
-  private static final long DEFAULT_GRAPHITE_REPORT_FREQ_SEC = 60;
+  private static final String GRAPHITE_REPORT_FREQ_IN_SEC = "manager.graphite.report.freq.in.sec";
+  private static final long DEFAULT_GRAPHITE_REPORT_FREQ_IN_SEC = 60;
   //enabledJmxReporting
   private static final String ENABLE_JMX_REPORT= "manager.enable.jmx.report";
   private static final Boolean DEFAULT_ENABLE_JMX_REPORT = true;
@@ -149,8 +149,8 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
     setProperty(METRICS_PREFIX, metricsPrefix);
   }
 
-  public void setGraphiteReportFreqSec(String graphiteReportFreqSec){
-    setProperty(GRAPHITE_REPORT_FREQ_SEC, Long.valueOf(graphiteReportFreqSec));
+  public void setGraphiteReportFreqInSec(String graphiteReportFreqInSec){
+    setProperty(GRAPHITE_REPORT_FREQ_IN_SEC, Long.valueOf(graphiteReportFreqInSec));
   }
 
   public void setEnableJmxReport(String enableJmxReport){
@@ -262,11 +262,11 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
     }
   }
 
-  public Long getGraphiteReportFreqSec() {
-    if (containsKey(GRAPHITE_REPORT_FREQ_SEC)) {
-      return (Long) getProperty(GRAPHITE_REPORT_FREQ_SEC);
+  public Long getGraphiteReportFreqInSec() {
+    if (containsKey(GRAPHITE_REPORT_FREQ_IN_SEC)) {
+      return (Long) getProperty(GRAPHITE_REPORT_FREQ_IN_SEC);
     } else {
-      return DEFAULT_GRAPHITE_REPORT_FREQ_SEC;
+      return DEFAULT_GRAPHITE_REPORT_FREQ_IN_SEC;
     }
   }
 
@@ -414,7 +414,7 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
         .addOption("graphiteHost", true, "GraphiteHost")
         .addOption("graphitePort", true, "GraphitePort")
         .addOption("metricsPrefix", true, "MetricsPrefix")
-        .addOption("graphiteReportFreqSec", true, "Graphite report frequency in seconds")
+        .addOption("graphiteReportFreqInSec", true, "Graphite report frequency in seconds")
         .addOption("enableJmxReport", true, "enable jmx report")
         .addOption("enableGraphiteReport", true, "enable graphite report")
         .addOption("c3Host", true, "Chaperone3 Host")
@@ -495,11 +495,10 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
     } else {
       managerConf.setMetricsPrefix(DEFAULT_METRICS_PREFIX);
     }
-    //
-    if (cmd.hasOption("graphiteReportFreqSec")) {
-      managerConf.setGraphiteReportFreqSec(cmd.getOptionValue("graphiteReportFreqSec"));
+    if (cmd.hasOption("graphiteReportFreqInSec")) {
+      managerConf.setGraphiteReportFreqInSec(cmd.getOptionValue("graphiteReportFreqInSec"));
     } else{
-      managerConf.setGraphiteReportFreqSec(Long.toString(DEFAULT_GRAPHITE_REPORT_FREQ_SEC));
+      managerConf.setGraphiteReportFreqInSec(Long.toString(DEFAULT_GRAPHITE_REPORT_FREQ_IN_SEC));
     }
     if (cmd.hasOption("enableJmxReport")) {
       managerConf.setEnableJmxReport(cmd.getOptionValue("enableJmxReport"));

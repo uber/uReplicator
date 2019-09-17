@@ -144,7 +144,7 @@ public class ManagerStarter {
       additionalInfo.add(dcEnv[1]);
       MetricsReporterConf metricsReporterConf = new MetricsReporterConf(dcEnv[0],
           additionalInfo, conf.getManagerInstanceId(), conf.getGraphiteHost(),
-          conf.getGraphitePort(), conf.getGraphiteReportFreqSec(),
+          conf.getGraphitePort(), conf.getGraphiteReportFreqInSec(),
               conf.getEnableJmxReport(), conf.getEnableGraphiteReport());
       KafkaUReplicatorMetricsReporter.init(metricsReporterConf);
     } else {
