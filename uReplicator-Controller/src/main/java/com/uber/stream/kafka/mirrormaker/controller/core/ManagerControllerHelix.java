@@ -63,7 +63,7 @@ public class ManagerControllerHelix {
     _port = controllerConf.getControllerPort();
   }
 
-  public synchronized void start() {
+  public synchronized void start() throws Exception{
     LOGGER.info("Trying to start ManagerControllerHelix!");
     _helixZkManager = HelixManagerFactory.getZKHelixManager(_helixClusterName,
         _instanceId,
@@ -81,6 +81,7 @@ public class ManagerControllerHelix {
           instanceConfig);
     } catch (Exception e) {
       LOGGER.error("Failed to start ManagerControllerHelix " + _helixClusterName, e);
+      throw e;
     }
   }
 

@@ -53,6 +53,7 @@ public class TestSourceKafkaClusterValidationManager {
     }
     kafkaBrokerTopicObserver =
         new KafkaBrokerTopicObserver("broker0", KafkaStarterUtils.DEFAULT_ZK_STR, 1);
+    kafkaBrokerTopicObserver.start();
 
     ControllerConf controllerConf = new ControllerConf();
     controllerConf.setControllerPort("9090");

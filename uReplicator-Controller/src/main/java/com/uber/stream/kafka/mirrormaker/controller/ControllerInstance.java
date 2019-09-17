@@ -228,18 +228,6 @@ public class ControllerInstance {
    */
   public boolean stop() {
     boolean success = true;
-    started = false;
-    LOGGER.info("stopping broker topic observers");
-    for (String key : _kafkaBrokerTopicObserverMap.keySet()) {
-      try {
-        KafkaBrokerTopicObserver observer = _kafkaBrokerTopicObserverMap.get(key);
-        observer.stop();
-      } catch (Exception e) {
-        LOGGER.error("Failed to stop KafkaBrokerTopicObserver " + key, e);
-        success = false;
-      }
-    }
-
     LOGGER.info("stopping api component");
     try {
       _component.stop();

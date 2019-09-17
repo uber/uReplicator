@@ -59,6 +59,7 @@ public class RestTestBase {
 
     kafkaBrokerTopicObserver =
         new KafkaBrokerTopicObserver("broker0", KafkaStarterUtils.DEFAULT_ZK_STR, 1);
+    kafkaBrokerTopicObserver.start();
 
     ZK_CLIENT = new ZkClient(ZkStarter.DEFAULT_ZK_STR);
     ZK_CLIENT.deleteRecursive("/" + HELIX_CLUSTER_NAME);

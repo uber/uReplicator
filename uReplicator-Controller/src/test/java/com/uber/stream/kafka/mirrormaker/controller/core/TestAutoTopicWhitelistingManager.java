@@ -52,6 +52,7 @@ public class TestAutoTopicWhitelistingManager {
     }
     kafkaBrokerTopicObserver =
         new KafkaBrokerTopicObserver("broker0", KafkaStarterUtils.DEFAULT_ZK_STR, 1);
+    kafkaBrokerTopicObserver.start();
 
     ControllerConf controllerConf = ControllerTestUtils.initControllerConf("TestAutoTopicWhitelistingManager");
 

@@ -108,7 +108,8 @@ public class AutoTopicWhitelistingManager {
 
   public void start() {
     registerMetrics();
-
+    _srcKafkaTopicObserver.start();
+    _destKafkaTopicObserver.start();
     LOGGER.info("Creating zkpath={} for blacklisted topics", _blacklistedTopicsZPath);
     maybeCreateZkPath(_blacklistedTopicsZPath);
 
@@ -141,6 +142,8 @@ public class AutoTopicWhitelistingManager {
   }
 
   public void stop() {
+    _destKafkaTopicObserver.stop();
+    _srcKafkaTopicObserver.stop();
     _executorService.shutdown();
     try {
       _executorService.awaitTermination(STOP_TIMEOUT_SEC, TimeUnit.SECONDS);

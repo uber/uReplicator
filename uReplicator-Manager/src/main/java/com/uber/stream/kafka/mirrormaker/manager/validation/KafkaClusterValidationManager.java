@@ -50,7 +50,10 @@ public class KafkaClusterValidationManager {
   }
 
   public void start() {
-    LOGGER.info("Register KafkaBrokerTopicObserver");
+    LOGGER.info("Start KafkaBrokerTopicObserver");
+    for (KafkaBrokerTopicObserver observer : _clusterToObserverMap.values()) {
+      observer.start();
+    }
   }
 
   public void stop() {

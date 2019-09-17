@@ -87,6 +87,15 @@ public class KafkaBrokerTopicObserver implements IZkChildListener {
     registerMetric();
   }
 
+  public void start(){
+    this.executorService.scheduleAtFixedRate(new Runnable() {
+      @Override
+      public void run() {
+        tryToRefreshCache();
+      }
+    }, 0, _refreshTimeIntervalInMillis, TimeUnit.MILLISECONDS);
+  }
+
   private void registerMetric() {
     try {
       KafkaUReplicatorMetricsReporter.get().registerMetric(

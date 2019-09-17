@@ -73,7 +73,7 @@ public class SourceKafkaClusterValidationManager {
 
   public void start() {
     registerMetrics();
-
+    _sourceKafkaTopicObserver.start();
     // Report current status every one minutes.
     LOGGER.info("Trying to schedule a source kafka cluster validation job at rate {} {} !",
         _timeValue, _timeUnit.toString());
@@ -104,6 +104,7 @@ public class SourceKafkaClusterValidationManager {
   }
 
   public void stop() {
+    _sourceKafkaTopicObserver.stop();
     _executorService.shutdown();
     try {
       _executorService.awaitTermination(STOP_TIMEOUT_SEC, TimeUnit.SECONDS);
