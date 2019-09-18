@@ -152,6 +152,11 @@ public class WorkerInstance {
   }
 
   public ProducerManager createProducerManager() {
+    Properties cloned = (Properties)producerProps.clone();
+    String clientIdPrefix = producerProps
+        .getProperty(ProducerConfig.CLIENT_ID_CONFIG, "ureplicator");
+
+    cloned.setProperty(ProducerConfig.CLIENT_ID_CONFIG, clientIdPrefix + "-" + srcCluster);
     return new ProducerManager(consumerStream, producerProps,
         workerConf.getAbortOnSendFailure(), messageTransformer, checkpointManager, this);
   }
