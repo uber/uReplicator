@@ -228,6 +228,7 @@ public class ControllerInstance {
    */
   public boolean stop() {
     boolean success = true;
+    started = false;
     LOGGER.info("stopping api component");
     try {
       _component.stop();
