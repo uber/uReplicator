@@ -69,7 +69,7 @@ public class KafkaUReplicatorMetricsReporter {
     _registry = new MetricRegistry();
 
     // Init jmx reporter
-    if (conf.getEnabledJmxReport()) {
+    if (conf.getEnableJmxReport()) {
       _jmxReporter = JmxReporter.forRegistry(this._registry).build();
       _jmxReporter.start();
     } else {
@@ -77,7 +77,7 @@ public class KafkaUReplicatorMetricsReporter {
     }
 
     // Init graphite reporter
-    if (conf.getEnabledGraphiteReport()) {
+    if (conf.getEnableGraphiteReport()) {
       Graphite graphite = getGraphite(conf);
       if (graphite == null) {
         _graphiteReporter = null;

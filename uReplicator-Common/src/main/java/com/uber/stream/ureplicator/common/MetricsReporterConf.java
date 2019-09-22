@@ -24,8 +24,8 @@ public class MetricsReporterConf {
   private final String hostname;
   private final String graphiteHost;
   private final Integer graphitePort;
-  private final Boolean enabledGraphiteReport;
-  private final Boolean enabledJmxReport;
+  private final Boolean enableGraphiteReport;
+  private final Boolean enableJmxReport;
   private final Long graphiteReportFreqInSec;
 
   /**
@@ -53,21 +53,21 @@ public class MetricsReporterConf {
    * @param graphiteHost graphite host
    * @param graphitePort graphite port
    * @param graphiteReportFreqInSec graphite report frequency in seconds
-   * @param enabledJmxReport enable jmx report
-   * @param enabledGraphiteReport enable graphite report
+   * @param enableJmxReport enable jmx report
+   * @param enableGraphiteReport enable graphite report
    */
 
   public MetricsReporterConf(String region, List<String> additionalInfo,
                              String hostname, String graphiteHost, Integer graphitePort, Long graphiteReportFreqInSec,
-                             Boolean enabledJmxReport, Boolean enabledGraphiteReport) {
+                             Boolean enableJmxReport, Boolean enableGraphiteReport) {
     this.region = region;
     this.additionalInfo = additionalInfo;
     this.hostname = hostname;
     this.graphiteHost = graphiteHost;
     this.graphitePort = graphitePort;
     this.graphiteReportFreqInSec = graphiteReportFreqInSec;
-    this.enabledJmxReport = enabledJmxReport;
-    this.enabledGraphiteReport = enabledGraphiteReport;
+    this.enableJmxReport = enableJmxReport;
+    this.enableGraphiteReport = enableGraphiteReport;
   }
 
   public String getRegion() {
@@ -90,12 +90,12 @@ public class MetricsReporterConf {
     return graphitePort;
   }
 
-  public Boolean getEnabledGraphiteReport() {
-    return enabledGraphiteReport;
+  public Boolean getEnableGraphiteReport() {
+    return enableGraphiteReport;
   }
 
-  public Boolean getEnabledJmxReport() {
-    return enabledJmxReport;
+  public Boolean getEnableJmxReport() {
+    return enableJmxReport;
   }
 
   public Long getGraphiteReportFreqInSec() {
