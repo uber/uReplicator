@@ -16,11 +16,11 @@
 package com.uber.stream.kafka.mirrormaker.controller.validation;
 
 import com.alibaba.fastjson.JSONObject;
+import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.common.utils.KafkaStarterUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.ZkStarter;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
-import com.uber.stream.kafka.mirrormaker.controller.core.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.controller.utils.ControllerTestUtils;
 import com.uber.stream.kafka.mirrormaker.controller.utils.FakeInstance;
 
@@ -63,6 +63,7 @@ public class TestValidationManager {
     }
     kafkaBrokerTopicObserver =
         new KafkaBrokerTopicObserver("broker0", KafkaStarterUtils.DEFAULT_ZK_STR, 1);
+    kafkaBrokerTopicObserver.start();
 
     ControllerConf controllerConf = new ControllerConf();
     controllerConf.setControllerPort("9090");

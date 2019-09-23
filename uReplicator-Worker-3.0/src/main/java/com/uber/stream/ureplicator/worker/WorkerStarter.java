@@ -47,7 +47,7 @@ public class WorkerStarter {
   }
 
   public WorkerStarter(WorkerConf conf, WorkerInstance workerInstance) {
-    LOGGER.info("Trying to init WorkerStater with config");
+    LOGGER.info("Trying to init WorkerStater with config : {}", conf);
     workerConf = conf;
     this.workerInstance = workerInstance;
   }

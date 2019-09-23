@@ -17,7 +17,7 @@
   </description>
 
   <properties>
-    <scala.version>2.11.8</scala.version>
+    <scala.version>2.11.12</scala.version>
     <jopt-simple.version>5.0.2</jopt-simple.version>
     <scalatest.version>2.2.5</scalatest.version>
   </properties>

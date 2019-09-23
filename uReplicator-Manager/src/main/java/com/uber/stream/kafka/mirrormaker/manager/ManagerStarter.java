@@ -92,6 +92,7 @@ public class ManagerStarter {
       _component.stop();
       LOGGER.info("Stopping helix manager");
       _controllerHelixManager.stop();
+      KafkaUReplicatorMetricsReporter.stop();
     } catch (final Exception e) {
       LOGGER.error("Caught exception", e);
     }
@@ -143,7 +144,8 @@ public class ManagerStarter {
       additionalInfo.add(dcEnv[1]);
       MetricsReporterConf metricsReporterConf = new MetricsReporterConf(dcEnv[0],
           additionalInfo, conf.getManagerInstanceId(), conf.getGraphiteHost(),
-          conf.getGraphitePort());
+          conf.getGraphitePort(), conf.getGraphiteReportFreqInSec(),
+              conf.getEnableJmxReport(), conf.getEnableGraphiteReport());
       KafkaUReplicatorMetricsReporter.init(metricsReporterConf);
     } else {
       LOGGER.warn("Skip initializeMetricsReporter because of environment not found in managerConf");

@@ -17,9 +17,9 @@ package com.uber.stream.kafka.mirrormaker.controller.validation;
 
 import com.alibaba.fastjson.JSONObject;
 import com.codahale.metrics.Counter;
+import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
-import com.uber.stream.kafka.mirrormaker.controller.core.KafkaBrokerTopicObserver;
 import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -73,7 +73,7 @@ public class SourceKafkaClusterValidationManager {
 
   public void start() {
     registerMetrics();
-
+    _sourceKafkaTopicObserver.start();
     // Report current status every one minutes.
     LOGGER.info("Trying to schedule a source kafka cluster validation job at rate {} {} !",
         _timeValue, _timeUnit.toString());
@@ -104,6 +104,7 @@ public class SourceKafkaClusterValidationManager {
   }
 
   public void stop() {
+    _sourceKafkaTopicObserver.stop();
     _executorService.shutdown();
     try {
       _executorService.awaitTermination(STOP_TIMEOUT_SEC, TimeUnit.SECONDS);

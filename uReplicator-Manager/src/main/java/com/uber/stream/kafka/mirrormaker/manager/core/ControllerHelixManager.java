@@ -1376,21 +1376,20 @@ public class ControllerHelixManager implements IHelixManager {
    * @return
    */
   public boolean notifyControllerAutobalancing(String controllerInstance, boolean enable) throws ControllerException {
-    //TODO: need to convert to hostname after code change
-    JSONObject entity = new JSONObject();
     String cmd = enable ? "enable_autobalancing" : "disable_autobalancing";
     try {
       HostAndPort hostInfo = getHostInfo(controllerInstance);
       String result = HttpClientUtils
-          .getData(_httpClient, _requestConfig, hostInfo.getHost(), hostInfo.getPort(),
+          .postData(_httpClient, _requestConfig, hostInfo.getHost(), hostInfo.getPort(),
               "/admin/" + cmd);
+      JSONObject resultJson = JSON.parseObject(result);
+      return resultJson.getBoolean("auto_balancing") == enable;
     } catch (IOException | URISyntaxException ex) {
       String msg = String.format("Got error from controller %s when trying to do %s",
           controllerInstance, cmd);
       LOGGER.error(msg, ex);
       throw new ControllerException(msg, ex);
     }
-    return true;
   }
 
   public Map<String, Integer> getRouteWorkerOverride() {

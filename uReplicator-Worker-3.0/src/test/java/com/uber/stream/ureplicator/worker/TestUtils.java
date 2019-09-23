@@ -145,7 +145,7 @@ public class TestUtils {
       while (iterator.hasNext()) {
         result.add(iterator.next());
       }
-      Thread.sleep(500);
+      Thread.sleep(300);
     }
     consumer.close();
     return result;

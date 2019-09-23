@@ -15,11 +15,11 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.rest;
 
+import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.common.utils.KafkaStarterUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.ZkStarter;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerStarter;
-import com.uber.stream.kafka.mirrormaker.controller.core.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.controller.utils.ControllerTestUtils;
 import com.uber.stream.kafka.mirrormaker.controller.utils.FakeInstance;
 import kafka.server.KafkaServerStartable;
@@ -59,6 +59,7 @@ public class RestTestBase {
 
     kafkaBrokerTopicObserver =
         new KafkaBrokerTopicObserver("broker0", KafkaStarterUtils.DEFAULT_ZK_STR, 1);
+    kafkaBrokerTopicObserver.start();
 
     ZK_CLIENT = new ZkClient(ZkStarter.DEFAULT_ZK_STR);
     ZK_CLIENT.deleteRecursive("/" + HELIX_CLUSTER_NAME);

@@ -22,6 +22,8 @@ import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import com.uber.stream.ureplicator.worker.Constants;
 import com.uber.stream.ureplicator.worker.WorkerInstance;
 import java.util.Properties;
+
+import org.apache.commons.lang3.StringUtils;
 import org.apache.helix.HelixManager;
 import org.apache.helix.HelixManagerFactory;
 import org.apache.helix.InstanceType;
@@ -51,11 +53,11 @@ public class ControllerWorkerHelixHandler implements HelixHandler {
   public ControllerWorkerHelixHandler(Properties helixProps,
       String helixClusterName,
       WorkerInstance workerInstance) {
-    this(helixProps, helixClusterName, null, null, null, null, workerInstance);
+    this(helixProps, helixClusterName, null, null, null, null, null, workerInstance);
   }
 
   public ControllerWorkerHelixHandler(Properties helixProps,
-      String helixClusterName, String srcCluster, String dstCluster, String routeId,
+      String helixClusterName, String instanceId, String srcCluster, String dstCluster, String routeId,
       String federatedDeploymentName,
       WorkerInstance workerInstance) {
     this.srcCluster = srcCluster;
@@ -65,8 +67,8 @@ public class ControllerWorkerHelixHandler implements HelixHandler {
     this.federatedDeploymentName = federatedDeploymentName;
     this.helixZkURL = helixProps
         .getProperty(Constants.HELIX_ZK_SERVER, Constants.DEFAULT_HELIX_ZK_SERVER);
-    this.workerInstanceId = helixProps
-        .getProperty(Constants.HELIX_INSTANCE_ID, "uReplicator-" + System.currentTimeMillis());
+    this.workerInstanceId = StringUtils.isEmpty(instanceId) ? helixProps
+        .getProperty(Constants.HELIX_INSTANCE_ID, "uReplicator-" + System.currentTimeMillis()) : instanceId;
     this.workerInstance = workerInstance;
   }
 

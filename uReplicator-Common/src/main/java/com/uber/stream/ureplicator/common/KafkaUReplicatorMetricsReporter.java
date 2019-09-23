@@ -22,13 +22,14 @@ import com.codahale.metrics.graphite.GraphiteReporter;
 import com.codahale.metrics.jmx.JmxReporter;
 import com.google.common.base.Preconditions;
 import com.google.common.io.Closeables;
-import java.net.InetSocketAddress;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.net.InetSocketAddress;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Holds a singleton MetricRegistry to be shared across uReplicator.
@@ -38,21 +39,21 @@ import org.slf4j.LoggerFactory;
  */
 public class KafkaUReplicatorMetricsReporter {
 
-  private static KafkaUReplicatorMetricsReporter METRICS_REPORTER_INSTANCE = null;
   private static final Logger LOGGER = LoggerFactory.getLogger(KafkaUReplicatorMetricsReporter.class);
-  private static volatile boolean DID_INIT = false;
+  private static KafkaUReplicatorMetricsReporter METRICS_REPORTER_INSTANCE = null;
+
   // prefix for non federated mode :
   // stats.##dc##.counter.##component##.hostname
   // prefix for federated mode:
   // stats.##dc##.counter.##component##.##federated deployment##.##route id##.hostname
-  public static final String KAFKA_UREPLICATOR_METRICS_REPORTER_PREFIX_FORMAT = "stats.%s.counter.%s.%s";
+  private static volatile boolean DID_INIT = false;
+  private static final String KAFKA_UREPLICATOR_METRICS_REPORTER_PREFIX_FORMAT = "stats.%s.counter.%s.%s";
 
   // FIXME: change convention for member variable
   private final MetricRegistry _registry;
   private final GraphiteReporter _graphiteReporter;
   private final JmxReporter _jmxReporter;
-  private final String _reporterMetricPrefix;
-
+  private String _reporterMetricPrefix;
 
   // Exposed for tests. Call Metrics.get() instead.
   KafkaUReplicatorMetricsReporter(MetricsReporterConf conf) {
@@ -65,19 +66,10 @@ public class KafkaUReplicatorMetricsReporter {
       _reporterMetricPrefix = null;
       return;
     }
-
-    _reporterMetricPrefix = String
-        .format(KAFKA_UREPLICATOR_METRICS_REPORTER_PREFIX_FORMAT, conf.getRegion(),
-            String.join(".", conf.getAdditionalInfo()),
-            conf.getHostname());
-    LOGGER.info("Reporter Metric Prefix is : " + _reporterMetricPrefix);
     _registry = new MetricRegistry();
-    final Boolean enabledGraphiteReporting = true;
-    final Boolean enabledJmxReporting = true;
-    final long graphiteReportFreqSec = 60L;
 
     // Init jmx reporter
-    if (enabledJmxReporting) {
+    if (conf.getEnableJmxReport()) {
       _jmxReporter = JmxReporter.forRegistry(this._registry).build();
       _jmxReporter.start();
     } else {
@@ -85,26 +77,25 @@ public class KafkaUReplicatorMetricsReporter {
     }
 
     // Init graphite reporter
-    if (enabledGraphiteReporting) {
+    if (conf.getEnableGraphiteReport()) {
       Graphite graphite = getGraphite(conf);
       if (graphite == null) {
         _graphiteReporter = null;
       } else {
+        _reporterMetricPrefix = String
+                .format(KAFKA_UREPLICATOR_METRICS_REPORTER_PREFIX_FORMAT, conf.getRegion(),
+                        String.join(".", conf.getAdditionalInfo()),
+                        conf.getHostname());
+        LOGGER.info("Reporter Metric Prefix is : {}", _reporterMetricPrefix);
         _graphiteReporter =
             GraphiteReporter.forRegistry(_registry).prefixedWith(_reporterMetricPrefix)
                 .convertRatesTo(TimeUnit.SECONDS)
                 .convertDurationsTo(TimeUnit.MILLISECONDS).filter(MetricFilter.ALL).build(graphite);
-        _graphiteReporter.start(graphiteReportFreqSec, TimeUnit.SECONDS);
+        _graphiteReporter.start(conf.getGraphiteReportFreqInSec(), TimeUnit.SECONDS);
       }
     } else {
       _graphiteReporter = null;
     }
-
-    Runtime.getRuntime().addShutdownHook(new Thread() {
-      public void run() {
-        stop();
-      }
-    });
   }
 
   public static String[] parseEnvironment(String environment) {
@@ -149,6 +140,9 @@ public class KafkaUReplicatorMetricsReporter {
    * reset metrics report
    */
   public static synchronized void stop() {
+    if(!isStart()){
+      return;
+    }
     try {
       if (METRICS_REPORTER_INSTANCE._jmxReporter != null) {
         Closeables.close(METRICS_REPORTER_INSTANCE._jmxReporter, true);
@@ -165,7 +159,7 @@ public class KafkaUReplicatorMetricsReporter {
   }
 
   public void registerKafkaMetrics(String prefix, Map<MetricName, ? extends Metric> metrics) {
-    Preconditions.checkState(DID_INIT, "Not initialized yet");
+    checkState();
     for (MetricName metricName : metrics.keySet()) {
       String kafkaMetricName = String.format("%s.%s", prefix, metricName.name());
       registerMetric(kafkaMetricName, new GraphiteKafkaGauge(metrics.get(metricName)));
@@ -173,7 +167,7 @@ public class KafkaUReplicatorMetricsReporter {
   }
 
   public void removeKafkaMetrics(String prefix, Map<MetricName, ? extends Metric> metrics) {
-    Preconditions.checkState(DID_INIT, "Not initialized yet");
+    checkState();
     for (MetricName metricName : metrics.keySet()) {
       String kafkaMetricName = String.format("%s.%s", prefix, metricName.name());
       removeMetric(kafkaMetricName);
@@ -181,17 +175,17 @@ public class KafkaUReplicatorMetricsReporter {
   }
 
   public static KafkaUReplicatorMetricsReporter get() {
-    Preconditions.checkState(DID_INIT, "Not initialized yet");
+    checkState();
     return METRICS_REPORTER_INSTANCE;
   }
 
   public MetricRegistry getRegistry() {
-    Preconditions.checkState(DID_INIT, "Not initialized yet");
+    checkState();
     return _registry;
   }
 
   public <T extends com.codahale.metrics.Metric> void registerMetric(String metricName, T metric) {
-    Preconditions.checkState(DID_INIT, "Not initialized yet");
+    checkState();
     if (_registry == null) {
       return;
     }
@@ -203,10 +197,17 @@ public class KafkaUReplicatorMetricsReporter {
   }
 
   public void removeMetric(String metricName) {
-    Preconditions.checkState(DID_INIT, "Not initialized yet");
     if (_registry == null) {
       return;
     }
     _registry.remove(metricName);
+  }
+
+  private static void checkState() {
+    Preconditions.checkState(DID_INIT, "Not initialized yet");
+  }
+
+  public static boolean isStart() {
+    return DID_INIT;
   }
 }

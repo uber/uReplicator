@@ -132,7 +132,7 @@ public class WorkerInstanceTest {
       LOGGER.info("Produce messages finished");
 
       List<ConsumerRecord<Byte[], Byte[]>> records = TestUtils
-          .consumeMessage(dstBootstrapServer, topicName1, 5000);
+          .consumeMessage(dstBootstrapServer, topicName1, 6000);
       Assert.assertEquals(records.size(), 20);
       LOGGER.info("Shutdown testNonFederatedWorkerInstance");
       workerInstance.cleanShutdown();
@@ -150,11 +150,11 @@ public class WorkerInstanceTest {
       TestUtils.produceMessages(srcCluster1BootstrapServer, topicName1, 20, 2);
       TestUtils.produceMessages(srcCluster1BootstrapServer, topicName2, 20, 2);
 
-      records = TestUtils.consumeMessage(dstBootstrapServer, topicName1, 5000);
+      records = TestUtils.consumeMessage(dstBootstrapServer, topicName1, 6000);
 
       Assert.assertEquals(records.size(), 20);
 
-      records = TestUtils.consumeMessage(dstBootstrapServer, topicName2, 5000);
+      records = TestUtils.consumeMessage(dstBootstrapServer, topicName2, 6000);
       Assert.assertEquals(records.size(), 25);
 
       LOGGER.info("Shutdown worker instance");
@@ -198,7 +198,7 @@ public class WorkerInstanceTest {
       LOGGER.info("Produce messages finished");
 
       List<ConsumerRecord<Byte[], Byte[]>> records = TestUtils
-          .consumeMessage(dstBootstrapServer, topicName1, 5000);
+          .consumeMessage(dstBootstrapServer, topicName1, 6000);
       Assert.assertEquals(records.size(), 20);
       workerInstance.cleanShutdown();
 
@@ -208,7 +208,7 @@ public class WorkerInstanceTest {
       workerInstance.start(null, null, null, null);
       workerInstance.addTopicPartition(topicName1, 0);
       records = TestUtils
-          .consumeMessage(dstBootstrapServer, topicName1, 5000);
+          .consumeMessage(dstBootstrapServer, topicName1, 6000);
       Assert.assertEquals(records.size(), 10);
 
     } finally {
@@ -290,14 +290,14 @@ public class WorkerInstanceTest {
 
     TestUtils.produceMessages(srcCluster1BootstrapServer, topicName1, 20);
     List<ConsumerRecord<Byte[], Byte[]>> records = TestUtils
-        .consumeMessage(dstBootstrapServer, topicName1, 5000);
+        .consumeMessage(dstBootstrapServer, topicName1, 6000);
     Assert.assertEquals(records.size(), 20);
 
     TestUtils.updateTopicWithValidation(controllerHelixClusterName, topicName1, Arrays.asList(0, 1),
         Arrays.asList("0"), helixAdmin, "OFFLINE");
 
     TestUtils.produceMessages(srcCluster1BootstrapServer, topicName1, 20);
-    records = TestUtils.consumeMessage(dstBootstrapServer, topicName1, 5000);
+    records = TestUtils.consumeMessage(dstBootstrapServer, topicName1, 6000);
     Assert.assertEquals(records.size(), 0);
 
     TestUtils.updateRouteWithValidation(managerHelixClusterName, route1ForHelix, instanceId, helixAdmin, "OFFLINE");
@@ -312,7 +312,7 @@ public class WorkerInstanceTest {
     TestUtils.updateRouteWithValidation(managerHelixClusterName, route1ForHelix, instanceId, helixAdmin, "ONLINE");
     TestUtils.updateTopicWithValidation(controllerHelixClusterName, topicName1, Arrays.asList(0, 1),
         Arrays.asList("0"), helixAdmin, "ONLINE");
-    records = TestUtils.consumeMessage(dstBootstrapServer, topicName1, 5000);
+    records = TestUtils.consumeMessage(dstBootstrapServer, topicName1, 6000);
     Assert.assertEquals(records.size(), 20);
 
 
@@ -325,7 +325,7 @@ public class WorkerInstanceTest {
 
     TestUtils.produceMessages(srcCluster2BootstrapServer, topicName3, 20);
 
-    records = TestUtils.consumeMessage(dstBootstrapServer, topicName3, 5000);
+    records = TestUtils.consumeMessage(dstBootstrapServer, topicName3, 6000);
     Assert.assertEquals(records.size(), 20);
 
     runnable.shutdown();
