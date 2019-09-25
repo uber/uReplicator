@@ -62,7 +62,14 @@ public class IdealStateBuilder {
     customModeIdealStateBuilder
             .setStateModel(OnlineOfflineStateModel.name)
             .setNumPartitions(instanceToNumServingTopicPartitionMap.size()).setNumReplica(1)
-            .setMaxPartitionsPerNode(1);
+            .setMaxPartitionsPerNode(instanceToNumServingTopicPartitionMap.size());
+
+    if(instanceToNumServingTopicPartitionMap.size() == 1){
+      InstanceTopicPartitionHolder instance = instanceToNumServingTopicPartitionMap.peek();
+      String partition = instance.getRouteString();
+      customModeIdealStateBuilder.assignInstanceAndState(partition, instance.getInstanceName(), "ONLINE");
+      return customModeIdealStateBuilder.build();
+    }
 
     List<Integer> partitionAll = new ArrayList<>();
     for(int i = 0; i < numTopicPartitions; i ++){
