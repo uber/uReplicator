@@ -103,6 +103,8 @@ public class ControllerStateModelFactory extends StateModelFactory<StateModel> {
         String[] srcDest = message.getPartitionName().split(SEPARATOR);
         if (srcDest.length == 4) {
           _controllerHelix.handleTopicAssignmentEvent(message.getResourceName(), srcDest[1], srcDest[2], srcDest[3], message.getToState());
+        } else if(srcDest.length == 5){
+          _controllerHelix.handleTopicAssignmentEvent(message.getResourceName(), srcDest[1], srcDest[2], srcDest[3], srcDest[4], message.getToState());
         } else {
           String msg = String.format("Invalid partition name for topic: resource=%s, partition=%s",
               message.getResourceName(), message.getPartitionName());

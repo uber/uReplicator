@@ -17,7 +17,14 @@ package com.uber.stream.kafka.mirrormaker.manager.core;
 
 import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
 import com.uber.stream.kafka.mirrormaker.common.core.OnlineOfflineStateModel;
+
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.PriorityQueue;
+
+import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
+import com.uber.stream.kafka.mirrormaker.common.utils.PartitionAllocator;
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.builder.CustomModeISBuilder;
 import org.slf4j.Logger;
@@ -44,6 +51,33 @@ public class IdealStateBuilder {
       customModeIdealStateBuilder.assignInstanceAndState(partition, instance.getInstanceName(), "ONLINE");
     }
 
+    return customModeIdealStateBuilder.build();
+  }
+
+  public static IdealState buildCustomIdealStateFor(String topicName,
+                                                    int numTopicPartitions,
+                                                    PriorityQueue<InstanceTopicPartitionHolder> instanceToNumServingTopicPartitionMap) {
+    final CustomModeISBuilder customModeIdealStateBuilder = new CustomModeISBuilder(topicName);
+
+    customModeIdealStateBuilder
+            .setStateModel(OnlineOfflineStateModel.name)
+            .setNumPartitions(instanceToNumServingTopicPartitionMap.size()).setNumReplica(1)
+            .setMaxPartitionsPerNode(1);
+
+    List<Integer> partitionAll = new ArrayList<>();
+    for(int i = 0; i < numTopicPartitions; i ++){
+      partitionAll.add(i);
+    }
+    List<InstanceTopicPartitionHolder> instanceAll = Arrays.asList(instanceToNumServingTopicPartitionMap.toArray(new InstanceTopicPartitionHolder[]{}));
+    for(InstanceTopicPartitionHolder instance : instanceAll){
+      List<Integer> partitions = PartitionAllocator.allocate(instance, partitionAll, instanceAll);
+      customModeIdealStateBuilder.assignInstanceAndState(instance.getRouteString() + "@" + PartitionAllocator.partitionToString(partitions),
+              instance.getInstanceName(), "ONLINE");
+      LOGGER.info("assign route : {} parition : {} to instancename : {}", instance.getRouteString(), partitions, instance.getInstanceName());
+      for(Integer partition : partitions){
+        instance.addOneTopicPartition(new TopicPartition(topicName, partition));
+      }
+    }
     return customModeIdealStateBuilder.build();
   }
 

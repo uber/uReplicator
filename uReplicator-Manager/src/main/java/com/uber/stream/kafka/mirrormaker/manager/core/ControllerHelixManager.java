@@ -1066,7 +1066,8 @@ public class ControllerHelixManager implements IHelixManager {
     }
 
     String[] srcDst = pipeline.split(SEPARATOR);
-    String controllerWorkerHelixClusterName = "controller-worker-" + srcDst[1] + "-" + srcDst[2] + "-" + routeId;
+    String routeString = srcDst[1] + "-" + srcDst[2] + "-" + routeId;
+    String controllerWorkerHelixClusterName = "controller-worker-" + routeString;
     HelixManager spectator = HelixManagerFactory.getZKHelixManager(controllerWorkerHelixClusterName,
         _instanceId,
         InstanceType.SPECTATOR,
@@ -1089,14 +1090,13 @@ public class ControllerHelixManager implements IHelixManager {
     }
 
     _availableControllerList.remove(instanceName);
-    _pipelineToInstanceMap.put(pipeline, new PriorityQueue<>(1,
+    _pipelineToInstanceMap.putIfAbsent(pipeline, new PriorityQueue<>(1,
         InstanceTopicPartitionHolder.totalWorkloadComparator(_pipelineWorkloadMap)));
     _pipelineToInstanceMap.get(pipeline).add(instance);
     _assignedControllerCount.inc();
     _workerHelixManager.addTopicToMirrorMaker(instance, pipeline, routeId);
 
     // register metrics
-    String routeString = srcDst[1] + "-" + srcDst[2] + "-" + routeId;
     maybeRegisterMetrics(routeString);
 
     spectator.disconnect();
@@ -1142,28 +1142,25 @@ public class ControllerHelixManager implements IHelixManager {
     try {
       LOGGER.info("Trying to add topic: {} to pipeline: {}", topicName, pipeline);
 
+      updateCurrentStatus();
+
       if (!isPipelineExisted(pipeline)) {
         createNewRoute(pipeline, 0);
       } else {
         LOGGER.info("Pipeline already existed!");
       }
-
-      boolean isSameDc = src.substring(0, 3).equals(dst.substring(0, 3));
-
       InstanceTopicPartitionHolder instance = maybeCreateNewRoute(_pipelineToInstanceMap.get(pipeline), topicName,
           numPartitions, pipeline);
       String route = instance.getRouteString();
       if (!isTopicExisted(topicName)) {
         setEmptyResourceConfig(topicName);
         _helixAdmin.addResource(_helixClusterName, topicName,
-            IdealStateBuilder.buildCustomIdealStateFor(topicName, route, instance));
+            IdealStateBuilder.buildCustomIdealStateFor(topicName, numPartitions, _pipelineToInstanceMap.get(pipeline)));
       } else {
         _helixAdmin.setResourceIdealState(_helixClusterName, topicName,
             IdealStateBuilder.expandCustomIdealStateFor(_helixAdmin.getResourceIdealState(_helixClusterName, topicName),
                 topicName, route, instance));
       }
-
-      instance.addTopicPartition(new TopicPartition(topicName, numPartitions, pipeline));
       _topicToPipelineInstanceMap.putIfAbsent(topicName, new ConcurrentHashMap<>());
       _topicToPipelineInstanceMap.get(topicName).put(pipeline, instance);
     } finally {

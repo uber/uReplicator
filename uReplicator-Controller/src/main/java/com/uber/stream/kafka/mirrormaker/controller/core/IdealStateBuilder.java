@@ -53,7 +53,30 @@ public class IdealStateBuilder {
       if (liveInstance != null) {
         customModeIdealStateBuilder.assignInstanceAndState(Integer.toString(i),
             liveInstance.getInstanceName(), "ONLINE");
-        liveInstance.addTopicPartition(new TopicPartition(topicName, i));
+        liveInstance.addOneTopicPartition(new TopicPartition(topicName, i));
+        instanceToNumServingTopicPartitionMap.add(liveInstance);
+      }
+    }
+    return customModeIdealStateBuilder.build();
+  }
+
+  public static IdealState buildCustomIdealStateFor(String topicName,
+                                                    List<Integer> numTopicPartitions,
+                                                    PriorityQueue<InstanceTopicPartitionHolder> instanceToNumServingTopicPartitionMap) {
+
+    final CustomModeISBuilder customModeIdealStateBuilder = new CustomModeISBuilder(topicName);
+    customModeIdealStateBuilder
+            .setStateModel(OnlineOfflineStateModel.name)
+            .setNumPartitions(numTopicPartitions.size()).setNumReplica(1)
+            .setMaxPartitionsPerNode(numTopicPartitions.size());
+    for (Integer partition : numTopicPartitions) {
+      InstanceTopicPartitionHolder liveInstance = instanceToNumServingTopicPartitionMap.poll();
+      if (liveInstance != null) {
+        LOGGER.info("assign topicName : {} parition : {} to instancename : {}", topicName, partition, liveInstance.getInstanceName());
+        customModeIdealStateBuilder.assignInstanceAndState(Integer.toString(partition),
+                liveInstance.getInstanceName(), "ONLINE");
+
+        liveInstance.addOneTopicPartition(new TopicPartition(topicName, partition));
         instanceToNumServingTopicPartitionMap.add(liveInstance);
       }
     }
@@ -120,7 +143,7 @@ public class IdealStateBuilder {
         customModeIdealStateBuilder.assignInstanceAndState(Integer.toString(i),
             liveInstance.getInstanceName(),
             "ONLINE");
-        liveInstance.addTopicPartition(new TopicPartition(topicName, i));
+        liveInstance.addOneTopicPartition(new TopicPartition(topicName, i));
         LOGGER.info("Assign new partition " + topicName + ":" + i + " to instance " + liveInstance.getInstanceName());
       }
       currentServingInstances.addAll(instancesForNewPartitions);

@@ -103,6 +103,8 @@ public class HelixMirrorMakerManager implements IHelixManager {
   @VisibleForTesting
   OffsetMonitor _offsetMonitor;
 
+  private ManagerWorkerSpectator _workerSpectator;
+
   public double getMaxWorkloadPerWorkerBytes() {
     return _maxWorkloadPerWorkerBytes;
   }
@@ -125,10 +127,16 @@ public class HelixMirrorMakerManager implements IHelixManager {
     _minLagOffset = controllerConf.getAutoRebalanceMinLagOffset();
     _offsetMaxValidTimeMillis = TimeUnit.SECONDS.toMillis(controllerConf.getAutoRebalanceMaxOffsetInfoValidInSeconds());
     _maxDedicatedInstancesRatio = controllerConf.getMaxDedicatedLaggingInstancesRatio();
+    if(controllerConf.isFederatedEnabled()){
+      _workerSpectator = new ManagerWorkerSpectator(controllerConf);
+    }
   }
 
   public synchronized void start() {
     LOGGER.info("Trying to start HelixMirrorMakerManager!");
+    if(_workerSpectator != null){
+      _workerSpectator.start();
+    }
     _helixZkManager = HelixSetupUtils.setup(_helixClusterName, _helixZkURL, _instanceId);
     _helixAdmin = _helixZkManager.getClusterManagmentTool();
     LOGGER.info("Trying to register AutoRebalanceLiveInstanceChangeListener");
@@ -160,6 +168,9 @@ public class HelixMirrorMakerManager implements IHelixManager {
       LOGGER.info("Stopping kafkaMonitor got interrupted.");
     }
     _helixZkManager.disconnect();
+    if(_workerSpectator != null){
+      _workerSpectator.stop();
+    }
   }
 
   public synchronized void updateCurrentServingInstance() {
@@ -207,6 +218,42 @@ public class HelixMirrorMakerManager implements IHelixManager {
           IdealStateBuilder.buildCustomIdealStateFor(topicName, numTopicPartitions,
               _currentServingInstance));
     }
+  }
+
+  public synchronized void addTopicToMirrorMaker(String topicName, List<Integer> numTopicPartitions) {
+    setEmptyResourceConfig(topicName);
+    String route = getRoute();
+    String routeId = getRouteId();
+    Map<String, String> instanceStateMap = _workerSpectator.getInstanceStateMap(route, routeId);
+    long start = System.currentTimeMillis();
+    while (_currentServingInstance.size() < instanceStateMap.size()){
+      updateCurrentServingInstance();
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        LOGGER.error("InterruptedException", e);
+        break;
+      }
+      if(System.currentTimeMillis() - start > 30000){
+        break;
+      }
+    }
+    if(_currentServingInstance.isEmpty()){
+      throw new RuntimeException("addTopicToMirrorMaker fail， worker is too slow to join Helix");
+    }
+    synchronized (_currentServingInstance) {
+      _helixAdmin.addResource(_helixClusterName, topicName,
+              IdealStateBuilder.buildCustomIdealStateFor(topicName, numTopicPartitions,
+                      _currentServingInstance));
+    }
+  }
+
+  private String getRoute(){
+    return "@" + _helixClusterName.substring(ManagerControllerHelix.CONTROLLER_WORKER_HELIX_PREFIX.length(), _helixClusterName.lastIndexOf("-")).replaceAll("-", "@");
+  }
+
+  private String getRouteId(){
+    return _helixClusterName.substring(_helixClusterName.lastIndexOf("-") + 1);
   }
 
   private synchronized void setEmptyResourceConfig(String topicName) {

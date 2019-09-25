@@ -18,8 +18,10 @@ package com.uber.stream.kafka.mirrormaker.controller.core;
 import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
+import com.uber.stream.kafka.mirrormaker.common.utils.PartitionAllocator;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerInstance;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.helix.*;
 import org.apache.helix.model.InstanceConfig;
 import org.slf4j.Logger;
@@ -35,7 +37,7 @@ public class ManagerControllerHelix {
   private static final Logger LOGGER = LoggerFactory.getLogger(ManagerControllerHelix.class);
 
   private static final String MANAGER_CONTROLLER_HELIX_PREFIX = "manager-controller-";
-  private static final String CONTROLLER_WORKER_HELIX_PREFIX = "controller-worker-";
+  public static final String CONTROLLER_WORKER_HELIX_PREFIX = "controller-worker-";
 
   private static final String CONFIG_KAFKA_CLUSTER_KEY_PREFIX = "kafka.cluster.zkStr.";
 
@@ -160,7 +162,7 @@ public class ManagerControllerHelix {
 
     String clusterName = CONTROLLER_WORKER_HELIX_PREFIX + srcCluster + "-" + dstCluster + "-" + routePartition;
     _controllerConf.setHelixClusterName(clusterName);
-    _controllerConf.setEnableSrcKafkaValidation("true");
+    _controllerConf.setEnableSrcKafkaValidation("false");
     _controllerConf.setGroupId("ureplicator-" + srcCluster + "-" + dstCluster);
     _controllerConf.setSourceCluster(srcCluster);
     _controllerConf.setDestinationCluster(dstCluster);
@@ -218,6 +220,10 @@ public class ManagerControllerHelix {
   }
 
   public boolean handleTopicAssignmentEvent(String topic, String srcCluster, String dstCluster, String routePartition, String toState) {
+    return this.handleTopicAssignmentEvent(topic, srcCluster, dstCluster, routePartition, "", toState);
+  }
+
+  public boolean handleTopicAssignmentEvent(String topic, String srcCluster, String dstCluster, String routePartition, String realPartition, String toState) {
     synchronized (_handlerLock) {
       if (_currentControllerInstance == null) {
         if (toState.equals("OFFLINE") || toState.equals("DROPPED")) {
@@ -242,7 +248,7 @@ public class ManagerControllerHelix {
         }
       }
       if (toState.equals("ONLINE")) {
-        return handleTopicAssignmentOnline(topic, srcCluster, dstCluster);
+        return handleTopicAssignmentOnline(topic, srcCluster, dstCluster, realPartition);
       } else if (toState.equals("OFFLINE")) {
         return handleTopicAssignmentOffline(topic, srcCluster, dstCluster);
       } else if (toState.equals("DROPPED")) {
@@ -255,29 +261,34 @@ public class ManagerControllerHelix {
     }
   }
 
-  private boolean handleTopicAssignmentOnline(String topic, String srcCluster, String dstCluster) {
+  private boolean handleTopicAssignmentOnline(String topic, String srcCluster, String dstCluster, String realPartition) {
     HelixMirrorMakerManager helixManager = _currentControllerInstance.getHelixResourceManager();
     if (helixManager.isTopicExisted(topic)) {
       LOGGER.warn("Topic {} already exists from cluster {} to {}", topic, srcCluster, dstCluster);
       return false;
     }
-    TopicPartition topicPartitionInfo = null;
-    KafkaBrokerTopicObserver topicObserver = _currentControllerInstance.getSourceKafkaTopicObserver();
-    if (topicObserver == null) {
-      // no source partition information, use partitions=1 and depend on auto-expanding later
-      topicPartitionInfo = new TopicPartition(topic, 1);
-    } else {
-      topicPartitionInfo = topicObserver.getTopicPartitionWithRefresh(topic);
-      if (topicPartitionInfo == null) {
-        String msg = String.format(
-            "Failed to whitelist topic %s on controller because topic does not exists in src cluster %s",
-            topic, srcCluster);
-        LOGGER.error(msg);
-        throw new IllegalArgumentException(msg);
+    if(StringUtils.isNotEmpty(realPartition)){
+      helixManager.addTopicToMirrorMaker(topic, PartitionAllocator.partitionToList(realPartition));
+      LOGGER.info("Whitelisted topic {} from cluster {} to {}, parition : {}", topic, srcCluster, dstCluster, PartitionAllocator.partitionToList(realPartition));
+    } else{
+      TopicPartition topicPartitionInfo = null;
+      KafkaBrokerTopicObserver topicObserver = _currentControllerInstance.getSourceKafkaTopicObserver();
+      if (topicObserver == null) {
+        // no source partition information, use partitions=1 and depend on auto-expanding later
+        topicPartitionInfo = new TopicPartition(topic, 1);
+      } else {
+        topicPartitionInfo = topicObserver.getTopicPartitionWithRefresh(topic);
+        if (topicPartitionInfo == null) {
+          String msg = String.format(
+                  "Failed to whitelist topic %s on controller because topic does not exists in src cluster %s",
+                  topic, srcCluster);
+          LOGGER.error(msg);
+          throw new IllegalArgumentException(msg);
+        }
       }
+      helixManager.addTopicToMirrorMaker(topicPartitionInfo);
+      LOGGER.info("Whitelisted topic {} from cluster {} to {}", topic, srcCluster, dstCluster);
     }
-    helixManager.addTopicToMirrorMaker(topicPartitionInfo);
-    LOGGER.info("Whitelisted topic {} from cluster {} to {}", topic, srcCluster, dstCluster);
     return true;
   }
 

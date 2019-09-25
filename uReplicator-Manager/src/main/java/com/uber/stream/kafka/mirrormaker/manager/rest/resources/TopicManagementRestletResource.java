@@ -172,9 +172,6 @@ public class TopicManagementRestletResource extends ServerResource {
       return getResponseJsonStringRepresentation(Status.CLIENT_ERROR_NOT_FOUND,
           String.format("Failed to whitelist new topic: %s, it's not existed in destination Kafka cluster!", topicName));
     }
-
-    // TODO: updateCurrentStatus might take a long time
-    _helixMirrorMakerManager.updateCurrentStatus();
     String pipeline = ControllerUtils.getPipelineName(srcCluster, dstCluster);
     if (_helixMirrorMakerManager.isTopicPipelineExisted(topicName, pipeline)) {
       LOGGER.info("Topic {} already on uReplicator in pipeline {}", topicName, pipeline);

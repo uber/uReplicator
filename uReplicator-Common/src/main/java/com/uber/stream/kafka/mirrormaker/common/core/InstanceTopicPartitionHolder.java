@@ -78,6 +78,11 @@ public class InstanceTopicPartitionHolder {
     _totalNumPartitions += topicPartitionInfo.getPartition();
   }
 
+  public void addOneTopicPartition(TopicPartition topicPartitionInfo) {
+    _topicPartitionSet.add(topicPartitionInfo);
+    _totalNumPartitions = _totalNumPartitions + 1;
+  }
+
   public void removeTopicPartition(TopicPartition topicPartitionInfo) {
     if (_topicPartitionSet.contains(topicPartitionInfo)) {
       _topicPartitionSet.remove(topicPartitionInfo);
