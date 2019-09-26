@@ -15,9 +15,11 @@
  */
 package com.uber.stream.ureplicator.worker;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.util.concurrent.RateLimiter;
 import com.uber.stream.ureplicator.common.KafkaClusterObserver;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -26,8 +28,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.stream.Collectors;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.easymock.EasyMock;
 import org.testng.Assert;
@@ -42,19 +47,47 @@ public class FetcherManagerTest {
       .createMock(ConsumerFetcherThread.class);
   private final ConsumerFetcherThread mockFetcherThread2 = EasyMock
       .createMock(ConsumerFetcherThread.class);
-  private FetcherManagerGroupByLeaderId fetcherByLeaderId;
-  private FetcherManager fetcherManagerByHashId;
   private KafkaClusterObserver kafkaClusterObserver = EasyMock
       .createMock(KafkaClusterObserver.class);
-  private final List<BlockingQueue<FetchedDataChunk>> messageQueue = new ArrayList<>();
+  private ConsumerFetcherThread mockConsumerFetcherThread = EasyMock
+      .createMock(ConsumerFetcherThread.class);
+
+  class MockFetcherManager extends FetcherManager {
+
+    Set<String> clientId = new HashSet<>();
+
+    public MockFetcherManager(String threadName,
+        CustomizedConsumerConfig consumerProperties,
+        List<BlockingQueue<FetchedDataChunk>> messageQueue) {
+      super(threadName, consumerProperties, messageQueue);
+    }
+
+    protected MockFetcherManager(String threadName,
+        CustomizedConsumerConfig consumerProperties,
+        Map<String, ConsumerFetcherThread> fetcherThreadMap,
+        List<BlockingQueue<FetchedDataChunk>> messageQueue) {
+      super(threadName, consumerProperties, fetcherThreadMap, messageQueue);
+    }
+
+    @VisibleForTesting
+    protected ConsumerFetcherThread createConsumerFetcherThread(String threadName,
+        CustomizedConsumerConfig properties,
+        RateLimiter rateLimiter, BlockingQueue<FetchedDataChunk> chunkQueue) {
+      if (properties.containsKey(ConsumerConfig.CLIENT_ID_CONFIG)) {
+        clientId.add(properties.getProperty(ConsumerConfig.CLIENT_ID_CONFIG));
+      }
+      return mockConsumerFetcherThread;
+    }
+  }
 
   @Test
   public void testConsumerFetcherManagerGroupByLeaderId() {
     fetcherThreadMap.clear();
     fetcherThreadMap.put("ConsumerFetcherThread-0", mockFetcherThread1);
     fetcherThreadMap.put("ConsumerFetcherThread-1", mockFetcherThread2);
-    messageQueue.clear();
-    fetcherByLeaderId = new FetcherManagerGroupByLeaderId("CompactConsumerFetcherManagerTest",
+    List<BlockingQueue<FetchedDataChunk>> messageQueue = new ArrayList<>();
+    FetcherManagerGroupByLeaderId fetcherByLeaderId = new FetcherManagerGroupByLeaderId(
+        "CompactConsumerFetcherManagerTest",
         new CustomizedConsumerConfig(new Properties()), fetcherThreadMap, messageQueue,
         kafkaClusterObserver);
 
@@ -91,7 +124,6 @@ public class FetcherManagerTest {
     mockFetcherThread2.awaitShutdown();
     EasyMock.expectLastCall().once();
 
-
     EasyMock.replay(kafkaClusterObserver, mockFetcherThread1, mockFetcherThread2);
 
     fetcherByLeaderId.start();
@@ -116,8 +148,8 @@ public class FetcherManagerTest {
     fetcherThreadMap.clear();
     fetcherThreadMap.put("ConsumerFetcherThread-0", mockFetcherThread1);
     fetcherThreadMap.put("ConsumerFetcherThread-1", mockFetcherThread2);
-    messageQueue.clear();
-    fetcherManagerByHashId = new FetcherManager("FetcherManagerGroupByHashId",
+    List<BlockingQueue<FetchedDataChunk>> messageQueue = new ArrayList<>();
+    FetcherManager fetcherManagerByHashId = new FetcherManager("FetcherManagerGroupByHashId",
         new CustomizedConsumerConfig(new Properties()), fetcherThreadMap, messageQueue);
 
     TopicPartition tp1 = new TopicPartition(testTopic1, 0);
@@ -158,4 +190,48 @@ public class FetcherManagerTest {
 
     EasyMock.verify(mockFetcherThread1, mockFetcherThread2);
   }
+
+  @Test
+  public void testAddFetcherForTopicPartition() {
+    CustomizedConsumerConfig consumerConfig = new CustomizedConsumerConfig(new Properties());
+    consumerConfig.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, "ureplicator");
+    consumerConfig.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "ureplicator");
+    List<BlockingQueue<FetchedDataChunk>> messageQueue = new ArrayList<>();
+    BlockingQueue<FetchedDataChunk> queue = new LinkedBlockingQueue<>(3);
+    messageQueue.add(queue);
+    MockFetcherManager fetcherManagerByHashId = new MockFetcherManager(
+        "FetcherManagerGroupByHashId",
+        consumerConfig, messageQueue);
+    TopicPartition tp1 = new TopicPartition(testTopic1, 0);
+    TopicPartition tp2 = new TopicPartition(testTopic2, 1);
+    PartitionOffsetInfo partitionOffsetInfo1 = new PartitionOffsetInfo(tp1, 0L, 10L);
+    PartitionOffsetInfo partitionOffsetInfo2 = new PartitionOffsetInfo(tp2, 0L, 10L);
+
+    EasyMock.reset(mockConsumerFetcherThread);
+
+    mockConsumerFetcherThread.start();
+    EasyMock.expectLastCall().times(2);
+
+    mockConsumerFetcherThread.addPartitions(Collections.singletonMap(tp1, partitionOffsetInfo1));
+    EasyMock.expectLastCall().times(1);
+    mockConsumerFetcherThread.addPartitions(Collections.singletonMap(tp2, partitionOffsetInfo2));
+    EasyMock.expectLastCall().times(1);
+
+    EasyMock.replay(mockConsumerFetcherThread);
+
+    fetcherManagerByHashId
+        .addFetcherForTopicPartition(tp1, partitionOffsetInfo1, "fetcherThread-1");
+    fetcherManagerByHashId
+        .addFetcherForTopicPartition(tp2, partitionOffsetInfo2, "fetcherThread-2");
+
+    Assert.assertEquals(fetcherManagerByHashId.clientId.size(), 2);
+    Assert.assertTrue(fetcherManagerByHashId.clientId.contains("ureplicator-1"));
+    Assert.assertTrue(fetcherManagerByHashId.clientId.contains("ureplicator-2"));
+    Assert.assertEquals(consumerConfig.getProperty(ConsumerConfig.CLIENT_ID_CONFIG), "ureplicator");
+
+    EasyMock.verify(mockConsumerFetcherThread);
+
+
+  }
 }
+
