@@ -22,6 +22,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.Iterator;
 
 /**
  * InstanceTopicPartitionHolder is a wrapper for instance and the topicPartitionSet it's holding.
@@ -87,6 +88,24 @@ public class InstanceTopicPartitionHolder {
     if (_topicPartitionSet.contains(topicPartitionInfo)) {
       _topicPartitionSet.remove(topicPartitionInfo);
       _totalNumPartitions -= topicPartitionInfo.getPartition();
+    }
+  }
+
+  public void removeOneTopicPartition(TopicPartition topicPartitionInfo) {
+    if (_topicPartitionSet.contains(topicPartitionInfo)) {
+      _topicPartitionSet.remove(topicPartitionInfo);
+      _totalNumPartitions = _totalNumPartitions - 1;
+    }
+  }
+
+  public void removeTopicPartitionByTopicName(String topicName) {
+    Iterator<TopicPartition> iterator = _topicPartitionSet.iterator();
+    while(iterator.hasNext()){
+      TopicPartition topicPartition = iterator.next();
+      if(topicPartition.getTopic().equalsIgnoreCase(topicName)){
+        iterator.remove();
+        _totalNumPartitions = _totalNumPartitions - 1;
+      }
     }
   }
 

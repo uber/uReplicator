@@ -55,7 +55,7 @@ public class IdealStateBuilder {
   }
 
   public static IdealState buildCustomIdealStateFor(String topicName,
-                                                    int numTopicPartitions,
+                                                    int numTopicPartitions, String pipeline,
                                                     PriorityQueue<InstanceTopicPartitionHolder> instanceToNumServingTopicPartitionMap) {
     final CustomModeISBuilder customModeIdealStateBuilder = new CustomModeISBuilder(topicName);
 
@@ -68,6 +68,7 @@ public class IdealStateBuilder {
       InstanceTopicPartitionHolder instance = instanceToNumServingTopicPartitionMap.peek();
       String partition = instance.getRouteString();
       customModeIdealStateBuilder.assignInstanceAndState(partition, instance.getInstanceName(), "ONLINE");
+      instance.addTopicPartition(new TopicPartition(topicName, numTopicPartitions, pipeline));
       return customModeIdealStateBuilder.build();
     }
 
@@ -82,7 +83,7 @@ public class IdealStateBuilder {
               instance.getInstanceName(), "ONLINE");
       LOGGER.info("assign route : {} parition : {} to instancename : {}", instance.getRouteString(), partitions, instance.getInstanceName());
       for(Integer partition : partitions){
-        instance.addOneTopicPartition(new TopicPartition(topicName, partition));
+        instance.addOneTopicPartition(new TopicPartition(topicName, partition, pipeline));
       }
     }
     return customModeIdealStateBuilder.build();

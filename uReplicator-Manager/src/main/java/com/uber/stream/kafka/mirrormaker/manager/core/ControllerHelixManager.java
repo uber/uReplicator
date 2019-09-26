@@ -1157,7 +1157,7 @@ public class ControllerHelixManager implements IHelixManager {
       if (!isTopicExisted(topicName)) {
         setEmptyResourceConfig(topicName);
         _helixAdmin.addResource(_helixClusterName, topicName,
-            IdealStateBuilder.buildCustomIdealStateFor(topicName, numPartitions, _pipelineToInstanceMap.get(pipeline)));
+            IdealStateBuilder.buildCustomIdealStateFor(topicName, numPartitions, pipeline, _pipelineToInstanceMap.get(pipeline)));
       } else {
         _helixAdmin.setResourceIdealState(_helixClusterName, topicName,
             IdealStateBuilder.expandCustomIdealStateFor(_helixAdmin.getResourceIdealState(_helixClusterName, topicName),
@@ -1193,16 +1193,14 @@ public class ControllerHelixManager implements IHelixManager {
       LOGGER.info("_topicToPipelineInstanceMap : {}, topic : {}, pipeline : {}", _topicToPipelineInstanceMap, topicName, pipeline);
       boolean found = false;
       int oldNumPartitions = 0;
-      for (TopicPartition tp : itph.getServingTopicPartitionSet()) {
-        if (tp.getTopic().equals(topicName)) {
-          found = true;
-          oldNumPartitions = tp.getPartition();
-          if (newNumPartitions <= oldNumPartitions) {
-            LOGGER.info("New partition {} is not bigger than current partition {} of topic {}, abandon expanding topic",
-                newNumPartitions, oldNumPartitions, topicName);
-            throw new Exception(String.format("New partition %s is not bigger than current partition %s of topic %s, "
-                + "abandon expanding topic!", newNumPartitions, oldNumPartitions, topicName));
-          }
+      if (itph != null) {
+        found = true;
+        oldNumPartitions = itph.getTotalNumPartitions();
+        if (newNumPartitions <= oldNumPartitions) {
+          LOGGER.info("New partition {} is not bigger than current partition {} of topic {}, abandon expanding topic",
+                  newNumPartitions, oldNumPartitions, topicName);
+          throw new Exception(String.format("New partition %s is not bigger than current partition %s of topic %s, "
+                  + "abandon expanding topic!", newNumPartitions, oldNumPartitions, topicName));
         }
       }
 
@@ -1225,7 +1223,7 @@ public class ControllerHelixManager implements IHelixManager {
             itph.getInstanceName(), topicName, respCode));
       }
 
-      itph.removeTopicPartition(new TopicPartition(topicName, oldNumPartitions, pipeline));
+      itph.removeTopicPartitionByTopicName(topicName);
       itph.addTopicPartition(new TopicPartition(topicName, newNumPartitions, pipeline));
       _kafkaValidationManager.getClusterToObserverMap().get(srcCluster).tryUpdateTopic(topicName);
     } finally {
@@ -1286,7 +1284,7 @@ public class ControllerHelixManager implements IHelixManager {
       }
       TopicPartition tp = _kafkaValidationManager.getClusterToObserverMap().get(src)
           .getTopicPartitionWithRefresh(topicName);
-      instance.removeTopicPartition(tp);
+      instance.removeTopicPartitionByTopicName(tp.getTopic());
       _topicToPipelineInstanceMap.get(topicName).remove(pipeline);
       if (_topicToPipelineInstanceMap.get(topicName).keySet().size() == 0) {
         _topicToPipelineInstanceMap.remove(topicName);
