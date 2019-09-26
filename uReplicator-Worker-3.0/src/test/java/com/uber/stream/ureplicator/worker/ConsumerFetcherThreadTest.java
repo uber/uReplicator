@@ -39,10 +39,10 @@ import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
-public class CompactFetcherThreadTest {
+public class ConsumerFetcherThreadTest {
 
   private static final Logger LOGGER = LoggerFactory
-      .getLogger(CompactFetcherThreadTest.class);
+      .getLogger(ConsumerFetcherThreadTest.class);
 
   private KafkaServerStartable kafka;
   private final int clusterPort = 19092;

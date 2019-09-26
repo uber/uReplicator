@@ -288,7 +288,7 @@ public class TestUtils {
     LOGGER.info("setResourceIdealState cluster : {}, topic: {} ", controllerHelixClusterName,
         topicName);
     helixAdmin.setResourceIdealState(controllerHelixClusterName, topicName, idealState);
-    Thread.sleep(1000);
+    Thread.sleep(1500);
     ExternalView externalView = helixAdmin
         .getResourceExternalView(controllerHelixClusterName, topicName);
     for (Map.Entry<String, String> entry : partitionInstanceMap.entrySet()) {
