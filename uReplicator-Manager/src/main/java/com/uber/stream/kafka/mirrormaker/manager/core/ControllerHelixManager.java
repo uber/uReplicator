@@ -190,20 +190,22 @@ public class ControllerHelixManager implements IHelixManager {
 
   private void registerMetrics() {
     try {
-      KafkaUReplicatorMetricsReporter.get().registerMetric("controller.available.counter",
-          _availableController);
-      KafkaUReplicatorMetricsReporter.get().registerMetric("worker.available.counter",
-          _availableWorker);
-      KafkaUReplicatorMetricsReporter.get().registerMetric("topic.non-parity.counter",
-          _nonParityTopic);
-      KafkaUReplicatorMetricsReporter.get().registerMetric("validate.wrong.counter",
-          _validateWrongCount);
-      KafkaUReplicatorMetricsReporter.get().registerMetric("rescale.failed.counter",
-          _rescaleFailedCount);
-      KafkaUReplicatorMetricsReporter.get().registerMetric("validate.wrong.low.urgency.counter",
-          _lowUrgencyValidateWrongCount);
-      KafkaUReplicatorMetricsReporter.get().registerMetric("controller.assigned.counter",
-          _assignedControllerCount);
+      if(KafkaUReplicatorMetricsReporter.isStart()){
+        KafkaUReplicatorMetricsReporter.get().registerMetric("controller.available.counter",
+                _availableController);
+        KafkaUReplicatorMetricsReporter.get().registerMetric("worker.available.counter",
+                _availableWorker);
+        KafkaUReplicatorMetricsReporter.get().registerMetric("topic.non-parity.counter",
+                _nonParityTopic);
+        KafkaUReplicatorMetricsReporter.get().registerMetric("validate.wrong.counter",
+                _validateWrongCount);
+        KafkaUReplicatorMetricsReporter.get().registerMetric("rescale.failed.counter",
+                _rescaleFailedCount);
+        KafkaUReplicatorMetricsReporter.get().registerMetric("validate.wrong.low.urgency.counter",
+                _lowUrgencyValidateWrongCount);
+        KafkaUReplicatorMetricsReporter.get().registerMetric("controller.assigned.counter",
+                _assignedControllerCount);
+      }
     } catch (Exception e) {
       LOGGER.error("Error registering metrics!", e);
     }
@@ -1188,7 +1190,7 @@ public class ControllerHelixManager implements IHelixManager {
       }
 
       InstanceTopicPartitionHolder itph = _topicToPipelineInstanceMap.get(topicName).get(pipeline);
-
+      LOGGER.info("_topicToPipelineInstanceMap : {}, topic : {}, pipeline : {}", _topicToPipelineInstanceMap, topicName, pipeline);
       boolean found = false;
       int oldNumPartitions = 0;
       for (TopicPartition tp : itph.getServingTopicPartitionSet()) {
