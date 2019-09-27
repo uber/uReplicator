@@ -993,17 +993,16 @@ public class ControllerHelixManager implements IHelixManager {
             if (actualExpectedNumWorkers > itph.getWorkerSet().size()) {
               LOGGER.info("Current {} workers in route {}, actual expect {} workers, add {} workers",
                   itph.getWorkerSet().size(), itph.getRouteString(), actualExpectedNumWorkers, actualExpectedNumWorkers - itph.getWorkerSet().size());
-              // TODO: handle exception
               _workerHelixManager.addWorkersToMirrorMaker(itph, itph.getRoute().getTopic(),
                   itph.getRoute().getPartition(), actualExpectedNumWorkers - itph.getWorkerSet().size());
             }
 
             if (actualExpectedNumWorkers < itph.getWorkerSet().size()) {
+              int numWorkersToRemove = itph.getWorkerSet().size() - actualExpectedNumWorkers;
               LOGGER.info("Current {} workers in route {}, actual expect {} workers, remove {} workers",
-                  itph.getWorkerSet().size(), itph.getRouteString(), actualExpectedNumWorkers, itph.getWorkerSet().size() - actualExpectedNumWorkers);
-              // TODO: handle exception
+                  itph.getWorkerSet().size(), itph.getRouteString(), actualExpectedNumWorkers, numWorkersToRemove);
               _workerHelixManager.removeWorkersToMirrorMaker(itph, itph.getRoute().getTopic(),
-                  itph.getRoute().getPartition(), _numOfWorkersBatchSize);
+                  itph.getRoute().getPartition(), numWorkersToRemove);
             }
             newTotalNumWorker += actualExpectedNumWorkers;
           } else {
