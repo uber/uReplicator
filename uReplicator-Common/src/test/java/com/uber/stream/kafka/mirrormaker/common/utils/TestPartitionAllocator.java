@@ -35,9 +35,9 @@ public class TestPartitionAllocator {
         List<Integer> partitionAll = Arrays.asList(new Integer[]{0,1,2,3,4,5,6,7});
         List<InstanceTopicPartitionHolder> instanceAll = Arrays.asList(currentInstance1, currentInstance2, currentInstance3);
 
-        List<Integer> partitionList1 = PartitionAllocator.allocate(currentInstance1, partitionAll, instanceAll);
-        List<Integer> partitionList2 = PartitionAllocator.allocate(currentInstance2, partitionAll, instanceAll);
-        List<Integer> partitionList3 = PartitionAllocator.allocate(currentInstance3, partitionAll, instanceAll);
+        List<Integer> partitionList1 = PartitionAllocator.allocateAveragely(currentInstance1, partitionAll, instanceAll);
+        List<Integer> partitionList2 = PartitionAllocator.allocateAveragely(currentInstance2, partitionAll, instanceAll);
+        List<Integer> partitionList3 = PartitionAllocator.allocateAveragely(currentInstance3, partitionAll, instanceAll);
         Assert.assertEquals(partitionList1, Arrays.asList(0,1,2));
         Assert.assertEquals(partitionList2, Arrays.asList(3,4,5));
         Assert.assertEquals(partitionList3, Arrays.asList(6, 7));
@@ -45,4 +45,6 @@ public class TestPartitionAllocator {
         Assert.assertEquals(PartitionAllocator.partitionToString(partitionList2), "3,4,5");
         Assert.assertEquals(PartitionAllocator.partitionToString(partitionList3), "6,7");
     }
+
+
 }

@@ -28,16 +28,18 @@ import java.util.Set;
  */
 public class PartitionAllocator {
 
-    public static List<Integer> allocate(InstanceTopicPartitionHolder currentInstance, List<Integer> partitionAll,
+    private PartitionAllocator(){}
+
+    public static List<Integer> allocateAveragely(InstanceTopicPartitionHolder currentInstance, List<Integer> partitionAll,
                                          List<InstanceTopicPartitionHolder> instanceAll) {
         if (currentInstance == null) {
             throw new IllegalArgumentException("currentInstance is empty");
         }
         if (partitionAll == null || partitionAll.isEmpty()) {
-            throw new IllegalArgumentException("partitionAll is null or mqAll empty");
+            throw new IllegalArgumentException("partitionAll is null or empty");
         }
         if (instanceAll == null || instanceAll.isEmpty()) {
-            throw new IllegalArgumentException("instanceAll is null or cidAll empty");
+            throw new IllegalArgumentException("instanceAll is null or empty");
         }
         if (!instanceAll.contains(currentInstance)) {
             throw new IllegalArgumentException(String.format("currentInstance : %s not in instanceAll : %s", currentInstance, instanceAll));

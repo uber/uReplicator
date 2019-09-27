@@ -78,7 +78,7 @@ public class IdealStateBuilder {
     }
     List<InstanceTopicPartitionHolder> instanceAll = Arrays.asList(instanceToNumServingTopicPartitionMap.toArray(new InstanceTopicPartitionHolder[]{}));
     for(InstanceTopicPartitionHolder instance : instanceAll){
-      List<Integer> partitions = PartitionAllocator.allocate(instance, partitionAll, instanceAll);
+      List<Integer> partitions = PartitionAllocator.allocateAveragely(instance, partitionAll, instanceAll);
       customModeIdealStateBuilder.assignInstanceAndState(instance.getRouteString() + "@" + PartitionAllocator.partitionToString(partitions),
               instance.getInstanceName(), "ONLINE");
       LOGGER.info("assign route : {} parition : {} to instancename : {}", instance.getRouteString(), partitions, instance.getInstanceName());
