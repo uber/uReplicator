@@ -31,14 +31,7 @@ import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.HttpClientUtils;
 import com.uber.stream.kafka.mirrormaker.manager.ManagerConf;
 import com.uber.stream.kafka.mirrormaker.manager.validation.KafkaClusterValidationManager;
-
 import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantLock;
-
 import kafka.utils.ZKStringSerializer$;
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.helix.*;
@@ -53,6 +46,12 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Main logic for Helix Manager-Controller
@@ -991,17 +990,17 @@ public class ControllerHelixManager implements IHelixManager {
             if (actualExpectedNumWorkers > itph.getWorkerSet().size()) {
               LOGGER.info("Current {} workers in route {}, actual expect {} workers, add {} workers",
                   itph.getWorkerSet().size(), itph.getRouteString(), actualExpectedNumWorkers, actualExpectedNumWorkers - itph.getWorkerSet().size());
-              // TODO: handle exception
               _workerHelixManager.addWorkersToMirrorMaker(itph, itph.getRoute().getTopic(),
                   itph.getRoute().getPartition(), actualExpectedNumWorkers - itph.getWorkerSet().size());
             }
 
             if (actualExpectedNumWorkers < itph.getWorkerSet().size()) {
+              int numWorkersToRemove = itph.getWorkerSet().size() - actualExpectedNumWorkers;
               LOGGER.info("Current {} workers in route {}, actual expect {} workers, remove {} workers",
-                  itph.getWorkerSet().size(), itph.getRouteString(), actualExpectedNumWorkers, itph.getWorkerSet().size() - actualExpectedNumWorkers);
+                  itph.getWorkerSet().size(), itph.getRouteString(), actualExpectedNumWorkers, numWorkersToRemove);
               // TODO: handle exception
               _workerHelixManager.removeWorkersToMirrorMaker(itph, itph.getRoute().getTopic(),
-                  itph.getRoute().getPartition(), _numOfWorkersBatchSize);
+                  itph.getRoute().getPartition(), numWorkersToRemove);
             }
             newTotalNumWorker += actualExpectedNumWorkers;
           } else {
@@ -1055,6 +1054,7 @@ public class ControllerHelixManager implements IHelixManager {
         new TopicPartition(pipeline, routeId));
     if (!isPipelineExisted(pipeline)) {
       setEmptyResourceConfig(pipeline);
+      LOGGER.info("Create new pipeline {} partition {} to instance {}", pipeline, routeId, instance);
       _helixAdmin.addResource(_helixClusterName, pipeline,
           IdealStateBuilder.buildCustomIdealStateFor(pipeline, String.valueOf(routeId), instance));
     } else {
@@ -1066,7 +1066,8 @@ public class ControllerHelixManager implements IHelixManager {
     }
 
     String[] srcDst = pipeline.split(SEPARATOR);
-    String controllerWorkerHelixClusterName = "controller-worker-" + srcDst[1] + "-" + srcDst[2] + "-" + routeId;
+    String routeString = srcDst[1] + "-" + srcDst[2] + "-" + routeId;
+    String controllerWorkerHelixClusterName = "controller-worker-" + routeString;
     HelixManager spectator = HelixManagerFactory.getZKHelixManager(controllerWorkerHelixClusterName,
         _instanceId,
         InstanceType.SPECTATOR,
@@ -1089,14 +1090,13 @@ public class ControllerHelixManager implements IHelixManager {
     }
 
     _availableControllerList.remove(instanceName);
-    _pipelineToInstanceMap.put(pipeline, new PriorityQueue<>(1,
+    _pipelineToInstanceMap.putIfAbsent(pipeline, new PriorityQueue<>(1,
         InstanceTopicPartitionHolder.totalWorkloadComparator(_pipelineWorkloadMap)));
     _pipelineToInstanceMap.get(pipeline).add(instance);
     _assignedControllerCount.inc();
     _workerHelixManager.addTopicToMirrorMaker(instance, pipeline, routeId);
 
     // register metrics
-    String routeString = srcDst[1] + "-" + srcDst[2] + "-" + routeId;
     maybeRegisterMetrics(routeString);
 
     spectator.disconnect();
@@ -1132,6 +1132,37 @@ public class ControllerHelixManager implements IHelixManager {
     return createNewRoute(pipeline, routeId);
   }
 
+  public InstanceTopicPartitionHolder expandPipeline(
+          PriorityQueue<InstanceTopicPartitionHolder> instanceList,
+          String topicName,
+          int numPartitions,
+          String pipeline) throws Exception {
+
+    LOGGER.info("maybeCreateNewRoute2, topicName: {}, numPartitions: {}, pipeline: {}", topicName, numPartitions,
+            pipeline);
+
+    int routeId = 0;
+    int totalNumPartitions = numPartitions;
+    for (InstanceTopicPartitionHolder instance : instanceList) {
+      totalNumPartitions = totalNumPartitions + instance.getTotalNumPartitions();
+      if(routeId < instance.getRoute().getPartition()){
+        routeId = instance.getRoute().getPartition();
+      }
+    }
+
+    if(totalNumPartitions < _initMaxNumPartitionsPerRoute){
+      return expandWorker(pipeline, routeId);
+    }
+
+    return createNewRoute(pipeline, ++routeId);
+  }
+
+  private InstanceTopicPartitionHolder expandWorker(String pipeline, int routeId) throws Exception{
+    InstanceTopicPartitionHolder instance = _pipelineToInstanceMap.get(pipeline).peek();
+    _workerHelixManager.addTopicToMirrorMaker(instance, pipeline, routeId);
+    return instance;
+  }
+
   public synchronized void addTopicToMirrorMaker(
       String topicName,
       int numPartitions,
@@ -1142,16 +1173,15 @@ public class ControllerHelixManager implements IHelixManager {
     try {
       LOGGER.info("Trying to add topic: {} to pipeline: {}", topicName, pipeline);
 
+      InstanceTopicPartitionHolder instance;
       if (!isPipelineExisted(pipeline)) {
-        createNewRoute(pipeline, 0);
+        instance = createNewRoute(pipeline, 0);
       } else {
         LOGGER.info("Pipeline already existed!");
+        instance = expandPipeline(_pipelineToInstanceMap.get(pipeline), topicName,
+                numPartitions, pipeline);
       }
 
-      boolean isSameDc = src.substring(0, 3).equals(dst.substring(0, 3));
-
-      InstanceTopicPartitionHolder instance = maybeCreateNewRoute(_pipelineToInstanceMap.get(pipeline), topicName,
-          numPartitions, pipeline);
       String route = instance.getRouteString();
       if (!isTopicExisted(topicName)) {
         setEmptyResourceConfig(topicName);
@@ -1170,6 +1200,7 @@ public class ControllerHelixManager implements IHelixManager {
       _lock.unlock();
     }
   }
+
 
   // TODO: fix status if accidentally expanding a topic to a larger number
   public synchronized void expandTopicInMirrorMaker(
