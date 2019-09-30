@@ -22,4 +22,8 @@ public class ControllerUtils {
     public static boolean isPipelineName(String maybeTopicName) {
         return maybeTopicName.startsWith(SEPARATOR);
     }
+
+    public static String getRouteName(String pipeline, int routeId){
+        return pipeline + SEPARATOR + routeId;
+    }
 }
