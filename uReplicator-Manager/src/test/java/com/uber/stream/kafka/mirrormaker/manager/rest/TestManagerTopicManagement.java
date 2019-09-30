@@ -432,7 +432,6 @@ public class TestManagerTopicManagement extends RestTestBase {
     request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
         .getTopicCreationRequestUrl("testManagerTopicManagement0", "cluster1", "cluster3");
     response = HTTP_CLIENT.handle(request);
-    LOGGER.error("response.getStatus()", response.getEntityAsText());
     Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
     Assert.assertTrue(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testManagerTopicManagement0"));
 
@@ -494,7 +493,6 @@ public class TestManagerTopicManagement extends RestTestBase {
     request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
         .getTopicCreationRequestUrl("testManagerTopicManagement0", "cluster1", "cluster3");
     response = HTTP_CLIENT.handle(request);
-    LOGGER.error("response.getStatus()", response.getEntityAsText());
     Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
     Assert.assertTrue(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testManagerTopicManagement0"));
 
@@ -563,7 +561,6 @@ public class TestManagerTopicManagement extends RestTestBase {
     // Create topic
     request = ManagerRequestURLBuilder.baseUrl(REQUEST_URL)
         .getTopicCreationRequestUrl("testDeleteManagerTopicManagement0", "cluster1", "cluster3");
-    LOGGER.error("response.getStatus()", response.getEntityAsText());
     response = HTTP_CLIENT.handle(request);
     Assert.assertEquals(response.getStatus(), Status.SUCCESS_OK);
     Assert.assertTrue(ZK_CLIENT.exists("/" + HELIX_CLUSTER_NAME + "/CONFIGS/RESOURCE/testDeleteManagerTopicManagement0"));
