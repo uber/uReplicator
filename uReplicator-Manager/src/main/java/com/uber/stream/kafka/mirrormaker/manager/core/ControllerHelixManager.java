@@ -693,7 +693,7 @@ public class ControllerHelixManager implements IHelixManager {
   public synchronized void handleLiveInstanceChange(boolean onlyCheckOffline, boolean forceBalance) throws Exception {
     _lock.lock();
     try {
-      LOGGER.info("handleLiveInstanceChange() wake up!");
+      LOGGER.info("handleLiveInstanceChange, onlyCheckOffline : {}, forceBalance : {}", onlyCheckOffline, forceBalance);
 
       // Check if any controller in route is down
       Map<String, Set<TopicPartition>> instanceToTopicPartitionsMap = HelixUtils
@@ -1108,13 +1108,13 @@ public class ControllerHelixManager implements IHelixManager {
     return instance;
   }
 
-  public InstanceTopicPartitionHolder expandPipeline(
+  public InstanceTopicPartitionHolder maybeCreateNewRoute(
           PriorityQueue<InstanceTopicPartitionHolder> instanceList,
           String topicName,
           int numPartitions,
           String pipeline) throws Exception {
 
-    LOGGER.info("expandPipeline, topicName: {}, numPartitions: {}, pipeline: {}", topicName, numPartitions,
+    LOGGER.info("maybeCreateNewRoute, topicName: {}, numPartitions: {}, pipeline: {}", topicName, numPartitions,
             pipeline);
 
     int routeId = 0;
@@ -1125,19 +1125,16 @@ public class ControllerHelixManager implements IHelixManager {
       }
     }
 
-    LOGGER.info("expandPipeline, routeName: {}", routeName);
+    LOGGER.info("maybeCreateNewRoute, routeName: {}", routeName);
 
     if(_routeToPartitionMap.get(routeName) + numPartitions < _initMaxNumPartitionsPerRoute){
-      return expandWorker(pipeline, routeId);
+      _workerHelixManager.expandPipelineInMirrorMaker(pipeline, routeId);
+      ((ControllerLiveInstanceChangeListener)_liveInstanceChangeListener).triggerRebalance();
+      InstanceTopicPartitionHolder instance = _pipelineToInstanceMap.get(pipeline).peek();
+      return instance;
     }
 
     return createNewRoute(pipeline, ++routeId);
-  }
-
-  private InstanceTopicPartitionHolder expandWorker(String pipeline, int routeId) throws Exception{
-    InstanceTopicPartitionHolder instance = _pipelineToInstanceMap.get(pipeline).peek();
-    _workerHelixManager.expandWorker(instance, pipeline, routeId);
-    return instance;
   }
 
   public synchronized void addTopicToMirrorMaker(
@@ -1156,8 +1153,8 @@ public class ControllerHelixManager implements IHelixManager {
       if (!isPipelineExisted(pipeline)) {
         instance = createNewRoute(pipeline, 0);
       } else {
-        LOGGER.info("Pipeline already existed!");
-        instance = expandPipeline(_pipelineToInstanceMap.get(pipeline), topicName,
+        LOGGER.info("Pipeline : {} already existed!", pipeline);
+        instance = maybeCreateNewRoute(_pipelineToInstanceMap.get(pipeline), topicName,
                 numPartitions, pipeline);
       }
 

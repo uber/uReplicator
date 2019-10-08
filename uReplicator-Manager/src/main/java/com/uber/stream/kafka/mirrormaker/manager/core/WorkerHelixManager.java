@@ -184,23 +184,12 @@ public class WorkerHelixManager implements IHelixManager {
     }
   }
 
-  public synchronized void expandWorker(InstanceTopicPartitionHolder controller, String pipeline, int routeId){
+  public synchronized void expandPipelineInMirrorMaker(String pipeline, int routeId){
     TopicPartition route = new TopicPartition(pipeline, routeId);
     List<String> instances = _routeToInstanceMap.get(route);
-    List<String> addInstances = new ArrayList<>();
-    if (_availableWorkerList.size() > 0) {
-      int currentWorkerSize = instances.size();
-      for (int i = 0; i < _availableWorkerList.size() && currentWorkerSize <= _conf.getInitMaxNumWorkersPerRoute(); i++, currentWorkerSize++) {
-        instances.add(_availableWorkerList.get(i));
-        addInstances.add(_availableWorkerList.get(i));
-      }
-    }
     _helixAdmin.setResourceIdealState(_helixClusterName, pipeline,
             IdealStateBuilder.expandCustomIdealStateFor(_helixAdmin.getResourceIdealState(_helixClusterName, pipeline),
                     pipeline, String.valueOf(routeId), instances, _conf.getMaxNumWorkersPerRoute()));
-    _routeToInstanceMap.get(route).addAll(addInstances);
-    _availableWorkerList.removeAll(addInstances);
-    controller.addWorkers(addInstances);
   }
 
   public synchronized void deletePipelineInMirrorMaker(String pipeline) {

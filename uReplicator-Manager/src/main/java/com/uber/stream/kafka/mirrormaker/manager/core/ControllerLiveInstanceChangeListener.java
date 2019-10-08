@@ -40,7 +40,6 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
   private final ControllerHelixManager _controllerHelixManager;
   private final HelixManager _helixManager;
 
-  private final int minIntervalInSeconds = 60;
   private long _lastRebalanceTimeMillis = 0;
 
   private final ScheduledExecutorService _delayedScheduler = Executors.newSingleThreadScheduledExecutor();
@@ -53,18 +52,25 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
     _helixManager = helixManager;
     registerMetrics();
 
-    LOGGER.info("Trying to schedule auto rebalancing");
+      LOGGER.info("Trying to schedule auto rebalancing with fix delay : {}", _workloadRefreshPeriodInSeconds);
     _delayedScheduler.scheduleWithFixedDelay(
         new Runnable() {
           @Override
           public void run() {
             try {
-              rebalanceCurrentCluster(false);
+              if(System.currentTimeMillis() - _lastRebalanceTimeMillis >= TimeUnit.MILLISECONDS.convert(_workloadRefreshPeriodInSeconds, TimeUnit.SECONDS)){
+                doRebalance();
+              }
             } catch (Exception e) {
               LOGGER.error("Got exception during periodically rebalancing the whole cluster! ", e);
             }
           }
         }, 60, _workloadRefreshPeriodInSeconds, TimeUnit.SECONDS);
+  }
+
+  private void doRebalance(){
+    rebalanceCurrentCluster(false);
+    _lastRebalanceTimeMillis = System.currentTimeMillis();
   }
 
   @Override
@@ -102,7 +108,19 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
     } catch (Exception e) {
       LOGGER.error("Failed to handle live instance change!", e);
     }
+  }
 
+  public void triggerRebalance(){
+    _delayedScheduler.execute(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          doRebalance();
+        } catch (Exception e) {
+          LOGGER.error("Got exception during triggerRebalance ", e);
+        }
+      }
+    });
   }
 
   private void registerMetrics() {
