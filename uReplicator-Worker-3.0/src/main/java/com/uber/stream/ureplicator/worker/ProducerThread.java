@@ -15,8 +15,6 @@
  */
 package com.uber.stream.ureplicator.worker;
 
-import com.codahale.metrics.Histogram;
-import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
 import com.codahale.metrics.UniformReservoir;
 import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
@@ -55,6 +53,7 @@ public class ProducerThread extends Thread {
   protected Timer flushLatencyMsTimer = new Timer(new UniformReservoir());
   protected Timer commitLatencyMsTimer = new Timer(new UniformReservoir());
   private final String clientId;
+
   /**
    * Constructor
    *
@@ -124,20 +123,20 @@ public class ProducerThread extends Thread {
         } catch (ConsumerTimeoutException e) {
           LOGGER.trace("[{}]Caught ConsumerTimeoutException, continue iteration.", getName());
           // TODO: add backoff ms for ConsumerTimeoutException
-        } catch (Exception e) {
-          LOGGER.error("[{}]Caught Exception, thread exit.", getName(), e);
-          break;
+        } catch (Throwable e) {
+          LOGGER.error("[{}]Caught Throwable, thread exit.", getName(), e);
+          return;
         }
         flushAndCommitOffset(false);
       }
+    } catch (Throwable e) {
+      LOGGER.error("[{}]Caught Throwable, thread exit.", getName(), e);
     } finally {
       LOGGER.info("[{}]Thread exited.", getName());
       shutdownLatch.countDown();
       if (!isShuttingDown.get()) {
         LOGGER.error(
             "[{}]Thread exited abnormally, stopping the whole uReplicator.", getName());
-        // TODO: add timeout for clean shutdown
-        workerInstance.cleanShutdown();
         System.exit(-1);
       }
     }
@@ -147,7 +146,8 @@ public class ProducerThread extends Thread {
     try {
       Long flushStartTime = System.currentTimeMillis();
       if (consumedOffsets.size() != 0 && producer.maybeFlush(forceCommit)) {
-        flushLatencyMsTimer.update(System.currentTimeMillis() - flushStartTime, TimeUnit.MILLISECONDS);
+        flushLatencyMsTimer
+            .update(System.currentTimeMillis() - flushStartTime, TimeUnit.MILLISECONDS);
         commitLatencyMsTimer.time(() -> checkpointManager.commitOffset(consumedOffsets));
         consumedOffsets.clear();
       }

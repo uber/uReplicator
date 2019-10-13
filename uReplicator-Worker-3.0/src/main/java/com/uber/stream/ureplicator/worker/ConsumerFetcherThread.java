@@ -229,9 +229,6 @@ public class ConsumerFetcherThread extends ShutdownableThread {
         topicAndPartitions);
     synchronized (updateMapLock) {
       for (TopicPartition tp : topicAndPartitions) {
-        if (!partitionMap.containsKey(tp)) {
-          continue;
-        }
         partitionDeleteMap.put(tp, true);
         if (partitionAddMap.containsKey(tp)) {
           partitionAddMap.remove(tp);
