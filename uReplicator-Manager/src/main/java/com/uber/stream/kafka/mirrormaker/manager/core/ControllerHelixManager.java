@@ -1000,12 +1000,11 @@ public class ControllerHelixManager implements IHelixManager {
             }
 
             if (actualExpectedNumWorkers < itph.getWorkerSet().size()) {
-              int numWorkersToRemove = itph.getWorkerSet().size() - actualExpectedNumWorkers;
+              int numOfWorkersToRemove = itph.getWorkerSet().size() - actualExpectedNumWorkers;
               LOGGER.info("Current {} workers in route {}, actual expect {} workers, remove {} workers",
-                  itph.getWorkerSet().size(), itph.getRouteString(), actualExpectedNumWorkers, numWorkersToRemove);
-              // TODO: handle exception
+                  itph.getWorkerSet().size(), itph.getRouteString(), actualExpectedNumWorkers, numOfWorkersToRemove);
               _workerHelixManager.removeWorkersToMirrorMaker(itph, itph.getRoute().getTopic(),
-                  itph.getRoute().getPartition(), numWorkersToRemove);
+                  itph.getRoute().getPartition(), numOfWorkersToRemove);
             }
             newTotalNumWorker += actualExpectedNumWorkers;
           } else {
@@ -1071,7 +1070,7 @@ public class ControllerHelixManager implements IHelixManager {
     }
 
     String[] srcDst = pipeline.split(SEPARATOR);
-    String routeString = srcDst[1] + "-" + srcDst[2] + "-" + routeId;
+    String routeString =  String.format("%s-%s-%s", srcDst[1], srcDst[2], routeId);
     String controllerWorkerHelixClusterName = "controller-worker-" + routeString;
     HelixManager spectator = HelixManagerFactory.getZKHelixManager(controllerWorkerHelixClusterName,
         _instanceId,
