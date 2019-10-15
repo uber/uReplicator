@@ -184,7 +184,7 @@ public class WorkerHelixManager implements IHelixManager {
     }
   }
 
-  public synchronized void expandPipelineInMirrorMaker(String pipeline, int routeId){
+  public synchronized void addWorkersToMirrorMaker(String pipeline, int routeId){
     TopicPartition route = new TopicPartition(pipeline, routeId);
     List<String> instances = _routeToInstanceMap.get(route);
     _helixAdmin.setResourceIdealState(_helixClusterName, pipeline,

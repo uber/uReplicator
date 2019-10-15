@@ -112,7 +112,6 @@ public class ControllerHelixManager implements IHelixManager {
   private ReentrantLock _lock = new ReentrantLock();
   private Map<String, Map<String, InstanceTopicPartitionHolder>> _topicToPipelineInstanceMap;
   private Map<String, PriorityQueue<InstanceTopicPartitionHolder>> _pipelineToInstanceMap;
-  private Map<String, Integer> _routeToPartitionMap;
   private List<String> _availableControllerList;
 
   private long lastUpdateTimeMs = 0L;
@@ -140,7 +139,6 @@ public class ControllerHelixManager implements IHelixManager {
     _instanceId = managerConf.getManagerInstanceId();
     _topicToPipelineInstanceMap = new ConcurrentHashMap<>();
     _pipelineToInstanceMap = new ConcurrentHashMap<>();
-    _routeToPartitionMap = new ConcurrentHashMap<>();
     _availableControllerList = new ArrayList<>();
     _routeToCounterMap = new ConcurrentHashMap<>();
     _zkClient = new ZkClient(_helixZkURL, 30000, 30000, ZKStringSerializer$.MODULE$);
@@ -1116,23 +1114,19 @@ public class ControllerHelixManager implements IHelixManager {
     LOGGER.info("maybeCreateNewRoute, topicName: {}, numPartitions: {}, pipeline: {}", topicName, numPartitions,
             pipeline);
 
-    int routeId = 0;
-    String routeName = ControllerUtils.getRouteName(pipeline, routeId);
     for (InstanceTopicPartitionHolder instance : instanceList) {
-      if(routeId < instance.getRoute().getPartition()){
-        routeName = instance.getRouteString();
+      if (instance.getTotalNumPartitions() + numPartitions < _initMaxNumPartitionsPerRoute) {
+        _workerHelixManager.addWorkersToMirrorMaker(pipeline, instance.getRoute().getPartition());
+        return instance;
       }
     }
 
-    LOGGER.info("maybeCreateNewRoute, routeName: {}", routeName);
-
-    if(_routeToPartitionMap.get(routeName) + numPartitions < _initMaxNumPartitionsPerRoute){
-      _workerHelixManager.expandPipelineInMirrorMaker(pipeline, routeId);
-      ((ControllerLiveInstanceChangeListener)_liveInstanceChangeListener).triggerRebalance();
-      InstanceTopicPartitionHolder instance = _pipelineToInstanceMap.get(pipeline).peek();
-      return instance;
+    int routeId = 0;
+    for (InstanceTopicPartitionHolder instance : instanceList) {
+      if(routeId < instance.getRoute().getPartition()){
+        routeId = instance.getRoute().getPartition();
+      }
     }
-
     return createNewRoute(pipeline, ++routeId);
   }
 
@@ -1169,10 +1163,6 @@ public class ControllerHelixManager implements IHelixManager {
       }
 
       instance.addTopicPartition(new TopicPartition(topicName, numPartitions, pipeline));
-      Integer routePartitionCount = _routeToPartitionMap.putIfAbsent(instance.getRouteString(), numPartitions);
-      if(routePartitionCount != null){
-        _routeToPartitionMap.put(instance.getRouteString(), numPartitions + _routeToPartitionMap.get(instance.getRouteString()));
-      }
       _topicToPipelineInstanceMap.putIfAbsent(topicName, new ConcurrentHashMap<>());
       _topicToPipelineInstanceMap.get(topicName).put(pipeline, instance);
     } finally {
