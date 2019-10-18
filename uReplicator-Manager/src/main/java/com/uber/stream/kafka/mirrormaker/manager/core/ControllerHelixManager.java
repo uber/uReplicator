@@ -1114,18 +1114,22 @@ public class ControllerHelixManager implements IHelixManager {
     LOGGER.info("maybeCreateNewRoute, topicName: {}, numPartitions: {}, pipeline: {}", topicName, numPartitions,
             pipeline);
 
+    Set<Integer> routeIdSet = new HashSet<>();
     for (InstanceTopicPartitionHolder instance : instanceList) {
       if (instance.getTotalNumPartitions() + numPartitions < _initMaxNumPartitionsPerRoute) {
-        _workerHelixManager.addWorkersToMirrorMaker(pipeline, instance.getRoute().getPartition());
+        _workerHelixManager.expandPipelineToMirrorMaker(pipeline, instance.getRoute().getPartition());
         return instance;
       }
+      routeIdSet.add(instance.getRoute().getPartition());
     }
 
+    // For now we don't delete route even it's empty. so routeId should be 0,1...N
     int routeId = 0;
-    for (InstanceTopicPartitionHolder instance : instanceList) {
-      if(routeId < instance.getRoute().getPartition()){
-        routeId = instance.getRoute().getPartition();
+    while (routeId < routeIdSet.size() + 1) {
+      if (!routeIdSet.contains(routeId)) {
+        break;
       }
+      routeId++;
     }
     return createNewRoute(pipeline, ++routeId);
   }

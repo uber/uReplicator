@@ -40,6 +40,7 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
   private final ControllerHelixManager _controllerHelixManager;
   private final HelixManager _helixManager;
 
+  private final int minIntervalInSeconds = 60;
   private long _lastRebalanceTimeMillis = 0;
 
   private final ScheduledExecutorService _delayedScheduler = Executors.newSingleThreadScheduledExecutor();
@@ -47,30 +48,23 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
   private final Counter _isLeaderCounter = new Counter();
 
   public ControllerLiveInstanceChangeListener(ControllerHelixManager controllerHelixManager,
-      HelixManager helixManager, int _workloadRefreshPeriodInSeconds) {
+                                              HelixManager helixManager, int _workloadRefreshPeriodInSeconds) {
     _controllerHelixManager = controllerHelixManager;
     _helixManager = helixManager;
     registerMetrics();
 
-      LOGGER.info("Trying to schedule auto rebalancing with fix delay : {}", _workloadRefreshPeriodInSeconds);
+    LOGGER.info("Trying to schedule auto rebalancing");
     _delayedScheduler.scheduleWithFixedDelay(
-        new Runnable() {
-          @Override
-          public void run() {
-            try {
-              if(System.currentTimeMillis() - _lastRebalanceTimeMillis >= TimeUnit.MILLISECONDS.convert(_workloadRefreshPeriodInSeconds, TimeUnit.SECONDS)){
-                doRebalance();
+            new Runnable() {
+              @Override
+              public void run() {
+                try {
+                  rebalanceCurrentCluster(false);
+                } catch (Exception e) {
+                  LOGGER.error("Got exception during periodically rebalancing the whole cluster! ", e);
+                }
               }
-            } catch (Exception e) {
-              LOGGER.error("Got exception during periodically rebalancing the whole cluster! ", e);
-            }
-          }
-        }, 60, _workloadRefreshPeriodInSeconds, TimeUnit.SECONDS);
-  }
-
-  private void doRebalance(){
-    rebalanceCurrentCluster(false);
-    _lastRebalanceTimeMillis = System.currentTimeMillis();
+            }, 60, _workloadRefreshPeriodInSeconds, TimeUnit.SECONDS);
   }
 
   @Override
@@ -97,7 +91,7 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
     }
 
     if (HelixUtils.liveInstances(_helixManager).isEmpty() ||
-        HelixUtils.liveInstances(_controllerHelixManager.getWorkerHelixManager().getHelixManager()).isEmpty()) {
+            HelixUtils.liveInstances(_controllerHelixManager.getWorkerHelixManager().getHelixManager()).isEmpty()) {
       LOGGER.info("No live instances, do nothing!");
       return;
     }
@@ -108,25 +102,13 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
     } catch (Exception e) {
       LOGGER.error("Failed to handle live instance change!", e);
     }
-  }
 
-  public void triggerRebalance(){
-    _delayedScheduler.execute(new Runnable() {
-      @Override
-      public void run() {
-        try {
-          doRebalance();
-        } catch (Exception e) {
-          LOGGER.error("Got exception during triggerRebalance ", e);
-        }
-      }
-    });
   }
 
   private void registerMetrics() {
     try {
       KafkaUReplicatorMetricsReporter.get().registerMetric("leader.counter",
-          _isLeaderCounter);
+              _isLeaderCounter);
     } catch (Exception e) {
       LOGGER.error("Error registering metrics!", e);
     }
