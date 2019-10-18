@@ -1131,7 +1131,7 @@ public class ControllerHelixManager implements IHelixManager {
       }
       routeId++;
     }
-    return createNewRoute(pipeline, ++routeId);
+    return createNewRoute(pipeline, routeId);
   }
 
   public synchronized void addTopicToMirrorMaker(
