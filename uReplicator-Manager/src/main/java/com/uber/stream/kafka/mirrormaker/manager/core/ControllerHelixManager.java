@@ -1143,8 +1143,6 @@ public class ControllerHelixManager implements IHelixManager {
     try {
       LOGGER.info("Trying to add topic: {} to pipeline: {}", topicName, pipeline);
 
-      updateCurrentStatus();
-
       InstanceTopicPartitionHolder instance;
       if (!isPipelineExisted(pipeline)) {
         instance = createNewRoute(pipeline, 0);

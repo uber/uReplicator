@@ -181,6 +181,7 @@ public class TopicManagementRestletResource extends ServerResource {
               topicName, srcCluster, dstCluster));
     } else {
       try {
+        _helixMirrorMakerManager.updateCurrentStatus();
         _helixMirrorMakerManager.addTopicToMirrorMaker(srcTopicPartitionInfo.getTopic(),
             srcTopicPartitionInfo.getPartition(), srcCluster, dstCluster, pipeline);
         LOGGER.info("Successfully whitelist the topic {} from {} to {}", topicName, srcCluster, dstCluster);
