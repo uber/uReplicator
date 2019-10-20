@@ -1117,7 +1117,6 @@ public class ControllerHelixManager implements IHelixManager {
     Set<Integer> routeIdSet = new HashSet<>();
     for (InstanceTopicPartitionHolder instance : instanceList) {
       if (instance.getTotalNumPartitions() + numPartitions < _initMaxNumPartitionsPerRoute) {
-        _workerHelixManager.expandPipelineToMirrorMaker(pipeline, instance.getRoute().getPartition());
         return instance;
       }
       routeIdSet.add(instance.getRoute().getPartition());

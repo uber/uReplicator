@@ -184,14 +184,6 @@ public class WorkerHelixManager implements IHelixManager {
     }
   }
 
-  public synchronized void expandPipelineToMirrorMaker(String pipeline, int routeId){
-    TopicPartition route = new TopicPartition(pipeline, routeId);
-    List<String> instances = _routeToInstanceMap.get(route);
-    _helixAdmin.setResourceIdealState(_helixClusterName, pipeline,
-            IdealStateBuilder.expandCustomIdealStateFor(_helixAdmin.getResourceIdealState(_helixClusterName, pipeline),
-                    pipeline, String.valueOf(routeId), instances, _conf.getMaxNumWorkersPerRoute()));
-  }
-
   public synchronized void deletePipelineInMirrorMaker(String pipeline) {
     _lock.lock();
     try {
