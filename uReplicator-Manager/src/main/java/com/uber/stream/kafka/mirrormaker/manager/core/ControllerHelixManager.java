@@ -30,7 +30,6 @@ import com.uber.stream.kafka.mirrormaker.common.utils.HelixSetupUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.HttpClientUtils;
 import com.uber.stream.kafka.mirrormaker.manager.ManagerConf;
-import com.uber.stream.kafka.mirrormaker.manager.utils.ControllerUtils;
 import com.uber.stream.kafka.mirrormaker.manager.validation.KafkaClusterValidationManager;
 import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import kafka.utils.ZKStringSerializer$;
@@ -998,11 +997,11 @@ public class ControllerHelixManager implements IHelixManager {
             }
 
             if (actualExpectedNumWorkers < itph.getWorkerSet().size()) {
-              int numOfWorkersToRemove = itph.getWorkerSet().size() - actualExpectedNumWorkers;
+              //_numOfWorkersBatchSize is the smallest unit for scaling worker in a safe way
               LOGGER.info("Current {} workers in route {}, actual expect {} workers, remove {} workers",
-                  itph.getWorkerSet().size(), itph.getRouteString(), actualExpectedNumWorkers, numOfWorkersToRemove);
+                  itph.getWorkerSet().size(), itph.getRouteString(), actualExpectedNumWorkers, _numOfWorkersBatchSize);
               _workerHelixManager.removeWorkersToMirrorMaker(itph, itph.getRoute().getTopic(),
-                  itph.getRoute().getPartition(), numOfWorkersToRemove);
+                  itph.getRoute().getPartition(), _numOfWorkersBatchSize);
             }
             newTotalNumWorker += actualExpectedNumWorkers;
           } else {
