@@ -71,6 +71,7 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
   private final Counter _numLiveInstances = new Counter();
   private final Counter _numIdleInstances = new Counter();
   private final Counter _numBlacklistedInstances = new Counter();
+  private final Counter _numHelixDisableInstances = new Counter();
   private final Counter _numBlacklistedTopicPartitions = new Counter();
 
   private final Meter _rebalanceRate = new Meter();
@@ -126,6 +127,11 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
                 if (_helixMirrorMakerManager.getWorkloadInfoRetriever().isInitialized()
                     && System.currentTimeMillis() - _lastRebalanceTimeMillis
                     > 1000L * minIntervalInSeconds) {
+                  List<String> helixDisabledInstances = _helixMirrorMakerManager.getHelixDisableInstances();
+                  if (helixDisabledInstances != null && helixDisabledInstances.size() != 0) {
+                    LOGGER.error("Found helix disabled instances : [{}]", String.join( ",", helixDisabledInstances));
+                  }
+                  _numHelixDisableInstances.inc(helixDisabledInstances.size() - _numHelixDisableInstances.getCount());
                   rebalanceCurrentCluster(_helixMirrorMakerManager.getCurrentLiveInstances(),
                       _helixMirrorMakerManager.getBlacklistedInstances(), false, false);
                 }
@@ -153,6 +159,8 @@ public class AutoRebalanceLiveInstanceChangeListener implements LiveInstanceChan
           _numIdleInstances);
       KafkaUReplicatorMetricsReporter.get().registerMetric("worker.blacklistedInstances",
           _numBlacklistedInstances);
+      KafkaUReplicatorMetricsReporter.get().registerMetric("worker.helixDisabledInstances",
+          _numHelixDisableInstances);
       KafkaUReplicatorMetricsReporter.get().registerMetric("worker.blacklistedTopicPartitions",
           _numBlacklistedTopicPartitions);
       KafkaUReplicatorMetricsReporter.get().registerMetric("worker.rebalance.rate",

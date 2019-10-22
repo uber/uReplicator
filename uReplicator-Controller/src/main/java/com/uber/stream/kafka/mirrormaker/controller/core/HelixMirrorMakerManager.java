@@ -38,10 +38,7 @@ import java.util.concurrent.TimeUnit;
 import com.uber.stream.kafka.mirrormaker.common.modules.TopicPartitionLag;
 import org.apache.commons.lang.StringUtils;
 import org.apache.helix.HelixAdmin;
-import org.apache.helix.HelixDataAccessor;
 import org.apache.helix.HelixManager;
-import org.apache.helix.PropertyKey;
-import org.apache.helix.PropertyKey.Builder;
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.HelixConfigScope;
 import org.apache.helix.model.HelixConfigScope.ConfigScopeProperty;
@@ -344,14 +341,15 @@ public class HelixMirrorMakerManager implements IHelixManager {
   }
 
   public List<LiveInstance> getCurrentLiveInstances() {
-    HelixDataAccessor helixDataAccessor = _helixZkManager.getHelixDataAccessor();
-    PropertyKey liveInstancePropertyKey = new Builder(_helixClusterName).liveInstances();
-    List<LiveInstance> liveInstances = helixDataAccessor.getChildValues(liveInstancePropertyKey);
-    return liveInstances;
+    return HelixUtils.getCurrentLiveInstances(_helixZkManager);
+  }
+
+  public List<String> getHelixDisableInstances() {
+    return HelixUtils.getHelixDisabledInstanceNames(_helixZkManager);
   }
 
   public List<String> getCurrentLiveInstanceNames() {
-    return HelixUtils.liveInstances(_helixZkManager);
+    return HelixUtils.getCurrentLiveInstanceNames(_helixZkManager);
   }
 
   public void blacklistInstance(String instanceName) {

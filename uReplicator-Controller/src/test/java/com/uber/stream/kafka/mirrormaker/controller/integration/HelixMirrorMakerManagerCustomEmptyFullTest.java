@@ -26,6 +26,10 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
+import org.apache.helix.HelixAdmin;
+import org.apache.helix.manager.zk.ZKHelixAdmin;
+import org.apache.helix.model.InstanceConfig;
+import org.apache.helix.model.LiveInstance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -68,7 +72,8 @@ public class HelixMirrorMakerManagerCustomEmptyFullTest {
       helixMirrorMakerManager.addTopicToMirrorMaker(topic, 8);
     }
     assertEmptyCluster(helixMirrorMakerManager);
-    Assert.assertEquals(helixMirrorMakerManager.getTopicLists().size(), numTotalTopics, "number of topic not match");
+    Assert.assertEquals(helixMirrorMakerManager.getTopicLists().size(), numTotalTopics,
+        "number of topic not match");
 
     LOGGER.info("Trying to add {} instances", numBatchBringUpInstances);
     List<FakeInstance> fakeInstances = ControllerTestUtils
@@ -105,9 +110,13 @@ public class HelixMirrorMakerManagerCustomEmptyFullTest {
           totalInstancesSize, 16 * numTotalTopics);
       LOGGER.info("Trying to bring up: " + fakeInstances.get(instanceId).getInstanceId());
       totalInstancesSize = startInstance(fakeInstances.get(instanceId), totalInstancesSize);
-      ControllerTestUtils.assertInstanceOwnedTopicPartitionsBalanced(helixMirrorMakerManager, totalInstancesSize,
-          16 * numTotalTopics);
+      ControllerTestUtils
+          .assertInstanceOwnedTopicPartitionsBalanced(helixMirrorMakerManager, totalInstancesSize,
+              16 * numTotalTopics);
     }
+
+    List<LiveInstance> liveInstances = helixMirrorMakerManager.getCurrentLiveInstances();
+    Assert.assertEquals(liveInstances.size(), fakeInstances.size());
 
     LOGGER.info("Bring down nodes 1 by 1");
     Set<Integer> stoppedId = new HashSet<>();
@@ -121,17 +130,30 @@ public class HelixMirrorMakerManagerCustomEmptyFullTest {
       totalInstancesSize = stopInstance(fakeInstances.get(instanceId), totalInstancesSize);
 
     }
-    ControllerTestUtils.assertInstanceOwnedTopicPartitionsBalanced(helixMirrorMakerManager, totalInstancesSize,
-        16 * numTotalTopics);
+    ControllerTestUtils
+        .assertInstanceOwnedTopicPartitionsBalanced(helixMirrorMakerManager, totalInstancesSize,
+            16 * numTotalTopics);
 
     LOGGER.info("Bring up nodes 1 by 1");
     for (int i = 0; i < stoppedId.size(); ++i) {
       int instanceId = (Integer) stoppedId.toArray()[i];
       LOGGER.info("Trying to bring up: " + fakeInstances.get(instanceId).getInstanceId());
       totalInstancesSize = startInstance(fakeInstances.get(instanceId), totalInstancesSize);
-      ControllerTestUtils.assertInstanceOwnedTopicPartitionsBalanced(helixMirrorMakerManager, totalInstancesSize,
-          16 * numTotalTopics);
+      ControllerTestUtils
+          .assertInstanceOwnedTopicPartitionsBalanced(helixMirrorMakerManager, totalInstancesSize,
+              16 * numTotalTopics);
     }
+
+    LOGGER.info("Blacklist one node");
+    HelixAdmin helixAdmin = new ZKHelixAdmin(ZkStarter.DEFAULT_ZK_STR);
+    LiveInstance liveInstance = liveInstances.get(0);
+    InstanceConfig config = helixAdmin
+        .getInstanceConfig(helixClusterName, liveInstance.getInstanceName());
+    config.setInstanceEnabled(false);
+    helixAdmin.setInstanceConfig(helixClusterName, liveInstance.getInstanceName(), config);
+    LOGGER.info("set instance enable to false for : {}", liveInstance.getInstanceName());
+    Assert.assertEquals(helixMirrorMakerManager.getCurrentLiveInstanceNames().size() + 1, fakeInstances.size());
+    Assert.assertEquals(helixMirrorMakerManager.getCurrentLiveInstances().size() + 1, fakeInstances.size());
 
     helixMirrorMakerManager.stop();
   }

@@ -16,6 +16,7 @@
 package com.uber.stream.kafka.mirrormaker.common.utils;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableList.Builder;
 import com.uber.stream.kafka.mirrormaker.common.Constants;
 import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
 import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
@@ -39,11 +40,15 @@ import org.apache.helix.ZNRecord;
 import org.apache.helix.manager.zk.ZkBaseDataAccessor;
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.InstanceConfig;
+import org.apache.helix.model.LiveInstance;
 import org.apache.helix.model.builder.CustomModeISBuilder;
 import org.apache.helix.store.zk.ZkHelixPropertyStore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HelixUtils {
-
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(HelixUtils.class);
   private static final String BLACKLIST_TAG = "blacklisted";
 
   public static String getAbsoluteZkPathForHelix(String zkBaseUrl) {
@@ -66,7 +71,7 @@ public class HelixUtils {
   public static Map<String, String> getInstanceToHostnameMap(HelixManager helixManager) {
     List<String> instances = liveInstances(helixManager);
     HashMap<String, String> retVal = new HashMap<>(instances.size());
-    for (String instance: instances) {
+    for (String instance : instances) {
       InstanceConfig config = helixManager.getConfigAccessor().getInstanceConfig(
           helixManager.getClusterName(), instance);
       if (config != null) {
@@ -76,10 +81,58 @@ public class HelixUtils {
     return retVal;
   }
 
-  public static List<String> liveInstances(HelixManager helixManager) {
+  public static List<String> getCurrentLiveInstanceNames(HelixManager helixManager) {
+    return getInstanceNamesWithFilter(helixManager, true);
+  }
+
+  public static List<String> getHelixDisabledInstanceNames(HelixManager helixManager) {
+    return getInstanceNamesWithFilter(helixManager, false);
+  }
+
+  /**
+   * Gets participant instances on helix cluster, set instanceEnabled to false to get helixDisabled instances
+   */
+  private static List<String> getInstanceNamesWithFilter(HelixManager helixManager,
+      boolean instanceEnabled) {
     HelixDataAccessor helixDataAccessor = helixManager.getHelixDataAccessor();
     PropertyKey liveInstancesKey = helixDataAccessor.keyBuilder().liveInstances();
-    return ImmutableList.copyOf(helixDataAccessor.getChildNames(liveInstancesKey));
+    ImmutableList.Builder builder = new Builder();
+    for (String instance : helixDataAccessor.getChildNames(liveInstancesKey)) {
+      InstanceConfig config = helixManager.getConfigAccessor().getInstanceConfig(
+          helixManager.getClusterName(), instance);
+
+      if (config == null && !instanceEnabled) {
+        builder.add(instance);
+        continue;
+      }
+      if (config.getInstanceEnabled() == instanceEnabled) {
+        builder.add(instance);
+        continue;
+      }
+    }
+    return builder.build();
+  }
+
+
+  @Deprecated
+  public static List<String> liveInstances(HelixManager helixManager) {
+    return getCurrentLiveInstanceNames(helixManager);
+  }
+
+  public static List<LiveInstance> getCurrentLiveInstances(HelixManager helixManager) {
+    HelixDataAccessor helixDataAccessor = helixManager.getHelixDataAccessor();
+    PropertyKey liveInstancesKey = helixDataAccessor.keyBuilder().liveInstances();
+    List<LiveInstance> liveInstances = helixDataAccessor.getChildValues(liveInstancesKey);
+
+    ImmutableList.Builder builder = new Builder();
+    for (LiveInstance liveInstance : liveInstances) {
+      InstanceConfig config = helixManager.getConfigAccessor().getInstanceConfig(
+          helixManager.getClusterName(), liveInstance.getInstanceName());
+      if (config != null && config.getInstanceEnabled()) {
+        builder.add(liveInstance);
+      }
+    }
+    return builder.build();
   }
 
   public static List<String> blacklistedInstances(HelixManager helixManager) {
@@ -95,7 +148,8 @@ public class HelixUtils {
     return route.substring(0, route.lastIndexOf("@"));
   }
 
-  public static Map<String, Set<TopicPartition>> getInstanceToTopicPartitionsMap(HelixManager helixManager) {
+  public static Map<String, Set<TopicPartition>> getInstanceToTopicPartitionsMap(
+      HelixManager helixManager) {
     return getInstanceToTopicPartitionsMap(helixManager, null);
   }
 
@@ -104,7 +158,8 @@ public class HelixUtils {
    *
    * @return InstanceToNumTopicPartitionMap
    */
-  public static Map<String, Set<TopicPartition>> getInstanceToTopicPartitionsMap(HelixManager helixManager,
+  public static Map<String, Set<TopicPartition>> getInstanceToTopicPartitionsMap(
+      HelixManager helixManager,
       Map<String, KafkaBrokerTopicObserver> clusterToObserverMap) {
     Map<String, Set<TopicPartition>> instanceToNumTopicPartitionMap = new HashMap<>();
     HelixAdmin helixAdmin = helixManager.getClusterManagmentTool();
