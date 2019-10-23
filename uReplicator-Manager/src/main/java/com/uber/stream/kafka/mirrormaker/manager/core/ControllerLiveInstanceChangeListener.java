@@ -30,12 +30,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * We only considering add or remove box(es), not considering the replacing.
- * For replacing, we just need to bring up a new box and give the old instanceId no auto-balancing needed.
+ * We only considering add or remove box(es), not considering the replacing. For replacing, we just
+ * need to bring up a new box and give the old instanceId no auto-balancing needed.
  */
 public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeListener {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ControllerLiveInstanceChangeListener.class);
+  private static final Logger LOGGER = LoggerFactory
+      .getLogger(ControllerLiveInstanceChangeListener.class);
 
   private final ControllerHelixManager _controllerHelixManager;
   private final HelixManager _helixManager;
@@ -43,32 +44,34 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
   private final int minIntervalInSeconds = 60;
   private long _lastRebalanceTimeMillis = 0;
 
-  private final ScheduledExecutorService _delayedScheduler = Executors.newSingleThreadScheduledExecutor();
+  private final ScheduledExecutorService _delayedScheduler = Executors
+      .newSingleThreadScheduledExecutor();
 
   private final Counter _isLeaderCounter = new Counter();
 
   public ControllerLiveInstanceChangeListener(ControllerHelixManager controllerHelixManager,
-                                              HelixManager helixManager, int _workloadRefreshPeriodInSeconds) {
+      HelixManager helixManager, int _workloadRefreshPeriodInSeconds) {
     _controllerHelixManager = controllerHelixManager;
     _helixManager = helixManager;
     registerMetrics();
 
     LOGGER.info("Trying to schedule auto rebalancing");
     _delayedScheduler.scheduleWithFixedDelay(
-            new Runnable() {
-              @Override
-              public void run() {
-                try {
-                  rebalanceCurrentCluster(false);
-                } catch (Exception e) {
-                  LOGGER.error("Got exception during periodically rebalancing the whole cluster! ", e);
-                }
-              }
-            }, 60, _workloadRefreshPeriodInSeconds, TimeUnit.SECONDS);
+        new Runnable() {
+          @Override
+          public void run() {
+            try {
+              rebalanceCurrentCluster(false);
+            } catch (Exception e) {
+              LOGGER.error("Got exception during periodically rebalancing the whole cluster! ", e);
+            }
+          }
+        }, 60, _workloadRefreshPeriodInSeconds, TimeUnit.SECONDS);
   }
 
   @Override
-  public void onLiveInstanceChange(final List<LiveInstance> liveInstances, NotificationContext changeContext) {
+  public void onLiveInstanceChange(final List<LiveInstance> liveInstances,
+      NotificationContext changeContext) {
     LOGGER.info("ControllerLiveInstanceChangeListener.onLiveInstanceChange() wakes up!");
     _delayedScheduler.schedule(new Runnable() {
       @Override
@@ -91,7 +94,8 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
     }
 
     if (HelixUtils.liveInstances(_helixManager).isEmpty() ||
-            HelixUtils.liveInstances(_controllerHelixManager.getWorkerHelixManager().getHelixManager()).isEmpty()) {
+        HelixUtils.liveInstances(_controllerHelixManager.getWorkerHelixManager().getHelixManager())
+            .isEmpty()) {
       LOGGER.info("No live instances, do nothing!");
       return;
     }
@@ -108,7 +112,7 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
   private void registerMetrics() {
     try {
       KafkaUReplicatorMetricsReporter.get().registerMetric("leader.counter",
-              _isLeaderCounter);
+          _isLeaderCounter);
     } catch (Exception e) {
       LOGGER.error("Error registering metrics!", e);
     }

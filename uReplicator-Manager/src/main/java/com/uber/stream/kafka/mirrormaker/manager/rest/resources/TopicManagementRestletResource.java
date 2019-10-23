@@ -49,7 +49,8 @@ import org.slf4j.LoggerFactory;
  */
 public class TopicManagementRestletResource extends ServerResource {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TopicManagementRestletResource.class);
+  private static final Logger LOGGER = LoggerFactory
+      .getLogger(TopicManagementRestletResource.class);
 
   private final ManagerConf _conf;
   private final ControllerHelixManager _helixMirrorMakerManager;
@@ -60,7 +61,8 @@ public class TopicManagementRestletResource extends ServerResource {
     getVariants().add(new Variant(MediaType.APPLICATION_JSON));
     setNegotiated(false);
 
-    _conf = (ManagerConf) getApplication().getContext().getAttributes().get(ManagerConf.class.toString());
+    _conf = (ManagerConf) getApplication().getContext().getAttributes()
+        .get(ManagerConf.class.toString());
     _helixMirrorMakerManager = (ControllerHelixManager) getApplication().getContext()
         .getAttributes().get(ControllerHelixManager.class.toString());
     KafkaClusterValidationManager kafkaValidationManager = (KafkaClusterValidationManager) getApplication()
@@ -81,21 +83,26 @@ public class TopicManagementRestletResource extends ServerResource {
           .getTopicToPipelineInstanceMap();
 
       if (topicToPipelineInstanceMap == null || topicToPipelineInstanceMap.isEmpty()) {
-        return getResponseJsonStringRepresentation(Status.SUCCESS_OK, "No topic is added in uReplicator!");
+        return getResponseJsonStringRepresentation(Status.SUCCESS_OK,
+            "No topic is added in uReplicator!");
       } else {
         JSONObject responseJson = new JSONObject();
         responseJson.put("status", Status.SUCCESS_OK.getCode());
 
         JSONObject topicToInstanceMappingJson = new JSONObject();
-        topicToInstanceMappingJson.put("topics", _helixMirrorMakerManager.getTopicToPipelineInstanceMap().keySet());
+        topicToInstanceMappingJson
+            .put("topics", _helixMirrorMakerManager.getTopicToPipelineInstanceMap().keySet());
         for (String topic : topicToPipelineInstanceMap.keySet()) {
           JSONObject topicInfoJson = new JSONObject();
 
           for (String pipeline : topicToPipelineInstanceMap.get(topic).keySet()) {
             JSONObject instanceInfoJson = new JSONObject();
-            instanceInfoJson.put("controller", topicToPipelineInstanceMap.get(topic).get(pipeline).getInstanceName());
-            instanceInfoJson.put("route", topicToPipelineInstanceMap.get(topic).get(pipeline).getRouteString());
-            instanceInfoJson.put("workers", topicToPipelineInstanceMap.get(topic).get(pipeline).getWorkerSet());
+            instanceInfoJson.put("controller",
+                topicToPipelineInstanceMap.get(topic).get(pipeline).getInstanceName());
+            instanceInfoJson
+                .put("route", topicToPipelineInstanceMap.get(topic).get(pipeline).getRouteString());
+            instanceInfoJson
+                .put("workers", topicToPipelineInstanceMap.get(topic).get(pipeline).getWorkerSet());
             topicInfoJson.put(pipeline, instanceInfoJson);
           }
           topicToInstanceMappingJson.put(topic, topicInfoJson);
@@ -109,7 +116,8 @@ public class TopicManagementRestletResource extends ServerResource {
     if (ControllerUtils.isPipelineName(topicName)) {
       try {
         if (_helixMirrorMakerManager.isPipelineExisted(topicName)) {
-          return getResponseJsonStringRepresentation(Status.SUCCESS_OK, getHelixInfoJsonFromManager(topicName));
+          return getResponseJsonStringRepresentation(Status.SUCCESS_OK,
+              getHelixInfoJsonFromManager(topicName));
         } else {
           return getResponseJsonStringRepresentation(Status.CLIENT_ERROR_NOT_FOUND,
               String.format("Failed to get view for route: %s, it is not existed!", topicName));
@@ -120,12 +128,14 @@ public class TopicManagementRestletResource extends ServerResource {
             String.format("Failed to get view for route: %s due to exception: %s", topicName, e));
       }
     } else if (_helixMirrorMakerManager.isTopicExisted(topicName)) {
-      LOGGER.info("_topicToPipelineInstanceMap: {} to {}", topicName, _helixMirrorMakerManager.getTopic(topicName));
+      LOGGER.info("_topicToPipelineInstanceMap: {} to {}", topicName,
+          _helixMirrorMakerManager.getTopic(topicName));
 
       // TODO: add worker information
       JSONObject messageJson = new JSONObject();
       messageJson.put("managerView", getHelixInfoJsonFromManager(topicName));
-      messageJson.put("controllerView", _helixMirrorMakerManager.getTopicInfoFromController(topicName));
+      messageJson
+          .put("controllerView", _helixMirrorMakerManager.getTopicInfoFromController(topicName));
       return getResponseJsonStringRepresentation(Status.SUCCESS_OK, messageJson);
     } else {
       return getResponseJsonStringRepresentation(Status.CLIENT_ERROR_NOT_FOUND,
@@ -146,10 +156,12 @@ public class TopicManagementRestletResource extends ServerResource {
 
     // TODO: validate src->dst combination
     if (!isValidPipeline(srcCluster, dstCluster)) {
-      LOGGER.warn("Failed to whitelist topic {} on uReplicator because of not valid pipeline from {} to {}",
+      LOGGER.warn(
+          "Failed to whitelist topic {} on uReplicator because of not valid pipeline from {} to {}",
           topicName, srcCluster, dstCluster);
       return getResponseJsonStringRepresentation(Status.CLIENT_ERROR_NOT_FOUND,
-          String.format("Failed to whitelist topic %s on uReplicator because of not valid pipeline from %s to %s",
+          String.format(
+              "Failed to whitelist topic %s on uReplicator because of not valid pipeline from %s to %s",
               topicName, srcCluster, dstCluster));
     }
 
@@ -158,9 +170,13 @@ public class TopicManagementRestletResource extends ServerResource {
         .getTopicPartitionWithRefresh(topicName);
     LOGGER.info("Source topicPartitionInfo: {}", srcTopicPartitionInfo);
     if (srcTopicPartitionInfo == null) {
-      LOGGER.warn("Failed to whitelist topic {} on uReplicator because of not exists in src cluster", topicName);
+      LOGGER
+          .warn("Failed to whitelist topic {} on uReplicator because of not exists in src cluster",
+              topicName);
       return getResponseJsonStringRepresentation(Status.CLIENT_ERROR_NOT_FOUND,
-          String.format("Failed to whitelist new topic: %s, it's not existed in source Kafka cluster!", topicName));
+          String.format(
+              "Failed to whitelist new topic: %s, it's not existed in source Kafka cluster!",
+              topicName));
     }
 
     // Check if topic in destination cluster
@@ -168,11 +184,15 @@ public class TopicManagementRestletResource extends ServerResource {
         .getTopicPartitionWithRefresh(topicName);
     LOGGER.info("Destination topicPartitionInfo: {}", dstTopicPartitionInfo);
     if (dstTopicPartitionInfo == null) {
-      LOGGER.warn("Failed to whitelist topic {} on uReplicator because of not exists in dst cluster", topicName);
+      LOGGER
+          .warn("Failed to whitelist topic {} on uReplicator because of not exists in dst cluster",
+              topicName);
       return getResponseJsonStringRepresentation(Status.CLIENT_ERROR_NOT_FOUND,
-          String.format("Failed to whitelist new topic: %s, it's not existed in destination Kafka cluster!", topicName));
+          String.format(
+              "Failed to whitelist new topic: %s, it's not existed in destination Kafka cluster!",
+              topicName));
     }
-
+    _helixMirrorMakerManager.updateCurrentStatus();
     String pipeline = ControllerUtils.getPipelineName(srcCluster, dstCluster);
     if (_helixMirrorMakerManager.isTopicPipelineExisted(topicName, pipeline)) {
       LOGGER.info("Topic {} already on uReplicator in pipeline {}", topicName, pipeline);
@@ -181,10 +201,10 @@ public class TopicManagementRestletResource extends ServerResource {
               topicName, srcCluster, dstCluster));
     } else {
       try {
-        _helixMirrorMakerManager.updateCurrentStatus();
         _helixMirrorMakerManager.addTopicToMirrorMaker(srcTopicPartitionInfo.getTopic(),
             srcTopicPartitionInfo.getPartition(), srcCluster, dstCluster, pipeline);
-        LOGGER.info("Successfully whitelist the topic {} from {} to {}", topicName, srcCluster, dstCluster);
+        LOGGER.info("Successfully whitelist the topic {} from {} to {}", topicName, srcCluster,
+            dstCluster);
         return getResponseJsonStringRepresentation(Status.SUCCESS_OK,
             String.format("Successfully add new topic: %s from: %s to: %s",
                 srcTopicPartitionInfo.getTopic(), srcCluster, dstCluster));
@@ -213,9 +233,12 @@ public class TopicManagementRestletResource extends ServerResource {
     _helixMirrorMakerManager.updateCurrentStatus();
     String pipeline = ControllerUtils.getPipelineName(srcCluster, dstCluster);
     if (!_helixMirrorMakerManager.isTopicPipelineExisted(topicName, pipeline)) {
-      LOGGER.info("Topic {} doesn't exist in pipeline {}, abandon expanding topic", topicName, pipeline);
+      LOGGER.info("Topic {} doesn't exist in pipeline {}, abandon expanding topic", topicName,
+          pipeline);
       return getResponseJsonStringRepresentation(Status.CLIENT_ERROR_NOT_FOUND,
-          String.format("Topic %s doesn't exist in pipeline %s, abandon expanding topic!", topicName, pipeline));
+          String
+              .format("Topic %s doesn't exist in pipeline %s, abandon expanding topic!", topicName,
+                  pipeline));
     } else {
       try {
         _helixMirrorMakerManager.expandTopicInMirrorMaker(topicName, srcCluster, pipeline,
@@ -226,10 +249,12 @@ public class TopicManagementRestletResource extends ServerResource {
             String.format("Successfully expand the topic %s in pipeline %s to %s partitions",
                 topicName, pipeline, newNumPartitions));
       } catch (Exception e) {
-        LOGGER.error(String.format("Failed to expand the topic %s in pipeline %s to %s partitions due to exception",
-            topicName, pipeline, newNumPartitions) , e);
+        LOGGER.error(String.format(
+            "Failed to expand the topic %s in pipeline %s to %s partitions due to exception",
+            topicName, pipeline, newNumPartitions), e);
         return getResponseJsonStringRepresentation(Status.CLIENT_ERROR_NOT_FOUND,
-            String.format("Failed to expand the topic %s in pipeline %s to %s partitions due to exception: %s",
+            String.format(
+                "Failed to expand the topic %s in pipeline %s to %s partitions due to exception: %s",
                 topicName, pipeline, newNumPartitions, e.toString()));
       }
     }
@@ -272,10 +297,13 @@ public class TopicManagementRestletResource extends ServerResource {
 
       if (_helixMirrorMakerManager.isTopicPipelineExisted(topicName, pipeline)) {
         try {
-          _helixMirrorMakerManager.deleteTopicInMirrorMaker(topicName, srcCluster, dstCluster, pipeline);
-          LOGGER.info("Successfully delete topic: {} from {} to {}", topicName, srcCluster, dstCluster);
+          _helixMirrorMakerManager
+              .deleteTopicInMirrorMaker(topicName, srcCluster, dstCluster, pipeline);
+          LOGGER.info("Successfully delete topic: {} from {} to {}", topicName, srcCluster,
+              dstCluster);
           return getResponseJsonStringRepresentation(Status.SUCCESS_OK,
-              String.format("Successfully delete topic: %s from %s to %s", topicName, srcCluster, dstCluster));
+              String.format("Successfully delete topic: %s from %s to %s", topicName, srcCluster,
+                  dstCluster));
         } catch (Exception e) {
           LOGGER.info("Failed to delete the topic {} from {} to {} due to exception {}",
               topicName, srcCluster, dstCluster, e);
@@ -287,7 +315,8 @@ public class TopicManagementRestletResource extends ServerResource {
         LOGGER.info("Failed to delete not existed topic {} in pipeline {}", topicName, pipeline);
         // return 200 for deleting non-exist topic so caller won't try to delete again
         return getResponseJsonStringRepresentation(Status.SUCCESS_OK,
-            String.format("Failed to delete not existed topic: %s in pipeline: %s", topicName, pipeline));
+            String.format("Failed to delete not existed topic: %s in pipeline: %s", topicName,
+                pipeline));
       }
     }
   }
@@ -361,7 +390,8 @@ public class TopicManagementRestletResource extends ServerResource {
     }
 
     JSONObject workerMappingJson = new JSONObject();
-    for (InstanceTopicPartitionHolder itph : _helixMirrorMakerManager.getTopicToPipelineInstanceMap()
+    for (InstanceTopicPartitionHolder itph : _helixMirrorMakerManager
+        .getTopicToPipelineInstanceMap()
         .get(topicName).values()) {
       workerMappingJson.put(itph.getRouteString(), itph.getWorkerSet());
     }
