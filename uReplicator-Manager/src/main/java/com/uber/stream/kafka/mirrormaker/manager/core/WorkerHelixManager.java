@@ -154,7 +154,7 @@ public class WorkerHelixManager implements IHelixManager {
   public synchronized void addTopicToMirrorMaker(InstanceTopicPartitionHolder controller, String pipeline, int routeId)
       throws Exception {
     updateCurrentStatus();
-    LOGGER.info("Trying to create route pipeline: {}", pipeline);
+    LOGGER.info("Trying to create route pipeline: {}， routeId : {}", pipeline, routeId);
     _lock.lock();
     try {
       if (_availableWorkerList.size() == 0) {

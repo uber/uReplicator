@@ -30,12 +30,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * We only considering add or remove box(es), not considering the replacing.
- * For replacing, we just need to bring up a new box and give the old instanceId no auto-balancing needed.
+ * We only considering add or remove box(es), not considering the replacing. For replacing, we just
+ * need to bring up a new box and give the old instanceId no auto-balancing needed.
  */
 public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeListener {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ControllerLiveInstanceChangeListener.class);
+  private static final Logger LOGGER = LoggerFactory
+      .getLogger(ControllerLiveInstanceChangeListener.class);
 
   private final ControllerHelixManager _controllerHelixManager;
   private final HelixManager _helixManager;
@@ -43,7 +44,8 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
   private final int minIntervalInSeconds = 60;
   private long _lastRebalanceTimeMillis = 0;
 
-  private final ScheduledExecutorService _delayedScheduler = Executors.newSingleThreadScheduledExecutor();
+  private final ScheduledExecutorService _delayedScheduler = Executors
+      .newSingleThreadScheduledExecutor();
 
   private final Counter _isLeaderCounter = new Counter();
 
@@ -68,7 +70,8 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
   }
 
   @Override
-  public void onLiveInstanceChange(final List<LiveInstance> liveInstances, NotificationContext changeContext) {
+  public void onLiveInstanceChange(final List<LiveInstance> liveInstances,
+      NotificationContext changeContext) {
     LOGGER.info("ControllerLiveInstanceChangeListener.onLiveInstanceChange() wakes up!");
     _delayedScheduler.schedule(new Runnable() {
       @Override
@@ -91,7 +94,8 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
     }
 
     if (HelixUtils.liveInstances(_helixManager).isEmpty() ||
-        HelixUtils.liveInstances(_controllerHelixManager.getWorkerHelixManager().getHelixManager()).isEmpty()) {
+        HelixUtils.liveInstances(_controllerHelixManager.getWorkerHelixManager().getHelixManager())
+            .isEmpty()) {
       LOGGER.info("No live instances, do nothing!");
       return;
     }
