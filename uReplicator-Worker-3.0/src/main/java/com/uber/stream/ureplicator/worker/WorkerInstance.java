@@ -124,6 +124,12 @@ public class WorkerInstance {
 
     checkpointManager = createCheckpointManager();
 
+    // set client id prefix
+    String clientId = String.format("ureplicator-%s-%s-%s", srcCluster, dstCluster, routeId);
+    consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, clientId);
+    // set consumer group to ureplicator it does not exists
+    String consumerGroup = consumerProps.getProperty(ConsumerConfig.GROUP_ID_CONFIG, "ureplicator");
+    consumerProps.setProperty(ConsumerConfig.GROUP_ID_CONFIG, consumerGroup);
     fetcherManager = createFetcherManager();
     fetcherManager.start();
 
@@ -152,7 +158,12 @@ public class WorkerInstance {
   }
 
   public ProducerManager createProducerManager() {
-    return new ProducerManager(consumerStream, producerProps,
+    Properties cloned = (Properties) producerProps.clone();
+    String clientIdPrefix = producerProps
+        .getProperty(ProducerConfig.CLIENT_ID_CONFIG, "ureplicator");
+
+    cloned.setProperty(ProducerConfig.CLIENT_ID_CONFIG, clientIdPrefix + "-" + srcCluster);
+    return new ProducerManager(consumerStream, cloned,
         workerConf.getAbortOnSendFailure(), messageTransformer, checkpointManager, this);
   }
 

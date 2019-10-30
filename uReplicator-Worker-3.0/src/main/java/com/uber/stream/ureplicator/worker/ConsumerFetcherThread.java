@@ -66,6 +66,7 @@ public class ConsumerFetcherThread extends ShutdownableThread {
   private final int pollTimeoutMs;
   private final RateLimiter rateLimiter;
   private final BlockingQueue<FetchedDataChunk> chunkQueue;
+
   /**
    * Constructor
    *
@@ -119,7 +120,7 @@ public class ConsumerFetcherThread extends ShutdownableThread {
         processFetchedData(records);
         logTopicPartitionInfo();
       } catch (Throwable e) {
-        LOGGER.error("[{}]: Catch Throwable exception: ", getName(), e.getMessage(), e);
+        LOGGER.error("[{}]: Catch Throwable exception: {}", getName(), e.getMessage(), e);
         // reset offset to fetchoffset to avoid data loss
         for (PartitionOffsetInfo offsetInfo : partitionMap.values()) {
           if (offsetInfo.fetchOffset() >= 0) {
@@ -228,9 +229,6 @@ public class ConsumerFetcherThread extends ShutdownableThread {
         topicAndPartitions);
     synchronized (updateMapLock) {
       for (TopicPartition tp : topicAndPartitions) {
-        if (!partitionMap.containsKey(tp)) {
-          continue;
-        }
         partitionDeleteMap.put(tp, true);
         if (partitionAddMap.containsKey(tp)) {
           partitionAddMap.remove(tp);

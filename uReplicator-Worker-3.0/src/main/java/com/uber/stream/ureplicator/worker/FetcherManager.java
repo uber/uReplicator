@@ -21,13 +21,13 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.RateLimiter;
 import com.uber.stream.ureplicator.worker.interfaces.IConsumerFetcherManager;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.concurrent.GuardedBy;
 import kafka.utils.ShutdownableThread;
 import org.apache.commons.lang.StringUtils;
@@ -51,21 +51,21 @@ public class FetcherManager extends ShutdownableThread implements
   protected final String FETCHER_THREAD_PREFIX = "ConsumerFetcherThread";
 
   // fetcherMapLock guards addFetcherForPartitions and removeFetcherForPartitions
-  protected final Object fetcherMapLock = new Object();
+  protected final Object fetcherMapLock;
   // updateMapLock guards partitionAddMap and partitionDeleteMap
-  protected final Object updateMapLock = new Object();
+  protected final Object updateMapLock;
   @GuardedBy("fetcherMapLock")
-  protected final Map<TopicPartition, String> partitionThreadMap = new ConcurrentHashMap<>();
+  protected final Map<TopicPartition, String> partitionThreadMap;
   @GuardedBy("updateMapLock")
-  protected final Map<TopicPartition, PartitionOffsetInfo> partitionMap = new ConcurrentHashMap<>();
+  protected final Map<TopicPartition, PartitionOffsetInfo> partitionMap;
 
   // partitionAddMap stores the topic partition pending add
   // partitionDeleteMap stores the topic partition pending delete
   // the purpose of using these two fields is for non-blocking add/delete topic partition
   @GuardedBy("updateMapLock")
-  protected final Map<TopicPartition, PartitionOffsetInfo> partitionAddMap = new ConcurrentHashMap<>();
+  protected final Map<TopicPartition, PartitionOffsetInfo> partitionAddMap;
   @GuardedBy("updateMapLock")
-  protected final Map<TopicPartition, Boolean> partitionDeleteMap = new ConcurrentHashMap<>();
+  protected final Map<TopicPartition, Boolean> partitionDeleteMap;
 
   protected final Map<String, ConsumerFetcherThread> fetcherThreadMap;
   protected final CustomizedConsumerConfig consumerProperties;
@@ -73,6 +73,8 @@ public class FetcherManager extends ShutdownableThread implements
   protected final int numberOfConsumerFetcher;
   protected final RateLimiter messageLimiter;
   protected final List<BlockingQueue<FetchedDataChunk>> messageQueue;
+  // TODO:(yayang) recycle fetcherId from shutdown fetcher thread
+  protected final AtomicInteger fetcherId;
 
   public FetcherManager(String threadName,
       CustomizedConsumerConfig consumerProperties,
@@ -92,7 +94,8 @@ public class FetcherManager extends ShutdownableThread implements
     consumerProperties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
 
     this.numberOfConsumerFetcher = consumerProperties.getNumberOfConsumerFetcher();
-    LOGGER.info("Property {} : {} ", CustomizedConsumerConfig.NUMBER_OF_CONSUMER_FETCHERS, numberOfConsumerFetcher);
+    LOGGER.info("Property {} : {} ", CustomizedConsumerConfig.NUMBER_OF_CONSUMER_FETCHERS,
+        numberOfConsumerFetcher);
     this.refreshBackoff = consumerProperties.getFetcherManagerRefreshMs();
     this.fetcherThreadMap = fetcherThreadMap;
     if (consumerProperties.getConsumerNumOfMessageRate() > 0) {
@@ -100,6 +103,13 @@ public class FetcherManager extends ShutdownableThread implements
     } else {
       this.messageLimiter = null;
     }
+    this.fetcherMapLock = new Object();
+    this.updateMapLock = new Object();
+    this.partitionThreadMap = new ConcurrentHashMap<>();
+    this.partitionMap = new ConcurrentHashMap<>();
+    this.partitionAddMap = new ConcurrentHashMap<>();
+    this.partitionDeleteMap = new ConcurrentHashMap<>();
+    this.fetcherId = new AtomicInteger(0);
   }
 
   public void setMessageRate(Double rate) {
@@ -150,7 +160,8 @@ public class FetcherManager extends ShutdownableThread implements
   @GuardedBy("fetcherMapLock")
   protected void addFetcherForTopicPartition(
       TopicPartition tp, PartitionOffsetInfo offsetInfo, String fetcherThreadName) {
-    LOGGER.info("Enter add fetcher thread for partitions {}, fetcherThread {}", tp, fetcherThreadName);
+    LOGGER.info("Enter add fetcher thread for partitions {}, fetcherThread {}", tp,
+        fetcherThreadName);
     synchronized (fetcherMapLock) {
       if (StringUtils.isBlank(fetcherThreadName)) {
         LOGGER.warn("Unexpected behavior, can't find threadName for topic partition {}", tp);
@@ -164,7 +175,15 @@ public class FetcherManager extends ShutdownableThread implements
           int queueSize = Math.abs(fetcherThreadName.hashCode() % messageQueue.size());
 
           LOGGER.info("Creating fetcher thread {}", fetcherThreadName);
-          fetcherThread = new ConsumerFetcherThread(fetcherThreadName, consumerProperties,
+          CustomizedConsumerConfig cloned = (CustomizedConsumerConfig) consumerProperties.clone();
+          String clientIdPrefix = consumerProperties
+              .getProperty(ConsumerConfig.CLIENT_ID_CONFIG, "ureplicator");
+          int fetcherThreadId = fetcherId.incrementAndGet();
+          // Kafka Consumer doesn't support having two kafka consumer using the same client id,
+          // It throws error: WARN Error registering AppInfo mbean
+          cloned.setProperty(ConsumerConfig.CLIENT_ID_CONFIG,
+              String.format("%s-%d", clientIdPrefix, fetcherThreadId));
+          fetcherThread = createConsumerFetcherThread(fetcherThreadName, cloned,
               messageLimiter, messageQueue.get(queueSize));
           fetcherThread.start();
           fetcherThreadMap.put(fetcherThreadName, fetcherThread);
@@ -178,6 +197,14 @@ public class FetcherManager extends ShutdownableThread implements
       partitionThreadMap.putIfAbsent(tp, fetcherThreadName);
     }
     LOGGER.info("Add fetcher thread for partitions {} finished", tp);
+  }
+
+  @VisibleForTesting
+  protected ConsumerFetcherThread createConsumerFetcherThread(String threadName,
+      CustomizedConsumerConfig properties,
+      RateLimiter rateLimiter, BlockingQueue<FetchedDataChunk> chunkQueue) {
+    return new ConsumerFetcherThread(threadName, properties,
+        rateLimiter, chunkQueue);
   }
 
   /**
@@ -244,40 +271,45 @@ public class FetcherManager extends ShutdownableThread implements
   @Override
   public void doWork() {
     synchronized (updateMapLock) {
-      if (partitionAddMap.size() != 0) {
-        Map<TopicPartition, PartitionOffsetInfo> newPartitionMap = addTopicPartitionsToFetcherThread(
-            partitionAddMap);
+      try {
+        if (partitionAddMap.size() != 0) {
+          Map<TopicPartition, PartitionOffsetInfo> newPartitionMap = addTopicPartitionsToFetcherThread(
+              partitionAddMap);
 
-        for (Map.Entry<TopicPartition, PartitionOffsetInfo> entry : newPartitionMap.entrySet()) {
-          partitionMap.put(entry.getKey(), entry.getValue());
-          partitionAddMap.remove(entry.getKey());
+          for (Map.Entry<TopicPartition, PartitionOffsetInfo> entry : newPartitionMap.entrySet()) {
+            partitionMap.put(entry.getKey(), entry.getValue());
+            partitionAddMap.remove(entry.getKey());
+          }
         }
-      }
 
-      if (partitionAddMap.size() != 0) {
-        LOGGER.info("topic partitions not successfully add to fetcher thread: {}",
-            partitionAddMap.keySet());
-      }
-
-      // FIXME: propagate topic partition change to controller
-      // Remove topic partition already finished
-      for (PartitionOffsetInfo partition : partitionMap.values()) {
-        if (partition.consumedEndBounded()) {
-          partitionDeleteMap.put(partition.topicPartition(), true);
+        if (partitionAddMap.size() != 0) {
+          LOGGER.info("topic partitions not successfully add to fetcher thread: {}",
+              partitionAddMap.keySet());
         }
-      }
 
-      for (TopicPartition partition : partitionDeleteMap.keySet()) {
-        if (partitionMap.containsKey(partition)) {
-          partitionMap.remove(partition);
-          partitionThreadMap.remove(partition);
+        // FIXME: propagate topic partition change to controller
+        // Remove topic partition already finished
+        for (PartitionOffsetInfo partition : partitionMap.values()) {
+          if (partition.consumedEndBounded()) {
+            partitionDeleteMap.put(partition.topicPartition(), true);
+          }
         }
-      }
 
-      if (partitionDeleteMap.size() != 0) {
-        removeFetcherForPartitions(partitionDeleteMap.keySet());
+        for (TopicPartition partition : partitionDeleteMap.keySet()) {
+          if (partitionMap.containsKey(partition)) {
+            partitionMap.remove(partition);
+            partitionThreadMap.remove(partition);
+          }
+        }
+
+        if (partitionDeleteMap.size() != 0) {
+          removeFetcherForPartitions(partitionDeleteMap.keySet());
+        }
+        partitionDeleteMap.clear();
+
+      } catch (Throwable t) {
+        LOGGER.error("[{}]: Catch Throwable exception: {}", getName(), t.getMessage(), t);
       }
-      partitionDeleteMap.clear();
     }
     try {
       Thread.sleep(refreshBackoff);

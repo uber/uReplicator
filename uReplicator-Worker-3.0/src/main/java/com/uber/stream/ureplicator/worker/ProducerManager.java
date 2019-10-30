@@ -44,7 +44,7 @@ public class ProducerManager {
     this.workerInstance = workerInstance;
     this.isInit.set(false);
     String clientIdPrefix = producerProps
-        .getProperty(ProducerConfig.CLIENT_ID_CONFIG, "uReplicator");
+        .getProperty(ProducerConfig.CLIENT_ID_CONFIG, "ureplicator");
     for (int index = 0; index < consumerStream.size(); index++) {
       String threadId = String.valueOf(index);
       ProducerThread producerThread = new ProducerThread(threadId, clientIdPrefix, producerProps,
