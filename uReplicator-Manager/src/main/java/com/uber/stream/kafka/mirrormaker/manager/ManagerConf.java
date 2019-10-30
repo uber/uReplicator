@@ -27,8 +27,7 @@ import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 
 /**
- * Manager configs:
- * Helix configs, Manager Rest layer and reporting.
+ * Manager configs: Helix configs, Manager Rest layer and reporting.
  *
  * @author hongxu
  */
@@ -57,7 +56,7 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
   private static final String GRAPHITE_REPORT_FREQ_IN_SEC = "manager.graphite.report.freq.in.sec";
   private static final long DEFAULT_GRAPHITE_REPORT_FREQ_IN_SEC = 60;
   //enabledJmxReporting
-  private static final String ENABLE_JMX_REPORT= "manager.enable.jmx.report";
+  private static final String ENABLE_JMX_REPORT = "manager.enable.jmx.report";
   private static final Boolean DEFAULT_ENABLE_JMX_REPORT = true;
   //enabledGraphiteReporting
   private static final String ENABLE_GRAPHITE_REPORT = "manager.enable.graphite.report";
@@ -149,15 +148,15 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
     setProperty(METRICS_PREFIX, metricsPrefix);
   }
 
-  public void setGraphiteReportFreqInSec(String graphiteReportFreqInSec){
+  public void setGraphiteReportFreqInSec(String graphiteReportFreqInSec) {
     setProperty(GRAPHITE_REPORT_FREQ_IN_SEC, Long.valueOf(graphiteReportFreqInSec));
   }
 
-  public void setEnableJmxReport(String enableJmxReport){
+  public void setEnableJmxReport(String enableJmxReport) {
     setProperty(ENABLE_JMX_REPORT, Boolean.valueOf(enableJmxReport));
   }
 
-  public void setEnableGraphiteReport(String enableGraphiteReport){
+  public void setEnableGraphiteReport(String enableGraphiteReport) {
     setProperty(ENABLE_GRAPHITE_REPORT, Boolean.valueOf(enableGraphiteReport));
   }
 
@@ -174,7 +173,8 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
   }
 
   public void setWorkloadRefreshPeriodInSeconds(String workloadRefreshPeriodInSeconds) {
-    setProperty(WORKLOAD_REFRESH_PERIOD_IN_SECONDS, Integer.parseInt(workloadRefreshPeriodInSeconds));
+    setProperty(WORKLOAD_REFRESH_PERIOD_IN_SECONDS,
+        Integer.parseInt(workloadRefreshPeriodInSeconds));
   }
 
   public void setInitMaxNumPartitionsPerRoute(String initMaxNumPartitionsPerRoute) {
@@ -252,7 +252,9 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
     return (Integer) getProperty(GRAPHITE_PORT);
   }
 
-  public Integer getUpdateStatusCoolDownMs() { return (Integer) getProperty(UPDATE_STATUS_COOL_DOWN_MS); }
+  public Integer getUpdateStatusCoolDownMs() {
+    return (Integer) getProperty(UPDATE_STATUS_COOL_DOWN_MS);
+  }
 
   public String getMetricsPrefix() {
     if (containsKey(METRICS_PREFIX)) {
@@ -419,15 +421,20 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
         .addOption("enableGraphiteReport", true, "enable graphite report")
         .addOption("c3Host", true, "Chaperone3 Host")
         .addOption("c3Port", true, "Chaperone3 Port")
-        .addOption("clusterPrefixLength", true, "Cluster prefix length to extract route name from cluster name")
-        .addOption("workloadRefreshPeriodInSeconds", true, "The period to refresh workload information in seconds")
-        .addOption("initMaxNumPartitionsPerRoute", true, "The max number of partitions when init a route")
-        .addOption("maxNumPartitionsPerRoute", true, "The max number of partitions a route can have")
+        .addOption("clusterPrefixLength", true,
+            "Cluster prefix length to extract route name from cluster name")
+        .addOption("workloadRefreshPeriodInSeconds", true,
+            "The period to refresh workload information in seconds")
+        .addOption("initMaxNumPartitionsPerRoute", true,
+            "The max number of partitions when init a route")
+        .addOption("maxNumPartitionsPerRoute", true,
+            "The max number of partitions a route can have")
         .addOption("initMaxNumWorkersPerRoute", true, "The max number of workers when init a route")
         .addOption("maxNumWorkersPerRoute", true, "The max number of workers a route can have")
         .addOption("bytesPerSecondDefault", true, "The default value for bytes per second")
         .addOption("msgsPerSecondDefault", true, "The default value for msgs per second")
-        .addOption("updateStatusCoolDownMs", true, "The waiting period for next helix status check");
+        .addOption("updateStatusCoolDownMs", true,
+            "The waiting period for next helix status check");
     return managerOptions;
   }
 
@@ -497,7 +504,7 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
     }
     if (cmd.hasOption("graphiteReportFreqInSec")) {
       managerConf.setGraphiteReportFreqInSec(cmd.getOptionValue("graphiteReportFreqInSec"));
-    } else{
+    } else {
       managerConf.setGraphiteReportFreqInSec(Long.toString(DEFAULT_GRAPHITE_REPORT_FREQ_IN_SEC));
     }
     if (cmd.hasOption("enableJmxReport")) {
@@ -526,24 +533,30 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
       managerConf.setClusterPrefixLength(Integer.toString(DEFAULT_CLUSTER_PREFIX_LENGTH));
     }
     if (cmd.hasOption("workloadRefreshPeriodInSeconds")) {
-      managerConf.setWorkloadRefreshPeriodInSeconds(cmd.getOptionValue("workloadRefreshPeriodInSeconds"));
+      managerConf
+          .setWorkloadRefreshPeriodInSeconds(cmd.getOptionValue("workloadRefreshPeriodInSeconds"));
     } else {
-      managerConf.setWorkloadRefreshPeriodInSeconds(Integer.toString(DEFAULT_WORKLOAD_REFRESH_PERIOD_IN_SECONDS));
+      managerConf.setWorkloadRefreshPeriodInSeconds(
+          Integer.toString(DEFAULT_WORKLOAD_REFRESH_PERIOD_IN_SECONDS));
     }
     if (cmd.hasOption("initMaxNumPartitionsPerRoute")) {
-      managerConf.setInitMaxNumPartitionsPerRoute(cmd.getOptionValue("initMaxNumPartitionsPerRoute"));
+      managerConf
+          .setInitMaxNumPartitionsPerRoute(cmd.getOptionValue("initMaxNumPartitionsPerRoute"));
     } else {
-      managerConf.setInitMaxNumPartitionsPerRoute(Integer.toString(DEFAULT_INIT_MAX_NUM_PARTITIONS_PER_ROUTE));
+      managerConf.setInitMaxNumPartitionsPerRoute(
+          Integer.toString(DEFAULT_INIT_MAX_NUM_PARTITIONS_PER_ROUTE));
     }
     if (cmd.hasOption("maxNumPartitionsPerRoute")) {
       managerConf.setMaxNumPartitionsPerRoute(cmd.getOptionValue("maxNumPartitionsPerRoute"));
     } else {
-      managerConf.setMaxNumPartitionsPerRoute(Integer.toString(DEFAULT_MAX_NUM_PARTITIONS_PER_ROUTE));
+      managerConf
+          .setMaxNumPartitionsPerRoute(Integer.toString(DEFAULT_MAX_NUM_PARTITIONS_PER_ROUTE));
     }
     if (cmd.hasOption("initMaxNumWorkersPerRoute")) {
       managerConf.setInitMaxNumWorkersPerRoute(cmd.getOptionValue("initMaxNumWorkersPerRoute"));
     } else {
-      managerConf.setInitMaxNumWorkersPerRoute(Integer.toString(DEFAULT_INIT_MAX_NUM_WORKERS_PER_ROUTE));
+      managerConf
+          .setInitMaxNumWorkersPerRoute(Integer.toString(DEFAULT_INIT_MAX_NUM_WORKERS_PER_ROUTE));
     }
     if (cmd.hasOption("maxNumWorkersPerRoute")) {
       managerConf.setMaxNumWorkersPerRoute(cmd.getOptionValue("maxNumWorkersPerRoute"));
@@ -575,7 +588,8 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
       try {
         configFromFile.load(fileName);
       } catch (ConfigurationException e) {
-        throw new RuntimeException("Failed to load config from file " + fileName + ": " + e.getMessage());
+        throw new RuntimeException(
+            "Failed to load config from file " + fileName + ": " + e.getMessage());
       }
       // merge the config with command line. Option from command line has higher priority to override config from file
       @SuppressWarnings("unchecked")
