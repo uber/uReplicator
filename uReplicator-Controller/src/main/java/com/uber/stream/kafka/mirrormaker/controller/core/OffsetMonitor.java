@@ -82,7 +82,7 @@ public class OffsetMonitor {
   private long lastSucceedOffsetCheck = new Date().getTime();
 
   public OffsetMonitor(final HelixMirrorMakerManager helixMirrorMakerManager,
-                       ControllerConf controllerConf) {
+      ControllerConf controllerConf) {
     this.numOffsetThread = controllerConf.getNumOffsetThread();
     this.helixMirrorMakerManager = helixMirrorMakerManager;
     this.srcBrokerList = new ArrayList<>();
@@ -90,7 +90,8 @@ public class OffsetMonitor {
         controllerConf.getSrcKafkaZkPath() : controllerConf.getConsumerCommitZkPath();
     this.srcZkString = controllerConf.getSrcKafkaZkPath();
     // disable monitor if SRC_KAFKA_ZK or GROUP_ID is not set
-    if (StringUtils.isEmpty(controllerConf.getSrcKafkaZkPath()) || controllerConf.getGroupId().isEmpty()) {
+    if (StringUtils.isEmpty(controllerConf.getSrcKafkaZkPath()) || controllerConf.getGroupId()
+        .isEmpty()) {
       logger.info("Consumer GROUP_ID is not set. Offset manager is disabled");
       this.refreshIntervalInSec = 0;
     } else {
@@ -101,7 +102,8 @@ public class OffsetMonitor {
 
     this.refreshExecutor = Executors.newSingleThreadScheduledExecutor(
         new ThreadFactoryBuilder().setNameFormat("topic-list-cron-%d").setDaemon(true).build());
-    this.cronExecutor = new ThreadPoolExecutor(numOffsetThread, numOffsetThread, 0L, TimeUnit.MILLISECONDS,
+    this.cronExecutor = new ThreadPoolExecutor(numOffsetThread, numOffsetThread, 0L,
+        TimeUnit.MILLISECONDS,
         new LinkedBlockingQueue<>(controllerConf.getBlockingQueueSize()),
         new ThreadFactoryBuilder().setNameFormat("topic-offset-cron-%d").setDaemon(true).build());
 
@@ -116,11 +118,13 @@ public class OffsetMonitor {
     if (refreshIntervalInSec > 0) {
       // delay for 1-5 minutes
       int delaySec = 60 + new Random().nextInt(240);
-      logger.info("OffsetMonitor starts updating offsets every {} seconds with delay {} seconds", refreshIntervalInSec,
+      logger.info("OffsetMonitor starts updating offsets every {} seconds with delay {} seconds",
+          refreshIntervalInSec,
           delaySec);
 
       Meter offsetMonitorMeter = new Meter();
-      KafkaUReplicatorMetricsReporter.get().registerMetric("offsetMonitor.executed", offsetMonitorMeter);
+      KafkaUReplicatorMetricsReporter.get()
+          .registerMetric("offsetMonitor.executed", offsetMonitorMeter);
 
       refreshExecutor.scheduleAtFixedRate(new Runnable() {
         @Override
@@ -130,17 +134,21 @@ public class OffsetMonitor {
 
             zkClientQueue = new LinkedBlockingQueue<>(numOffsetThread);
             for (int i = 0; i < numOffsetThread; i++) {
-              ZkClient zkClient = new ZkClient(offsetZkString, 30000, 30000, ZKStringSerializer$.MODULE$);
+              ZkClient zkClient = new ZkClient(offsetZkString, 30000, 30000,
+                  ZKStringSerializer$.MODULE$);
               zkClientQueue.add(zkClient);
             }
 
-            ZkClient zkClient = new ZkClient(srcZkString, 30000, 30000, ZKStringSerializer$.MODULE$);
+            ZkClient zkClient = new ZkClient(srcZkString, 30000, 30000,
+                ZKStringSerializer$.MODULE$);
             List<String> brokerIdList = zkClient.getChildren("/brokers/ids");
 
             for (String id : brokerIdList) {
               try {
-                JSONObject json = JSONObject.parseObject(zkClient.readData("/brokers/ids/" + id).toString());
-                srcBrokerList.add(String.valueOf(json.get("host")) + ":" + String.valueOf(json.get("port")));
+                JSONObject json = JSONObject
+                    .parseObject(zkClient.readData("/brokers/ids/" + id).toString());
+                srcBrokerList
+                    .add(String.valueOf(json.get("host")) + ":" + String.valueOf(json.get("port")));
               } catch (Exception e) {
                 logger.warn("Failed to get broker", e);
               }
@@ -172,10 +180,12 @@ public class OffsetMonitor {
 
   public boolean isHealthy() {
     long current = new Date().getTime();
-    if (refreshIntervalInSec > 0 && ((current - lastSucceedOffsetCheck) < 2 * refreshIntervalInSec * 1000)) {
+    if (refreshIntervalInSec == 0 || (refreshIntervalInSec > 0 && (
+        (current - lastSucceedOffsetCheck) < 2 * refreshIntervalInSec * 1000))) {
       return true;
     } else {
-      logger.info("offset monitor not working properly, last successful execution : {}, current time {}, refresh interval {}",
+      logger.info(
+          "offset monitor not working properly, last successful execution : {}, current time {}, refresh interval {}",
           lastSucceedOffsetCheck,
           current,
           refreshIntervalInSec);
@@ -203,13 +213,15 @@ public class OffsetMonitor {
 
         for (TopicMetadata tmd : metaData) {
           for (PartitionMetadata pmd : tmd.partitionsMetadata()) {
-            TopicAndPartition topicAndPartition = new TopicAndPartition(tmd.topic(), pmd.partitionId());
+            TopicAndPartition topicAndPartition = new TopicAndPartition(tmd.topic(),
+                pmd.partitionId());
             if (topicSet.contains(tmd.topic())) {
               partitionLeader.put(topicAndPartition, pmd.leader());
             }
           }
         }
-        Iterator<Entry<TopicAndPartition, TopicPartitionLag>> iter = noProgressMap.entrySet().iterator();
+        Iterator<Entry<TopicAndPartition, TopicPartitionLag>> iter = noProgressMap.entrySet()
+            .iterator();
         while (iter.hasNext()) {
           TopicAndPartition tp = iter.next().getKey();
           if (!topicSet.contains(tp.topic())) {
@@ -244,8 +256,9 @@ public class OffsetMonitor {
           throw re;
         } catch (Throwable t) {
           offsetMonitorFailureCount.getAndAdd(1);
-          logger.error(String.format("cronExecutor got throwable! Drop task for topic: %s, partition: %d",
-              tp.topic(), tp.partition()), t);
+          logger.error(
+              String.format("cronExecutor got throwable! Drop task for topic: %s, partition: %d",
+                  tp.topic(), tp.partition()), t);
           throw t;
         }
       }
@@ -272,8 +285,11 @@ public class OffsetMonitor {
           }
 
           TopicPartitionLag previousOffset = topicPartitionToOffsetMap
-              .put(tp, new TopicPartitionLag(tp.topic(), tp.partition(), latestOffset, commitOffset));
-          logger.debug("Get latest offset={} committed offset={} for {}", latestOffset, commitOffset, tp);
+              .put(tp,
+                  new TopicPartitionLag(tp.topic(), tp.partition(), latestOffset, commitOffset));
+          logger
+              .debug("Get latest offset={} committed offset={} for {}", latestOffset, commitOffset,
+                  tp);
           if (latestOffset > 0 && commitOffset > 0) {
             if (latestOffset - commitOffset > 0 && previousOffset != null
                 && previousOffset.getCommitOffset() == commitOffset) {
@@ -323,7 +339,8 @@ public class OffsetMonitor {
 
   private long getLatestOffset(SimpleConsumer consumer, TopicAndPartition topicAndPartition) {
     Map<TopicAndPartition, PartitionOffsetRequestInfo> requestInfo = new HashMap<>();
-    requestInfo.put(topicAndPartition, new PartitionOffsetRequestInfo(kafka.api.OffsetRequest.LatestTime(), 1));
+    requestInfo.put(topicAndPartition,
+        new PartitionOffsetRequestInfo(kafka.api.OffsetRequest.LatestTime(), 1));
     kafka.javaapi.OffsetRequest request = new kafka.javaapi.OffsetRequest(requestInfo,
         kafka.api.OffsetRequest.CurrentVersion(), consumer.clientId());
     OffsetResponse response = consumer.getOffsetsBefore(request);
@@ -427,7 +444,9 @@ public class OffsetMonitor {
     try {
       metricRegistry.register(OFFSET_STATUS_FAILURE_COUNT_METRIC_NAME, gauge);
     } catch (Exception e) {
-      logger.error("Error while registering no progress metric " + OFFSET_STATUS_FAILURE_COUNT_METRIC_NAME, e);
+      logger.error(
+          "Error while registering no progress metric " + OFFSET_STATUS_FAILURE_COUNT_METRIC_NAME,
+          e);
     }
   }
 
@@ -440,7 +459,8 @@ public class OffsetMonitor {
     List<TopicAndPartition> tps = new ArrayList<>();
     for (Map.Entry<TopicAndPartition, TopicPartitionLag> entry : noProgressMap.entrySet()) {
       TopicPartitionLag currentLag = topicPartitionToOffsetMap.get(entry.getKey());
-      if (currentLag == null || currentLag.getCommitOffset() <= 0 || currentLag.getLatestOffset() <= 0
+      if (currentLag == null || currentLag.getCommitOffset() <= 0
+          || currentLag.getLatestOffset() <= 0
           || currentLag.getLatestOffset() <= currentLag.getCommitOffset()) {
         continue;
       }
