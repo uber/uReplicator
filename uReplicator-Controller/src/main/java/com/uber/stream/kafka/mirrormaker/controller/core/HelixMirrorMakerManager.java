@@ -52,11 +52,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Main logic for Helix Controller. Provided all necessary APIs for topics management.
- * Have two modes auto/custom:
- * Auto mode is for helix taking care of all the idealStates changes
- * Custom mode is for creating a balanced idealStates when necessary,
- * like instances added/removed, new topic added/expanded, old topic deleted
+ * Main logic for Helix Controller. Provided all necessary APIs for topics management. Have two
+ * modes auto/custom: Auto mode is for helix taking care of all the idealStates changes Custom mode
+ * is for creating a balanced idealStates when necessary, like instances added/removed, new topic
+ * added/expanded, old topic deleted
  *
  * @author xiangfu
  */
@@ -123,7 +122,8 @@ public class HelixMirrorMakerManager implements IHelixManager {
 
     _minLagTimeSec = controllerConf.getAutoRebalanceMinLagTimeInSeconds();
     _minLagOffset = controllerConf.getAutoRebalanceMinLagOffset();
-    _offsetMaxValidTimeMillis = TimeUnit.SECONDS.toMillis(controllerConf.getAutoRebalanceMaxOffsetInfoValidInSeconds());
+    _offsetMaxValidTimeMillis = TimeUnit.SECONDS
+        .toMillis(controllerConf.getAutoRebalanceMaxOffsetInfoValidInSeconds());
     _maxDedicatedInstancesRatio = controllerConf.getMaxDedicatedLaggingInstancesRatio();
   }
 
@@ -132,10 +132,13 @@ public class HelixMirrorMakerManager implements IHelixManager {
     _helixZkManager = HelixSetupUtils.setup(_helixClusterName, _helixZkURL, _instanceId);
     _helixAdmin = _helixZkManager.getClusterManagmentTool();
     LOGGER.info("Trying to register AutoRebalanceLiveInstanceChangeListener");
-    _autoRebalanceLiveInstanceChangeListener = new AutoRebalanceLiveInstanceChangeListener(this, _helixZkManager,
+    _autoRebalanceLiveInstanceChangeListener = new AutoRebalanceLiveInstanceChangeListener(this,
+        _helixZkManager,
         _controllerConf);
-    _maxWorkloadPerWorkerBytes = isSameRegion(_controllerConf.getSourceCluster(), _controllerConf.getDestinationCluster()) ?
-        _controllerConf.getMaxWorkloadPerWorkerByteWithinRegion() : _controllerConf.getMaxWorkloadPerWorkerByteCrossRegion();
+    _maxWorkloadPerWorkerBytes =
+        isSameRegion(_controllerConf.getSourceCluster(), _controllerConf.getDestinationCluster()) ?
+            _controllerConf.getMaxWorkloadPerWorkerByteWithinRegion()
+            : _controllerConf.getMaxWorkloadPerWorkerByteCrossRegion();
     LOGGER.info("environment:maxWorkloadPerWorkerBytes {}", _maxWorkloadPerWorkerBytes);
     updateCurrentServingInstance();
     _workloadInfoRetriever.start();
@@ -177,7 +180,8 @@ public class HelixMirrorMakerManager implements IHelixManager {
       }
       for (String instanceName : instanceToTopicPartitionsMap.keySet()) {
         if (instanceMap.containsKey(instanceName)) {
-          instanceMap.get(instanceName).addTopicPartitions(instanceToTopicPartitionsMap.get(instanceName));
+          instanceMap.get(instanceName)
+              .addTopicPartitions(instanceToTopicPartitionsMap.get(instanceName));
         }
       }
       _currentServingInstance.clear();
@@ -247,26 +251,31 @@ public class HelixMirrorMakerManager implements IHelixManager {
     return topicPartitionBlacklist;
   }
 
-  public synchronized void updateTopicPartitionStateInMirrorMaker(String topicName, int partition, String state) {
+  public synchronized void updateTopicPartitionStateInMirrorMaker(String topicName, int partition,
+      String state) {
     updateCurrentServingInstance();
-    if (!Constants.HELIX_OFFLINE_STATE.equalsIgnoreCase(state) && !Constants.HELIX_ONLINE_STATE.equalsIgnoreCase(state)) {
-      throw new IllegalArgumentException(String.format("Failed to update topic %s, partition %d to invalid state %s.",
-          topicName, partition, state));
+    if (!Constants.HELIX_OFFLINE_STATE.equalsIgnoreCase(state) && !Constants.HELIX_ONLINE_STATE
+        .equalsIgnoreCase(state)) {
+      throw new IllegalArgumentException(
+          String.format("Failed to update topic %s, partition %d to invalid state %s.",
+              topicName, partition, state));
     }
 
     IdealState idealState = _helixAdmin.getResourceIdealState(_helixClusterName, topicName);
     String partitionName = String.valueOf(partition);
     if (idealState == null ||
         partition >= idealState.getNumPartitions()) {
-      throw new IllegalArgumentException(String.format("Topic %s, partition %d not exists in current route.",
-          topicName, partition));
+      throw new IllegalArgumentException(
+          String.format("Topic %s, partition %d not exists in current route.",
+              topicName, partition));
     }
 
     String instanceName;
     if (idealState.getInstanceStateMap(partitionName).keySet().isEmpty()) {
       if (Constants.HELIX_OFFLINE_STATE.equalsIgnoreCase(state)) {
-        throw new IllegalArgumentException(String.format("Topic %s, partition %d not exists in current route.",
-            topicName, partition));
+        throw new IllegalArgumentException(
+            String.format("Topic %s, partition %d not exists in current route.",
+                topicName, partition));
       } else if (_currentServingInstance.isEmpty()) {
         throw new InternalError("No available worker");
       }
