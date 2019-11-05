@@ -118,7 +118,7 @@ public class IdealStateBuilder {
     for (String partitionName : oldIdealState.getPartitionSet()) {
       String instanceName = oldIdealState.getInstanceStateMap(partitionName).keySet().iterator().next();
       String instanceToUse = partitionName.equals(oldPartition) ? newInstanceName : instanceName;
-      String partitionToUse = partitionName.equals(oldPartition) ? newPartition : oldPartition;
+      String partitionToUse = partitionName.equals(oldPartition) ? newPartition : partitionName;
       customModeIdealStateBuilder.assignInstanceAndState(partitionToUse, instanceToUse, "ONLINE");
     }
 
