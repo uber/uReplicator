@@ -16,9 +16,16 @@
 package com.uber.stream.kafka.mirrormaker.common;
 
 public final class Constants {
+
   private Constants() {
   }
 
   public static final String HELIX_OFFLINE_STATE = "OFFLINE";
   public static final String HELIX_ONLINE_STATE = "ONLINE";
+
+  public static final String ENABLE = "enable";
+  public static final String DISABLE = "disable";
+  public static final String AUTO_SCALING = "AutoScaling";
+  public static final String AUTO_BALANCING = "AutoBalancing";
+
 }

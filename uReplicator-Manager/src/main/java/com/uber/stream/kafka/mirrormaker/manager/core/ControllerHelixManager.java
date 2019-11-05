@@ -15,6 +15,11 @@
  */
 package com.uber.stream.kafka.mirrormaker.manager.core;
 
+import static com.uber.stream.kafka.mirrormaker.common.Constants.AUTO_BALANCING;
+import static com.uber.stream.kafka.mirrormaker.common.Constants.AUTO_SCALING;
+import static com.uber.stream.kafka.mirrormaker.common.Constants.DISABLE;
+import static com.uber.stream.kafka.mirrormaker.common.Constants.ENABLE;
+
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -66,10 +71,6 @@ public class ControllerHelixManager implements IHelixManager {
   private static final String MANAGER_CONTROLLER_HELIX_PREFIX = "manager-controller";
   private static final String CONFIG_KAFKA_CLUSTER_KEY_PREFIX = "kafka.cluster.zkStr.";
   private static final String SEPARATOR = "@";
-  public static final String ENABLE = "enable";
-  public static final String DISABLE = "disable";
-  public static final String AUTO_SCALING = "AutoScaling";
-  public static final String AUTO_BALANCING = "AutoBalancing";
 
   private final ManagerConf _conf;
   private final KafkaClusterValidationManager _kafkaValidationManager;
@@ -168,6 +169,9 @@ public class ControllerHelixManager implements IHelixManager {
     _helixManager = HelixSetupUtils.setup(_helixClusterName, _helixZkURL, _instanceId);
     _helixAdmin = _helixManager.getClusterManagmentTool();
     _helixPropertyStore = _helixManager.getHelixPropertyStore();
+
+    HelixUtils.updateClusterConfig(_helixManager, AUTO_BALANCING,
+        _conf.getEnableRebalance() ? ENABLE : DISABLE);
 
     updateCurrentStatus();
 
@@ -1421,50 +1425,27 @@ public class ControllerHelixManager implements IHelixManager {
   }
 
   public void disableAutoScaling() {
-    updateClusterConfig(AUTO_SCALING, DISABLE);
+    HelixUtils.updateClusterConfig(_helixManager, AUTO_SCALING, DISABLE);
   }
 
   public void enableAutoScaling() {
-    updateClusterConfig(AUTO_SCALING, ENABLE);
+    HelixUtils.updateClusterConfig(_helixManager, AUTO_SCALING, ENABLE);
   }
 
   public boolean isAutoScalingEnabled() {
-    HelixConfigScope scope = newClusterConfigScope();
-    Map<String, String> config = _helixAdmin.getConfig(scope, Arrays.asList(AUTO_SCALING));
-    if (config.containsKey(AUTO_SCALING) && config.get(AUTO_SCALING).equalsIgnoreCase(DISABLE)) {
-      return false;
-    }
-    return true;
+    return HelixUtils.isClusterConfigEnabled(_helixManager, AUTO_SCALING);
   }
 
   public void disableAutoBalancing() {
-    updateClusterConfig(AUTO_BALANCING, DISABLE);
+    HelixUtils.updateClusterConfig(_helixManager, AUTO_BALANCING, DISABLE);
   }
 
   public void enableAutoBalancing() {
-    updateClusterConfig(AUTO_BALANCING, ENABLE);
+    HelixUtils.updateClusterConfig(_helixManager, AUTO_BALANCING, ENABLE);
   }
 
   public boolean isAutoBalancingEnabled() {
-    HelixConfigScope scope = newClusterConfigScope();
-    Map<String, String> config = _helixAdmin.getConfig(scope, Arrays.asList(AUTO_BALANCING));
-    if (config.containsKey(AUTO_BALANCING) && config.get(AUTO_BALANCING)
-        .equalsIgnoreCase(DISABLE)) {
-      return false;
-    }
-    return true;
-  }
-
-  public void updateClusterConfig(String key, String value) {
-    HelixConfigScope scope = newClusterConfigScope();
-    Map<String, String> properties = new HashMap<>();
-    properties.put(key, value);
-    _helixAdmin.setConfig(scope, properties);
-  }
-
-  private HelixConfigScope newClusterConfigScope() {
-    return new HelixConfigScopeBuilder(ConfigScopeProperty.CLUSTER).forCluster(_helixClusterName)
-        .build();
+    return HelixUtils.isClusterConfigEnabled(_helixManager, AUTO_BALANCING);
   }
 
   public boolean getControllerAutobalancingStatus(String controllerInstance)

@@ -15,6 +15,8 @@
  */
 package com.uber.stream.kafka.mirrormaker.common.utils;
 
+import static com.uber.stream.kafka.mirrormaker.common.Constants.DISABLE;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.net.HostAndPort;
 import com.uber.stream.kafka.mirrormaker.common.Constants;
@@ -38,9 +40,12 @@ import org.apache.helix.PropertyPathConfig;
 import org.apache.helix.PropertyType;
 import org.apache.helix.ZNRecord;
 import org.apache.helix.manager.zk.ZkBaseDataAccessor;
+import org.apache.helix.model.HelixConfigScope;
+import org.apache.helix.model.HelixConfigScope.ConfigScopeProperty;
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.InstanceConfig;
 import org.apache.helix.model.builder.CustomModeISBuilder;
+import org.apache.helix.model.builder.HelixConfigScopeBuilder;
 import org.apache.helix.store.zk.ZkHelixPropertyStore;
 
 public class HelixUtils {
@@ -222,6 +227,27 @@ public class HelixUtils {
       }
     }
     return unassignedPartitions;
+  }
+
+  public static void updateClusterConfig(HelixManager helixManager, String key, String value) {
+    HelixConfigScope scope = newClusterConfigScope(helixManager);
+    Map<String, String> properties = new HashMap<>();
+    properties.put(key, value);
+    helixManager.getClusterManagmentTool().setConfig(scope, properties);
+  }
+
+  public static boolean isClusterConfigEnabled(HelixManager helixManager, String key) {
+    HelixConfigScope scope = newClusterConfigScope(helixManager);
+    Map<String, String> configs = helixManager.getClusterManagmentTool().getConfig(scope, Arrays.asList(key));
+    if (configs.containsKey(key) && configs.get(key).equalsIgnoreCase(DISABLE)) {
+      return false;
+    }
+    return true;
+  }
+
+  public static HelixConfigScope newClusterConfigScope(HelixManager helixManager) {
+    return new HelixConfigScopeBuilder(ConfigScopeProperty.CLUSTER).forCluster(helixManager.getClusterName())
+        .build();
   }
 
 }

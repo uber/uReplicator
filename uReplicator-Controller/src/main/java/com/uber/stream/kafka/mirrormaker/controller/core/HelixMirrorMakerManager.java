@@ -15,6 +15,10 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
+import static com.uber.stream.kafka.mirrormaker.common.Constants.AUTO_BALANCING;
+import static com.uber.stream.kafka.mirrormaker.common.Constants.DISABLE;
+import static com.uber.stream.kafka.mirrormaker.common.Constants.ENABLE;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.uber.stream.kafka.mirrormaker.common.Constants;
 import com.uber.stream.kafka.mirrormaker.common.configuration.IuReplicatorConf;
@@ -22,11 +26,10 @@ import com.uber.stream.kafka.mirrormaker.common.core.IHelixManager;
 import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.kafka.mirrormaker.common.core.WorkloadInfoRetriever;
+import com.uber.stream.kafka.mirrormaker.common.modules.TopicPartitionLag;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixSetupUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
-
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -34,8 +37,6 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-
-import com.uber.stream.kafka.mirrormaker.common.modules.TopicPartitionLag;
 import org.apache.commons.lang.StringUtils;
 import org.apache.helix.HelixAdmin;
 import org.apache.helix.HelixDataAccessor;
@@ -43,7 +44,6 @@ import org.apache.helix.HelixManager;
 import org.apache.helix.PropertyKey;
 import org.apache.helix.PropertyKey.Builder;
 import org.apache.helix.model.ExternalView;
-import org.apache.helix.model.HelixConfigScope;
 import org.apache.helix.model.HelixConfigScope.ConfigScopeProperty;
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.LiveInstance;
@@ -61,9 +61,6 @@ import org.slf4j.LoggerFactory;
  */
 public class HelixMirrorMakerManager implements IHelixManager {
 
-  private static final String ENABLE = "enable";
-  private static final String DISABLE = "disable";
-  private static final String AUTO_BALANCING = "AutoBalancing";
   private static final String BLACKLIST_TAG = "blacklisted";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(HelixMirrorMakerManager.class);
@@ -321,31 +318,15 @@ public class HelixMirrorMakerManager implements IHelixManager {
   }
 
   public void disableAutoBalancing() {
-    HelixConfigScope scope = new HelixConfigScopeBuilder(ConfigScopeProperty.CLUSTER)
-        .forCluster(_helixClusterName).build();
-    Map<String, String> properties = new HashMap<>();
-    properties.put(AUTO_BALANCING, DISABLE);
-    _helixAdmin.setConfig(scope, properties);
+    HelixUtils.updateClusterConfig(_helixZkManager, AUTO_BALANCING, DISABLE);
   }
 
   public void enableAutoBalancing() {
-    HelixConfigScope scope =
-        new HelixConfigScopeBuilder(ConfigScopeProperty.CLUSTER).forCluster(_helixClusterName)
-            .build();
-    Map<String, String> properties = new HashMap<>();
-    properties.put(AUTO_BALANCING, ENABLE);
-    _helixAdmin.setConfig(scope, properties);
+    HelixUtils.updateClusterConfig(_helixZkManager, AUTO_BALANCING, ENABLE);
   }
 
   public boolean isAutoBalancingEnabled() {
-    HelixConfigScope scope =
-        new HelixConfigScopeBuilder(ConfigScopeProperty.CLUSTER).forCluster(_helixClusterName)
-            .build();
-    Map<String, String> config = _helixAdmin.getConfig(scope, Arrays.asList(AUTO_BALANCING));
-    if (config.containsKey(AUTO_BALANCING) && config.get(AUTO_BALANCING).equals(DISABLE)) {
-      return false;
-    }
-    return true;
+    return HelixUtils.isClusterConfigEnabled(_helixZkManager, AUTO_BALANCING);
   }
 
   public boolean isLeader() {
