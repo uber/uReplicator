@@ -36,6 +36,7 @@ import kafka.utils.ZKStringSerializer$;
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.helix.*;
 import org.apache.helix.model.ExternalView;
+import org.apache.helix.model.HelixConfigScope;
 import org.apache.helix.model.HelixConfigScope.ConfigScopeProperty;
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.builder.HelixConfigScopeBuilder;
@@ -65,6 +66,10 @@ public class ControllerHelixManager implements IHelixManager {
   private static final String MANAGER_CONTROLLER_HELIX_PREFIX = "manager-controller";
   private static final String CONFIG_KAFKA_CLUSTER_KEY_PREFIX = "kafka.cluster.zkStr.";
   private static final String SEPARATOR = "@";
+  public static final String ENABLE = "enable";
+  public static final String DISABLE = "disable";
+  public static final String AUTO_SCALING = "AutoScaling";
+  public static final String AUTO_BALANCING = "AutoBalancing";
 
   private final ManagerConf _conf;
   private final KafkaClusterValidationManager _kafkaValidationManager;
@@ -117,14 +122,10 @@ public class ControllerHelixManager implements IHelixManager {
 
   private ZkClient _zkClient;
 
-  private boolean _enableAutoScaling = true;
-  private boolean _enableRebalance;
-
   public ControllerHelixManager(
       KafkaClusterValidationManager kafkaValidationManager,
       ManagerConf managerConf) {
     _conf = managerConf;
-    _enableRebalance = managerConf.getEnableRebalance();
     _kafkaValidationManager = kafkaValidationManager;
     _initMaxNumPartitionsPerRoute = managerConf.getInitMaxNumPartitionsPerRoute();
     _maxNumPartitionsPerRoute = managerConf.getMaxNumPartitionsPerRoute();
@@ -740,7 +741,7 @@ public class ControllerHelixManager implements IHelixManager {
       boolean routeControllerDown = false;
       // Check if any worker in route is down
       boolean routeWorkerDown = false;
-      if (_enableRebalance || forceBalance) {
+      if (isAutoBalancingEnabled() || forceBalance) {
         for (String instanceName : instanceToTopicPartitionsMap.keySet()) {
           if (!liveInstances.contains(instanceName)) {
             routeControllerDown = true;
@@ -916,7 +917,7 @@ public class ControllerHelixManager implements IHelixManager {
         updateCurrentStatus();
       }
 
-      if (_enableAutoScaling) {
+      if (isAutoScalingEnabled()) {
         scaleCurrentCluster();
       } else {
         LOGGER.info("AutoScaling is disabled, do nothing");
@@ -1420,27 +1421,50 @@ public class ControllerHelixManager implements IHelixManager {
   }
 
   public void disableAutoScaling() {
-    _enableAutoScaling = false;
+    updateClusterConfig(AUTO_SCALING, DISABLE);
   }
 
   public void enableAutoScaling() {
-    _enableAutoScaling = true;
+    updateClusterConfig(AUTO_SCALING, ENABLE);
   }
 
   public boolean isAutoScalingEnabled() {
-    return _enableAutoScaling;
+    HelixConfigScope scope = newClusterConfigScope();
+    Map<String, String> config = _helixAdmin.getConfig(scope, Arrays.asList(AUTO_SCALING));
+    if (config.containsKey(AUTO_SCALING) && config.get(AUTO_SCALING).equalsIgnoreCase(DISABLE)) {
+      return false;
+    }
+    return true;
   }
 
   public void disableAutoBalancing() {
-    _enableRebalance = false;
+    updateClusterConfig(AUTO_BALANCING, DISABLE);
   }
 
   public void enableAutoBalancing() {
-    _enableRebalance = true;
+    updateClusterConfig(AUTO_BALANCING, ENABLE);
   }
 
   public boolean isAutoBalancingEnabled() {
-    return _enableRebalance;
+    HelixConfigScope scope = newClusterConfigScope();
+    Map<String, String> config = _helixAdmin.getConfig(scope, Arrays.asList(AUTO_BALANCING));
+    if (config.containsKey(AUTO_BALANCING) && config.get(AUTO_BALANCING)
+        .equalsIgnoreCase(DISABLE)) {
+      return false;
+    }
+    return true;
+  }
+
+  public void updateClusterConfig(String key, String value) {
+    HelixConfigScope scope = newClusterConfigScope();
+    Map<String, String> properties = new HashMap<>();
+    properties.put(key, value);
+    _helixAdmin.setConfig(scope, properties);
+  }
+
+  private HelixConfigScope newClusterConfigScope() {
+    return new HelixConfigScopeBuilder(ConfigScopeProperty.CLUSTER).forCluster(_helixClusterName)
+        .build();
   }
 
   public boolean getControllerAutobalancingStatus(String controllerInstance)
