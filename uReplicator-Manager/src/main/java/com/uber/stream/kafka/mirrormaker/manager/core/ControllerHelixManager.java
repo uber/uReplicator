@@ -1431,7 +1431,7 @@ public class ControllerHelixManager implements IHelixManager {
 
   public boolean isAutoScalingEnabled() {
     return HelixUtils
-        .isClusterConfigEnabled(_helixManager, AUTO_SCALING, _conf.getEnableRebalance());
+        .isClusterConfigEnabled(_helixManager, AUTO_SCALING, true);
   }
 
   public void disableAutoBalancing() {
@@ -1444,7 +1444,7 @@ public class ControllerHelixManager implements IHelixManager {
 
   public boolean isAutoBalancingEnabled() {
     return HelixUtils
-        .isClusterConfigEnabled(_helixManager, AUTO_SCALING, _conf.getEnableRebalance());
+        .isClusterConfigEnabled(_helixManager, AUTO_BALANCING, _conf.getEnableRebalance());
   }
 
   public boolean getControllerAutobalancingStatus(String controllerInstance)
