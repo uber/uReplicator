@@ -211,6 +211,8 @@ public class TestUtils {
     conf.setProducerConfigFile("src/test/resources/producer.properties");
     conf.setHelixConfigFile("src/test/resources/helix.properties");
     conf.setClusterConfigFile("src/test/resources/clusters.properties");
+    conf.setTopicMappingFile("src/test/resources/topicmapping.properties");
+
     conf.setFederatedEnabled(true);
     return conf;
   }
