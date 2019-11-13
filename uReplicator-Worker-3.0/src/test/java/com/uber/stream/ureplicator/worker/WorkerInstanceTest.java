@@ -115,6 +115,7 @@ public class WorkerInstanceTest {
     try {
       String topicName1 = "testNonFederatedWorkerInstance1";
       String topicName2 = "testNonFederatedWorkerInstance2";
+
       KafkaStarterUtils.createTopic(topicName1, numberOfPartitions, srcCluster1ZK, "2");
       KafkaStarterUtils.createTopic(topicName2, numberOfPartitions, srcCluster1ZK, "2");
       KafkaStarterUtils.createTopic(topicName1, numberOfPartitions, dstClusterZK, "1");
@@ -175,7 +176,7 @@ public class WorkerInstanceTest {
 
       @Override
       public IConsumerFetcherManager createFetcherManager() {
-        KafkaClusterObserver observer = new KafkaClusterObserver(dstBootstrapServer);
+        KafkaClusterObserver observer = new KafkaClusterObserver(srcCluster1BootstrapServer);
         return new FetcherManagerGroupByLeaderId("FetcherManagerGroupByHashId", consumerProps,
             messageQueue, observer);
       }
@@ -185,8 +186,10 @@ public class WorkerInstanceTest {
     WorkerInstance workerInstance = new CustomizedWorkerInstance(conf);
     try {
       String topicName1 = "testWorkerInstanceWithFetcherManagerGroupByLeaderId1";
+      String topicName1_dummy = "testWorkerInstanceWithFetcherManagerGroupByLeaderId1_dummy";
+
       KafkaStarterUtils.createTopic(topicName1, 2, srcCluster1ZK, "2");
-      KafkaStarterUtils.createTopic(topicName1, 1, dstClusterZK, "1");
+      KafkaStarterUtils.createTopic(topicName1_dummy, 1, dstClusterZK, "1");
       workerInstance.start(null, null, null, null);
       workerInstance.addTopicPartition(topicName1, 0);
       workerInstance.addTopicPartition(topicName1, 1);
@@ -198,7 +201,7 @@ public class WorkerInstanceTest {
       LOGGER.info("Produce messages finished");
 
       List<ConsumerRecord<Byte[], Byte[]>> records = TestUtils
-          .consumeMessage(dstBootstrapServer, topicName1, 5000);
+          .consumeMessage(dstBootstrapServer, topicName1_dummy, 5000);
       Assert.assertEquals(records.size(), 20);
       workerInstance.cleanShutdown();
 
@@ -208,7 +211,7 @@ public class WorkerInstanceTest {
       workerInstance.start(null, null, null, null);
       workerInstance.addTopicPartition(topicName1, 0);
       records = TestUtils
-          .consumeMessage(dstBootstrapServer, topicName1, 5000);
+          .consumeMessage(dstBootstrapServer, topicName1_dummy, 5000);
       Assert.assertEquals(records.size(), 10);
 
     } finally {

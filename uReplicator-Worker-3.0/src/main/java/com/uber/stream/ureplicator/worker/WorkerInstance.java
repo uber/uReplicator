@@ -267,7 +267,6 @@ public class WorkerInstance {
       LOGGER.info("stopping metrics reporter");
       KafkaUReplicatorMetricsReporter.stop();
 
-      topicMapping.clear();
       LOGGER.info("Kafka uReplicator worker shutdown successfully");
       isRunning.set(false);
     } else {
