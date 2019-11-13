@@ -15,6 +15,11 @@
  */
 package com.uber.stream.kafka.mirrormaker.manager.core;
 
+import static com.uber.stream.kafka.mirrormaker.common.Constants.AUTO_BALANCING;
+import static com.uber.stream.kafka.mirrormaker.common.Constants.AUTO_SCALING;
+import static com.uber.stream.kafka.mirrormaker.common.Constants.DISABLE;
+import static com.uber.stream.kafka.mirrormaker.common.Constants.ENABLE;
+
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -36,6 +41,7 @@ import kafka.utils.ZKStringSerializer$;
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.helix.*;
 import org.apache.helix.model.ExternalView;
+import org.apache.helix.model.HelixConfigScope;
 import org.apache.helix.model.HelixConfigScope.ConfigScopeProperty;
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.builder.HelixConfigScopeBuilder;
@@ -117,14 +123,10 @@ public class ControllerHelixManager implements IHelixManager {
 
   private ZkClient _zkClient;
 
-  private boolean _enableAutoScaling = true;
-  private boolean _enableRebalance;
-
   public ControllerHelixManager(
       KafkaClusterValidationManager kafkaValidationManager,
       ManagerConf managerConf) {
     _conf = managerConf;
-    _enableRebalance = managerConf.getEnableRebalance();
     _kafkaValidationManager = kafkaValidationManager;
     _initMaxNumPartitionsPerRoute = managerConf.getInitMaxNumPartitionsPerRoute();
     _maxNumPartitionsPerRoute = managerConf.getMaxNumPartitionsPerRoute();
@@ -740,7 +742,7 @@ public class ControllerHelixManager implements IHelixManager {
       boolean routeControllerDown = false;
       // Check if any worker in route is down
       boolean routeWorkerDown = false;
-      if (_enableRebalance || forceBalance) {
+      if (isAutoBalancingEnabled() || forceBalance) {
         for (String instanceName : instanceToTopicPartitionsMap.keySet()) {
           if (!liveInstances.contains(instanceName)) {
             routeControllerDown = true;
@@ -916,7 +918,7 @@ public class ControllerHelixManager implements IHelixManager {
         updateCurrentStatus();
       }
 
-      if (_enableAutoScaling) {
+      if (isAutoScalingEnabled()) {
         scaleCurrentCluster();
       } else {
         LOGGER.info("AutoScaling is disabled, do nothing");
@@ -1420,27 +1422,29 @@ public class ControllerHelixManager implements IHelixManager {
   }
 
   public void disableAutoScaling() {
-    _enableAutoScaling = false;
+    HelixUtils.updateClusterConfig(_helixManager, AUTO_SCALING, DISABLE);
   }
 
   public void enableAutoScaling() {
-    _enableAutoScaling = true;
+    HelixUtils.updateClusterConfig(_helixManager, AUTO_SCALING, ENABLE);
   }
 
   public boolean isAutoScalingEnabled() {
-    return _enableAutoScaling;
+    return HelixUtils
+        .isClusterConfigEnabled(_helixManager, AUTO_SCALING, true);
   }
 
   public void disableAutoBalancing() {
-    _enableRebalance = false;
+    HelixUtils.updateClusterConfig(_helixManager, AUTO_BALANCING, DISABLE);
   }
 
   public void enableAutoBalancing() {
-    _enableRebalance = true;
+    HelixUtils.updateClusterConfig(_helixManager, AUTO_BALANCING, ENABLE);
   }
 
   public boolean isAutoBalancingEnabled() {
-    return _enableRebalance;
+    return HelixUtils
+        .isClusterConfigEnabled(_helixManager, AUTO_BALANCING, _conf.getEnableRebalance());
   }
 
   public boolean getControllerAutobalancingStatus(String controllerInstance)
@@ -1463,8 +1467,7 @@ public class ControllerHelixManager implements IHelixManager {
    * RPC call to notify controller to change autobalancing status. No retry
    *
    * @param controllerInstance The controller InstanceName
-   * @param enable             whether to enable autobalancing
-   * @return
+   * @param enable whether to enable autobalancing
    */
   public boolean notifyControllerAutobalancing(String controllerInstance, boolean enable)
       throws ControllerException {

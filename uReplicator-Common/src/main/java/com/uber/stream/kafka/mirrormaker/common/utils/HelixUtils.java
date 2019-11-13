@@ -15,6 +15,9 @@
  */
 package com.uber.stream.kafka.mirrormaker.common.utils;
 
+import static com.uber.stream.kafka.mirrormaker.common.Constants.DISABLE;
+import static com.uber.stream.kafka.mirrormaker.common.Constants.ENABLE;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.net.HostAndPort;
 import com.uber.stream.kafka.mirrormaker.common.Constants;
@@ -38,9 +41,12 @@ import org.apache.helix.PropertyPathConfig;
 import org.apache.helix.PropertyType;
 import org.apache.helix.ZNRecord;
 import org.apache.helix.manager.zk.ZkBaseDataAccessor;
+import org.apache.helix.model.HelixConfigScope;
+import org.apache.helix.model.HelixConfigScope.ConfigScopeProperty;
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.InstanceConfig;
 import org.apache.helix.model.builder.CustomModeISBuilder;
+import org.apache.helix.model.builder.HelixConfigScopeBuilder;
 import org.apache.helix.store.zk.ZkHelixPropertyStore;
 
 public class HelixUtils {
@@ -80,11 +86,12 @@ public class HelixUtils {
   public static Map<String, HostAndPort> getInstanceToHostInfoMap(HelixManager helixManager) {
     List<String> instances = liveInstances(helixManager);
     HashMap<String, HostAndPort> retVal = new HashMap<>(instances.size());
-    for (String instance: instances) {
+    for (String instance : instances) {
       InstanceConfig config = helixManager.getConfigAccessor().getInstanceConfig(
-              helixManager.getClusterName(), instance);
+          helixManager.getClusterName(), instance);
       if (config != null) {
-        retVal.put(instance, HostAndPort.fromParts(config.getHostName(), Integer.valueOf(config.getPort())));
+        retVal.put(instance,
+            HostAndPort.fromParts(config.getHostName(), Integer.valueOf(config.getPort())));
       }
     }
     return retVal;
@@ -109,7 +116,8 @@ public class HelixUtils {
     return route.substring(0, route.lastIndexOf("@"));
   }
 
-  public static Map<String, Set<TopicPartition>> getInstanceToTopicPartitionsMap(HelixManager helixManager) {
+  public static Map<String, Set<TopicPartition>> getInstanceToTopicPartitionsMap(
+      HelixManager helixManager) {
     return getInstanceToTopicPartitionsMap(helixManager, null);
   }
 
@@ -118,7 +126,8 @@ public class HelixUtils {
    *
    * @return InstanceToNumTopicPartitionMap
    */
-  public static Map<String, Set<TopicPartition>> getInstanceToTopicPartitionsMap(HelixManager helixManager,
+  public static Map<String, Set<TopicPartition>> getInstanceToTopicPartitionsMap(
+      HelixManager helixManager,
       Map<String, KafkaBrokerTopicObserver> clusterToObserverMap) {
     Map<String, Set<TopicPartition>> instanceToNumTopicPartitionMap = new HashMap<>();
     HelixAdmin helixAdmin = helixManager.getClusterManagmentTool();
@@ -129,7 +138,8 @@ public class HelixUtils {
         TopicPartition tpi;
         if (partition.startsWith("@")) {
           if (clusterToObserverMap != null) {
-            TopicPartition topicParition = clusterToObserverMap.get(getSrcFromRoute(partition)).getTopicPartitionWithRefresh(topic);
+            TopicPartition topicParition = clusterToObserverMap.get(getSrcFromRoute(partition))
+                .getTopicPartitionWithRefresh(topic);
             int trueNumPartition = topicParition != null ? topicParition.getPartition() : -1;
             tpi = new TopicPartition(topic, trueNumPartition, partition);
           } else {
@@ -222,6 +232,40 @@ public class HelixUtils {
       }
     }
     return unassignedPartitions;
+  }
+
+  public static void updateClusterConfig(HelixManager helixManager, String key, String value) {
+    HelixConfigScope scope = newClusterConfigScope(helixManager);
+    Map<String, String> properties = new HashMap<>();
+    properties.put(key, value);
+    helixManager.getClusterManagmentTool().setConfig(scope, properties);
+  }
+
+  public static boolean isClusterConfigEnabled(HelixManager helixManager, String key) {
+    HelixConfigScope scope = newClusterConfigScope(helixManager);
+    Map<String, String> configs = helixManager.getClusterManagmentTool()
+        .getConfig(scope, Arrays.asList(key));
+    if (configs.containsKey(key) && configs.get(key).equalsIgnoreCase(DISABLE)) {
+      return false;
+    }
+    return true;
+  }
+
+  public static boolean isClusterConfigEnabled(HelixManager helixManager, String key,
+      boolean defaultValue) {
+    HelixConfigScope scope = newClusterConfigScope(helixManager);
+    Map<String, String> configs = helixManager.getClusterManagmentTool()
+        .getConfig(scope, Arrays.asList(key));
+    if (configs != null && configs.containsKey(key)) {
+      return configs.get(key).equalsIgnoreCase(ENABLE);
+    }
+    return defaultValue;
+  }
+
+  public static HelixConfigScope newClusterConfigScope(HelixManager helixManager) {
+    return new HelixConfigScopeBuilder(ConfigScopeProperty.CLUSTER)
+        .forCluster(helixManager.getClusterName())
+        .build();
   }
 
 }
