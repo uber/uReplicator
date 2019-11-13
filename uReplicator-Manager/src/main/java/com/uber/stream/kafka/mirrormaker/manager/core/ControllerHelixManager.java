@@ -170,9 +170,6 @@ public class ControllerHelixManager implements IHelixManager {
     _helixAdmin = _helixManager.getClusterManagmentTool();
     _helixPropertyStore = _helixManager.getHelixPropertyStore();
 
-    HelixUtils.updateClusterConfig(_helixManager, AUTO_BALANCING,
-        _conf.getEnableRebalance() ? ENABLE : DISABLE);
-
     updateCurrentStatus();
 
     LOGGER.info("Trying to register ControllerLiveInstanceChangeListener");
@@ -1433,7 +1430,8 @@ public class ControllerHelixManager implements IHelixManager {
   }
 
   public boolean isAutoScalingEnabled() {
-    return HelixUtils.isClusterConfigEnabled(_helixManager, AUTO_SCALING);
+    return HelixUtils
+        .isClusterConfigEnabled(_helixManager, AUTO_SCALING, true);
   }
 
   public void disableAutoBalancing() {
@@ -1445,7 +1443,8 @@ public class ControllerHelixManager implements IHelixManager {
   }
 
   public boolean isAutoBalancingEnabled() {
-    return HelixUtils.isClusterConfigEnabled(_helixManager, AUTO_BALANCING);
+    return HelixUtils
+        .isClusterConfigEnabled(_helixManager, AUTO_BALANCING, _conf.getEnableRebalance());
   }
 
   public boolean getControllerAutobalancingStatus(String controllerInstance)
@@ -1468,8 +1467,7 @@ public class ControllerHelixManager implements IHelixManager {
    * RPC call to notify controller to change autobalancing status. No retry
    *
    * @param controllerInstance The controller InstanceName
-   * @param enable             whether to enable autobalancing
-   * @return
+   * @param enable whether to enable autobalancing
    */
   public boolean notifyControllerAutobalancing(String controllerInstance, boolean enable)
       throws ControllerException {
