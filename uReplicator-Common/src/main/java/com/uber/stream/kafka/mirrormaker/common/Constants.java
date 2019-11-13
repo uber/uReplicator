@@ -23,6 +23,8 @@ public final class Constants {
   public static final String HELIX_OFFLINE_STATE = "OFFLINE";
   public static final String HELIX_ONLINE_STATE = "ONLINE";
 
+
+  // for store AUTO_SCALING/AUTO_BALANCING in Helix, like AutoScaling:enable, AutoBalancing:disable
   public static final String ENABLE = "enable";
   public static final String DISABLE = "disable";
   public static final String AUTO_SCALING = "AutoScaling";
