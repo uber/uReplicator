@@ -125,7 +125,10 @@ public class WorkerInstance {
     checkpointManager = createCheckpointManager();
 
     // set client id prefix
-    String clientId = String.format("ureplicator-%s-%s-%s", srcCluster, dstCluster, routeId);
+    String clientId = "ureplicator";
+    if (workerConf.getFederatedEnabled()) {
+      clientId = String.format("ureplicator-%s-%s-%s", srcCluster, dstCluster, routeId);
+    }
     consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, clientId);
     // set consumer group to ureplicator it does not exists
     String consumerGroup = consumerProps.getProperty(ConsumerConfig.GROUP_ID_CONFIG, "ureplicator");
