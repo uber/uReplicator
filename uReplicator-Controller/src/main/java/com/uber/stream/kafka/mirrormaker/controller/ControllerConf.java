@@ -15,8 +15,7 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
+import com.uber.stream.kafka.mirrormaker.common.utils.NetUtils;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -28,8 +27,7 @@ import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 
 /**
- * Controller configs:
- * Helix configs, Controller Rest layer and reporting.
+ * Controller configs: Helix configs, Controller Rest layer and reporting.
  *
  * @author xiangfu
  */
@@ -238,15 +236,15 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
     setProperty(METRICS_PREFIX, metricsPrefix);
   }
 
-  public void setGraphiteReportFreqInSec(String graphiteReportFreqInSec){
+  public void setGraphiteReportFreqInSec(String graphiteReportFreqInSec) {
     setProperty(GRAPHITE_REPORT_FREQ_IN_SEC, Long.valueOf(graphiteReportFreqInSec));
   }
 
-  public void setEnableJmxReport(String enableJmxReport){
+  public void setEnableJmxReport(String enableJmxReport) {
     setProperty(ENABLE_JMX_REPORT, Boolean.valueOf(enableJmxReport));
   }
 
-  public void setEnableGraphiteReport(String enableGraphiteReport){
+  public void setEnableGraphiteReport(String enableGraphiteReport) {
     setProperty(ENABLE_GRAPHITE_REPORT, Boolean.valueOf(enableGraphiteReport));
   }
 
@@ -335,32 +333,38 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
   }
 
   public void setAutoRebalanceMinIntervalInSeconds(String autoRebalanceMinIntervalInSeconds) {
-    setProperty(AUTO_REBALANCE_MIN_INTERVAL_IN_SECONDS, Integer.parseInt(autoRebalanceMinIntervalInSeconds));
+    setProperty(AUTO_REBALANCE_MIN_INTERVAL_IN_SECONDS,
+        Integer.parseInt(autoRebalanceMinIntervalInSeconds));
   }
 
   public void setAutoRebalanceMinLagTimeInSeconds(String autoRebalanceMinLagTimeInSeconds) {
-    setProperty(AUTO_REBALANCE_MIN_LAG_TIME_IN_SECONDS, Integer.parseInt(autoRebalanceMinLagTimeInSeconds));
+    setProperty(AUTO_REBALANCE_MIN_LAG_TIME_IN_SECONDS,
+        Integer.parseInt(autoRebalanceMinLagTimeInSeconds));
   }
 
   public void setAutoRebalanceMinLagOffset(String autoRebalanceMinLagOffset) {
     setProperty(AUTO_REBALANCE_MIN_LAG_OFFSET, Long.parseLong(autoRebalanceMinLagOffset));
   }
 
-  public void setAutoRebalanceMaxOffsetInfoValidInSeconds(String autoRebalanceMaxOffsetInfoValidInSeconds) {
+  public void setAutoRebalanceMaxOffsetInfoValidInSeconds(
+      String autoRebalanceMaxOffsetInfoValidInSeconds) {
     setProperty(AUTO_REBALANCE_MAX_OFFSET_INFO_VALID_IN_SECONDS,
         Integer.parseInt(autoRebalanceMaxOffsetInfoValidInSeconds));
   }
 
   public void setAutoRebalanceWorkloadRatioThreshold(String autoRebalanceWorkloadRatioThreshold) {
-    setProperty(AUTO_REBALANCE_WORKLOAD_RATIO_THRESHOLD, Double.parseDouble(autoRebalanceWorkloadRatioThreshold));
+    setProperty(AUTO_REBALANCE_WORKLOAD_RATIO_THRESHOLD,
+        Double.parseDouble(autoRebalanceWorkloadRatioThreshold));
   }
 
   public void setWorkloadRefreshPeriodInSeconds(String workloadRefreshPeriodInSeconds) {
-    setProperty(WORKLOAD_REFRESH_PERIOD_IN_SECONDS, Integer.parseInt(workloadRefreshPeriodInSeconds));
+    setProperty(WORKLOAD_REFRESH_PERIOD_IN_SECONDS,
+        Integer.parseInt(workloadRefreshPeriodInSeconds));
   }
 
   public void setMaxDedicatedLaggingInstancesRatio(String maxDedicatedLaggingInstancesRatio) {
-    setProperty(MAX_DEDICATED_LAGGING_INSTANCES_RATIO, Double.parseDouble(maxDedicatedLaggingInstancesRatio));
+    setProperty(MAX_DEDICATED_LAGGING_INSTANCES_RATIO,
+        Double.parseDouble(maxDedicatedLaggingInstancesRatio));
   }
 
   public void setMaxStuckPartitionMovements(String maxStuckPartitionMovements) {
@@ -368,7 +372,8 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
   }
 
   public void setMoveStuckPartitionAfterMinutes(String moveStuckPartitionAfterMinutes) {
-    setProperty(MOVE_STUCK_PARTITION_AFTER_MINUTES, Integer.parseInt(moveStuckPartitionAfterMinutes));
+    setProperty(MOVE_STUCK_PARTITION_AFTER_MINUTES,
+        Integer.parseInt(moveStuckPartitionAfterMinutes));
   }
 
   public void setHostname(String hostname) {
@@ -385,22 +390,20 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
 
 
   public void setMaxWorkloadPerWorkerByteWithinRegion(String maxWorkloadPerWorkerByteWithinRegion) {
-    setProperty(MAX_WORKLOAD_PER_WORKER_BYTE_WITHIN_REGION, Double.parseDouble(maxWorkloadPerWorkerByteWithinRegion));
+    setProperty(MAX_WORKLOAD_PER_WORKER_BYTE_WITHIN_REGION,
+        Double.parseDouble(maxWorkloadPerWorkerByteWithinRegion));
   }
 
   public void setMaxWorkloadPerWorkerByteCrossRegion(String maxWorkloadPerWorkerByteCrossRegion) {
-    setProperty(MAX_WORKLOAD_PER_WORKER_BYTE_CROSS_REGION, Double.parseDouble(maxWorkloadPerWorkerByteCrossRegion));
+    setProperty(MAX_WORKLOAD_PER_WORKER_BYTE_CROSS_REGION,
+        Double.parseDouble(maxWorkloadPerWorkerByteCrossRegion));
   }
 
   public String getHostname() {
     if (containsKey(HOSTNAME)) {
       return (String) getProperty(HOSTNAME);
     } else {
-      try {
-        return InetAddress.getLocalHost().getHostName();
-      } catch (UnknownHostException ex) {
-        return "localhost";
-      }
+      return NetUtils.getFirstNoLoopbackIP4Address();
     }
   }
 
@@ -440,7 +443,8 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
     String CONTROLLER_WORKER_HELIX_PREFIX = "controller-worker-";
 
     return getHelixClusterName().startsWith(CONTROLLER_WORKER_HELIX_PREFIX) ?
-        getHelixClusterName().substring(CONTROLLER_WORKER_HELIX_PREFIX.length()) : getHelixClusterName();
+        getHelixClusterName().substring(CONTROLLER_WORKER_HELIX_PREFIX.length())
+        : getHelixClusterName();
   }
 
   public boolean isFederatedEnabled() {
@@ -468,11 +472,7 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
 
   public String getInstanceId() {
     if (!containsKey(INSTANCE_ID)) {
-      try {
-        setInstanceId(InetAddress.getLocalHost().getHostName());
-      } catch (UnknownHostException e) {
-        // Do nothing
-      }
+      setInstanceId(NetUtils.getFirstNoLoopbackIP4Address());
     }
     return (String) getProperty(INSTANCE_ID);
   }
@@ -846,7 +846,8 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
         .addOption("c3Host", true, "Chaperone3 Host")
         .addOption("c3Port", true, "Chaperone3 Port")
         .addOption("enableAutoWhitelist", true, "Enable Auto Whitelist")
-        .addOption("enableAutoTopicExpansion", true, "Enable Auto Topic Expansion during Source Kafka Validation")
+        .addOption("enableAutoTopicExpansion", true,
+            "Enable Auto Topic Expansion during Source Kafka Validation")
         .addOption("patternToExcludeTopics", true, "Exclude specific topics by pattern")
         .addOption("enableSrcKafkaValidation", true, "Enable Source Kafka Validation")
         .addOption("srcKafkaZkPath", true, "Source Kafka Zookeeper Path")
@@ -855,16 +856,21 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
         .addOption("maxWorkingInstances", true,
             "The maximum number of instances that are assigned with workload. All other instances will be standby. 0 means no limit")
         .addOption("autoRebalanceDelayInSeconds", true, "Auto Rebalance Delay in seconds")
-        .addOption("refreshTimeInSeconds", true, "Controller Whitelist Manager Refresh Time in seconds")
+        .addOption("refreshTimeInSeconds", true,
+            "Controller Whitelist Manager Refresh Time in seconds")
         .addOption("initWaitTimeInSeconds", true, "Controller Init Delay in seconds")
-        .addOption("autoRebalancePeriodInSeconds", true, "Period to try auto rebalancing in seconds")
-        .addOption("autoRebalanceMinIntervalInSeconds", true, "Minimum interval between auto rebalancing in seconds")
+        .addOption("autoRebalancePeriodInSeconds", true,
+            "Period to try auto rebalancing in seconds")
+        .addOption("autoRebalanceMinIntervalInSeconds", true,
+            "Minimum interval between auto rebalancing in seconds")
         .addOption("autoRebalanceMinLagTimeInSeconds", true,
             "Minimum time in seconds to be considered as lag to trigger rebalancing")
-        .addOption("autoRebalanceMinLagOffset", true, "Minimum offset to be considered as lag to trigger rebalancing")
+        .addOption("autoRebalanceMinLagOffset", true,
+            "Minimum offset to be considered as lag to trigger rebalancing")
         .addOption("autoRebalanceMaxOffsetInfoValidInSeconds", true,
             "Maximum time in seconds for the offset information to be considered as still valid")
-        .addOption("workloadRefreshPeriodInSeconds", true, "The period to refresh workload information in seconds")
+        .addOption("workloadRefreshPeriodInSeconds", true,
+            "The period to refresh workload information in seconds")
         .addOption("autoRebalanceWorkloadRatioThreshold", true,
             "The ratio of workload compared to average for auto workload rebalance")
         .addOption("maxDedicatedLaggingInstancesRatio", true,
@@ -873,18 +879,22 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
             "The maximum trials to automatically move a stuck partition from an instance to another. 0 would disable movements")
         .addOption("moveStuckPartitionAfterMinutes", true,
             "The time to automatically move a stuck partition after it has been stuck in an instance")
-        .addOption("backUpToGit", true, "Backup controller metadata to git (true) or local file (false)")
+        .addOption("backUpToGit", true,
+            "Backup controller metadata to git (true) or local file (false)")
         .addOption("numOffsetThread", true, "Number of threads to fetch topic offsets")
         .addOption("blockingQueueSize", true, "Size of OffsetMonitor blocking queue size")
         .addOption("offsetRefreshIntervalInSec", true, "Topic offset monitor refresh interval")
         .addOption("groupId", true, "Consumer group id")
-        .addOption("backUpToGit", true, "Backup controller metadata to git (true) or local file (false)")
+        .addOption("backUpToGit", true,
+            "Backup controller metadata to git (true) or local file (false)")
         .addOption("remoteBackupRepo", true, "Remote Backup Repo to store cluster state")
         .addOption("localGitRepoClonePath", true, "Clone location of the remote git backup repo")
         .addOption("localBackupFilePath", true, "Local backup file location")
         .addOption("hostname", true, "hostname for this host")
-        .addOption("maxWorkloadPerWorkerByteWithinRegion", true, "The max workload per worker within region")
-        .addOption("maxWorkloadPerWorkerByteCrossRegion", true, "The max workload per worker cross region");
+        .addOption("maxWorkloadPerWorkerByteWithinRegion", true,
+            "The max workload per worker within region")
+        .addOption("maxWorkloadPerWorkerByteCrossRegion", true,
+            "The max workload per worker cross region");
     return controllerOptions;
   }
 
@@ -944,11 +954,7 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
     if (cmd.hasOption("instanceId")) {
       controllerConf.setInstanceId(cmd.getOptionValue("instanceId"));
     } else {
-      try {
-        controllerConf.setInstanceId(InetAddress.getLocalHost().getHostName());
-      } catch (UnknownHostException e) {
-        // Do nothing
-      }
+      controllerConf.setInstanceId(NetUtils.getFirstNoLoopbackIP4Address());
     }
     if (cmd.hasOption("env")) {
       controllerConf.setEnvironment(cmd.getOptionValue("env"));
@@ -970,7 +976,7 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
     }
     if (cmd.hasOption("graphiteReportFreqInSec")) {
       controllerConf.setGraphiteReportFreqInSec(cmd.getOptionValue("graphiteReportFreqInSec"));
-    } else{
+    } else {
       controllerConf.setGraphiteReportFreqInSec(Long.toString(DEFAULT_GRAPHITE_REPORT_FREQ_IN_SEC));
     }
     if (cmd.hasOption("enableJmxReport")) {
@@ -1022,14 +1028,16 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
       controllerConf.setMaxWorkingInstances("0");
     }
     if (cmd.hasOption("autoRebalanceDelayInSeconds")) {
-      controllerConf.setAutoRebalanceDelayInSeconds(cmd.getOptionValue("autoRebalanceDelayInSeconds"));
+      controllerConf
+          .setAutoRebalanceDelayInSeconds(cmd.getOptionValue("autoRebalanceDelayInSeconds"));
     } else {
       controllerConf.setAutoRebalanceDelayInSeconds("120");
     }
     if (cmd.hasOption("refreshTimeInSeconds")) {
       controllerConf.setWhitelistRefreshTimeInSeconds(cmd.getOptionValue("refreshTimeInSeconds"));
     } else {
-      controllerConf.setWhitelistRefreshTimeInSeconds(Integer.toString(DEFAULT_WHITELIST_REFRESH_TIME_IN_SECONDS));
+      controllerConf.setWhitelistRefreshTimeInSeconds(
+          Integer.toString(DEFAULT_WHITELIST_REFRESH_TIME_IN_SECONDS));
     }
     if (cmd.hasOption("initWaitTimeInSeconds")) {
       controllerConf.setInitWaitTimeInSeconds(cmd.getOptionValue("initWaitTimeInSeconds"));
@@ -1037,18 +1045,21 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
       controllerConf.setInitWaitTimeInSeconds(Integer.toString(DEFAULT_INIT_WAIT_TIME_IN_SECONDS));
     }
     if (cmd.hasOption("autoRebalancePeriodInSeconds")) {
-      controllerConf.setAutoRebalancePeriodInSeconds(cmd.getOptionValue("autoRebalancePeriodInSeconds"));
+      controllerConf
+          .setAutoRebalancePeriodInSeconds(cmd.getOptionValue("autoRebalancePeriodInSeconds"));
     } else {
       controllerConf.setAutoRebalancePeriodInSeconds("0");
     }
     if (cmd.hasOption("autoRebalanceMinIntervalInSeconds")) {
-      controllerConf.setAutoRebalanceMinIntervalInSeconds(cmd.getOptionValue("autoRebalanceMinIntervalInSeconds"));
+      controllerConf.setAutoRebalanceMinIntervalInSeconds(
+          cmd.getOptionValue("autoRebalanceMinIntervalInSeconds"));
     } else {
       controllerConf.setAutoRebalanceMinIntervalInSeconds(
           Integer.toString(DEFAULT_AUTO_REBALANCE_MIN_INTERVAL_IN_SECONDS));
     }
     if (cmd.hasOption("autoRebalanceMinLagTimeInSeconds")) {
-      controllerConf.setAutoRebalanceMinLagTimeInSeconds(cmd.getOptionValue("autoRebalanceMinLagTimeInSeconds"));
+      controllerConf.setAutoRebalanceMinLagTimeInSeconds(
+          cmd.getOptionValue("autoRebalanceMinLagTimeInSeconds"));
     } else {
       controllerConf.setAutoRebalanceMinLagTimeInSeconds(
           Integer.toString(DEFAULT_AUTO_REBALANCE_MIN_LAG_TIME_IN_SECONDS));
@@ -1056,7 +1067,8 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
     if (cmd.hasOption("autoRebalanceMinLagOffset")) {
       controllerConf.setAutoRebalanceMinLagOffset(cmd.getOptionValue("autoRebalanceMinLagOffset"));
     } else {
-      controllerConf.setAutoRebalanceMinLagOffset(Long.toString(DEFAULT_AUTO_REBALANCE_MIN_LAG_OFFSET));
+      controllerConf
+          .setAutoRebalanceMinLagOffset(Long.toString(DEFAULT_AUTO_REBALANCE_MIN_LAG_OFFSET));
     }
     if (cmd.hasOption("autoRebalanceMaxOffsetInfoValidInSeconds")) {
       controllerConf.setAutoRebalanceMaxOffsetInfoValidInSeconds(
@@ -1066,31 +1078,39 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
           Integer.toString(DEFAULT_AUTO_REBALANCE_MAX_OFFSET_INFO_VALID_IN_SECONDS));
     }
     if (cmd.hasOption("workloadRefreshPeriodInSeconds")) {
-      controllerConf.setWorkloadRefreshPeriodInSeconds(cmd.getOptionValue("workloadRefreshPeriodInSeconds"));
+      controllerConf
+          .setWorkloadRefreshPeriodInSeconds(cmd.getOptionValue("workloadRefreshPeriodInSeconds"));
     } else {
-      controllerConf.setWorkloadRefreshPeriodInSeconds(Integer.toString(DEFAULT_WORKLOAD_REFRESH_PERIOD_IN_SECONDS));
+      controllerConf.setWorkloadRefreshPeriodInSeconds(
+          Integer.toString(DEFAULT_WORKLOAD_REFRESH_PERIOD_IN_SECONDS));
     }
     if (cmd.hasOption("autoRebalanceWorkloadRatioThreshold")) {
-      controllerConf.setAutoRebalanceWorkloadRatioThreshold(cmd.getOptionValue("autoRebalanceWorkloadRatioThreshold"));
+      controllerConf.setAutoRebalanceWorkloadRatioThreshold(
+          cmd.getOptionValue("autoRebalanceWorkloadRatioThreshold"));
     } else {
       controllerConf.setAutoRebalanceWorkloadRatioThreshold(
           Double.toString(DEFAULT_AUTO_REBALANCE_WORKLOAD_RATIO_THRESHOLD));
     }
     if (cmd.hasOption("maxDedicatedLaggingInstancesRatio")) {
-      controllerConf.setMaxDedicatedLaggingInstancesRatio(cmd.getOptionValue("maxDedicatedLaggingInstancesRatio"));
+      controllerConf.setMaxDedicatedLaggingInstancesRatio(
+          cmd.getOptionValue("maxDedicatedLaggingInstancesRatio"));
     } else {
       controllerConf.setMaxDedicatedLaggingInstancesRatio(
           Double.toString(DEFAULT_MAX_DEDICATED_LAGGING_INSTANCES_RATIO));
     }
     if (cmd.hasOption("maxStuckPartitionMovements")) {
-      controllerConf.setMaxStuckPartitionMovements(cmd.getOptionValue("maxStuckPartitionMovements"));
+      controllerConf
+          .setMaxStuckPartitionMovements(cmd.getOptionValue("maxStuckPartitionMovements"));
     } else {
-      controllerConf.setMaxStuckPartitionMovements(Integer.toString(DEFAULT_MAX_STUCK_PARTITION_MOVEMENTS));
+      controllerConf
+          .setMaxStuckPartitionMovements(Integer.toString(DEFAULT_MAX_STUCK_PARTITION_MOVEMENTS));
     }
     if (cmd.hasOption("moveStuckPartitionAfterMinutes")) {
-      controllerConf.setMoveStuckPartitionAfterMinutes(cmd.getOptionValue("moveStuckPartitionAfterMinutes"));
+      controllerConf
+          .setMoveStuckPartitionAfterMinutes(cmd.getOptionValue("moveStuckPartitionAfterMinutes"));
     } else {
-      controllerConf.setMoveStuckPartitionAfterMinutes(Integer.toString(DEFAULT_MOVE_STUCK_PARTITION_AFTER_MINUTES));
+      controllerConf.setMoveStuckPartitionAfterMinutes(
+          Integer.toString(DEFAULT_MOVE_STUCK_PARTITION_AFTER_MINUTES));
     }
     if (cmd.hasOption("numOffsetThread")) {
       controllerConf.setNumOffsetThread(cmd.getOptionValue("numOffsetThread"));
@@ -1103,9 +1123,11 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
       controllerConf.setBlockingQueueSize(Integer.toString(DEFAULT_BLOCKING_QUEUE_SIZE));
     }
     if (cmd.hasOption("offsetRefreshIntervalInSec")) {
-      controllerConf.setOffsetRefreshIntervalInSec(cmd.getOptionValue("offsetRefreshIntervalInSec"));
+      controllerConf
+          .setOffsetRefreshIntervalInSec(cmd.getOptionValue("offsetRefreshIntervalInSec"));
     } else {
-      controllerConf.setOffsetRefreshIntervalInSec(Integer.toString(DEFAULT_OFFSET_REFRESH_INTERVAL_IN_SEC));
+      controllerConf
+          .setOffsetRefreshIntervalInSec(Integer.toString(DEFAULT_OFFSET_REFRESH_INTERVAL_IN_SEC));
     }
     if (cmd.hasOption("groupId")) {
       controllerConf.setGroupId(cmd.getOptionValue("groupId"));
@@ -1150,7 +1172,8 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
       try {
         configFromFile.load(fileName);
       } catch (ConfigurationException e) {
-        throw new RuntimeException("Failed to load config from file " + fileName + ": " + e.getMessage());
+        throw new RuntimeException(
+            "Failed to load config from file " + fileName + ": " + e.getMessage());
       }
       // merge the config with command line. Option from command line has higher priority to override config from file
       @SuppressWarnings("unchecked")
@@ -1166,15 +1189,19 @@ public class ControllerConf extends PropertiesConfiguration implements IuReplica
     }
 
     if (cmd.hasOption("maxWorkloadPerWorkerByteWithinRegion")) {
-      controllerConf.setMaxWorkloadPerWorkerByteWithinRegion(cmd.getOptionValue("maxWorkloadPerWorkerByteWithinRegion"));
+      controllerConf.setMaxWorkloadPerWorkerByteWithinRegion(
+          cmd.getOptionValue("maxWorkloadPerWorkerByteWithinRegion"));
     } else {
-      controllerConf.setMaxWorkloadPerWorkerByteWithinRegion(Double.toString(DEFAULT_MAX_WORKLOAD_PER_WORKER_BYTE_WITHIN_REGION));
+      controllerConf.setMaxWorkloadPerWorkerByteWithinRegion(
+          Double.toString(DEFAULT_MAX_WORKLOAD_PER_WORKER_BYTE_WITHIN_REGION));
     }
 
     if (cmd.hasOption("maxWorkloadPerWorkerByteCrossRegion")) {
-      controllerConf.setMaxWorkloadPerWorkerByteCrossRegion(cmd.getOptionValue("maxWorkloadPerWorkerByteCrossRegion"));
+      controllerConf.setMaxWorkloadPerWorkerByteCrossRegion(
+          cmd.getOptionValue("maxWorkloadPerWorkerByteCrossRegion"));
     } else {
-      controllerConf.setMaxWorkloadPerWorkerByteCrossRegion(Double.toString(DEFAULT_MAX_WORKLOAD_PER_WORKER_BYTE_CROSS_REGION));
+      controllerConf.setMaxWorkloadPerWorkerByteCrossRegion(
+          Double.toString(DEFAULT_MAX_WORKLOAD_PER_WORKER_BYTE_CROSS_REGION));
     }
 
     return controllerConf;

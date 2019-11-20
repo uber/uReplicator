@@ -16,8 +16,7 @@
 package com.uber.stream.kafka.mirrormaker.manager;
 
 import com.uber.stream.kafka.mirrormaker.common.configuration.IuReplicatorConf;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
+import com.uber.stream.kafka.mirrormaker.common.utils.NetUtils;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -483,11 +482,7 @@ public class ManagerConf extends PropertiesConfiguration implements IuReplicator
     if (cmd.hasOption("instanceId")) {
       managerConf.setManagerInstanceId(cmd.getOptionValue("instanceId"));
     } else {
-      try {
-        managerConf.setManagerInstanceId(InetAddress.getLocalHost().getHostName());
-      } catch (UnknownHostException e) {
-        throw new RuntimeException("Missing option: --instanceId");
-      }
+      managerConf.setManagerInstanceId(NetUtils.getFirstNoLoopbackIP4Address());
     }
     if (cmd.hasOption("graphiteHost")) {
       managerConf.setGraphiteHost(cmd.getOptionValue("graphiteHost"));
