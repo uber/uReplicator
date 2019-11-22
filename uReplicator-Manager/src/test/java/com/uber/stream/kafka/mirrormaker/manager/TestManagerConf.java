@@ -15,6 +15,7 @@
  */
 package com.uber.stream.kafka.mirrormaker.manager;
 
+import com.uber.stream.kafka.mirrormaker.common.utils.NetUtils;
 import java.net.InetAddress;
 import java.util.HashSet;
 import java.util.Set;
@@ -98,7 +99,7 @@ public class TestManagerConf {
       Assert.assertEquals(conf.getManagerZkStr(), "localhost:2181/test");
       Assert.assertEquals(conf.getManagerPort().toString(), "9090");
       Assert.assertEquals(conf.getManagerDeployment(), "testing");
-      Assert.assertEquals(conf.getManagerInstanceId(), InetAddress.getLocalHost().getHostName());
+      Assert.assertEquals(conf.getManagerInstanceId(), NetUtils.getFirstNoLoopbackIP4Address());
       Assert.assertEquals(conf.getC3Host(), "localhost");
       Assert.assertEquals(conf.getC3Port().toString(), "0");
       Assert.assertEquals(conf.getWorkloadRefreshPeriodInSeconds().toString(), "600");
