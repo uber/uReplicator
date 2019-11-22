@@ -15,6 +15,7 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller;
 
+import com.uber.stream.kafka.mirrormaker.common.utils.NetUtils;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import org.apache.commons.cli.CommandLine;
@@ -37,7 +38,7 @@ public class TestControllerConf {
     Assert.assertEquals(defaultConf.getHelixClusterName(), "testMirrorMaker");
     Assert.assertEquals(defaultConf.getDeploymentName(), "testDeploymentName");
     Assert.assertEquals(defaultConf.getZkStr(), "localhost:2181");
-    Assert.assertEquals(defaultConf.getInstanceId(), InetAddress.getLocalHost().getHostName());
+    Assert.assertEquals(defaultConf.getInstanceId(), NetUtils.getFirstNoLoopbackIP4Address());
     Assert.assertEquals(defaultConf.getEnableAutoWhitelist(), false);
     Assert.assertEquals(defaultConf.getEnableSrcKafkaValidation(), false);
   }
@@ -158,7 +159,7 @@ public class TestControllerConf {
     Assert.assertEquals(conf.getControllerPort(), "9090");
     Assert.assertEquals(conf.getControllerMode(), "auto");
     Assert.assertEquals(conf.getEnvironment(), "env");
-    Assert.assertEquals(conf.getInstanceId(), InetAddress.getLocalHost().getHostName());
+    Assert.assertEquals(conf.getInstanceId(), NetUtils.getFirstNoLoopbackIP4Address());
     Assert.assertEquals(conf.getGraphiteHost(), "graphiteHost0");
     Assert.assertEquals(conf.getGraphitePort().intValue(), 0);
     Assert.assertEquals(conf.getSrcKafkaZkPath(), "localhost:2181/kafka1");
