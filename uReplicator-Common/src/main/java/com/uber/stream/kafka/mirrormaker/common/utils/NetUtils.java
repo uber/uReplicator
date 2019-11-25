@@ -29,6 +29,10 @@ import java.util.Enumeration;
  */
 public class NetUtils {
 
+  /**
+   *  get first no loop address
+   * @return first no loop address, or null if not exists
+   */
   public static String getFirstNoLoopbackIP4Address() {
     Collection<String> allNoLoopbackIP4Addresses = getNoLoopbackIP4Addresses();
     if (allNoLoopbackIP4Addresses.isEmpty()) {
