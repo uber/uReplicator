@@ -23,16 +23,18 @@ import lombok.NoArgsConstructor;
 import java.util.ArrayList;
 import java.util.List;
 
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class ControllerWorkloadInfo {
+
+  private boolean autoBalancingEnabled = false;
+
   private int numOfExpectedWorkers = 0;
 
   private int numOfLaggingWorkers = 0;
 
-  private TopicWorkload topicWorkload = new TopicWorkload(0,0,0);
+  private TopicWorkload topicWorkload = new TopicWorkload(0, 0, 0);
 
-  private List<WorkerWorkloadInfo> workerInstances =  new ArrayList<>();
+  private List<WorkerWorkloadInfo> workerInstances = new ArrayList<>();
 }

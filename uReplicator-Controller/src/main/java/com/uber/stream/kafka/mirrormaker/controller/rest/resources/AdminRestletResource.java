@@ -127,6 +127,7 @@ public class AdminRestletResource extends ServerResource {
     int numOfDedicatedWorkers = (int) (controllerWorkloadInfo.getWorkerInstances().size() * _helixMirrorMakerManager.getMaxDedicatedInstancesRatio());
     int laggingAdditional = numberOfLaggingWorkers < numOfDedicatedWorkers ? 0 : numberOfLaggingWorkers - numOfDedicatedWorkers;
     controllerWorkloadInfo.setNumOfExpectedWorkers(numberOfExpectedWorkers + laggingAdditional);
+    controllerWorkloadInfo.setAutoBalancingEnabled(_helixMirrorMakerManager.isAutoBalancingEnabled());
     return controllerWorkloadInfo;
   }
 }
