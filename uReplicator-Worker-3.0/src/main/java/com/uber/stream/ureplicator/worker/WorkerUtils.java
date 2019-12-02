@@ -51,7 +51,7 @@ public class WorkerUtils {
     }
   }
 
-  public static Properties loadAndValidateHelixProps(String helixConfigFile) throws IOException {
+  public static Properties loadAndValidateHelixProps(String helixConfigFile) {
     Properties properties = loadProperties(helixConfigFile);
     if (!properties.containsKey(Constants.HELIX_ZK_SERVER)) {
       String msg = String

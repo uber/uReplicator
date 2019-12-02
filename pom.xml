@@ -5,14 +5,12 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.uber.uReplicator</groupId>
   <artifactId>uReplicator</artifactId>
-  <version>2.0.0.1-HOTFIX</version>
+  <version>2.0.1-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>uReplicator</name>
 
   <modules>
     <module>uReplicator-Controller</module>
-    <module>uReplicator-Worker</module>
-    <module>uReplicator-Distribution</module>
     <module>uReplicator-Manager</module>
     <module>uReplicator-Common</module>
     <module>uReplicator-Worker-3.0</module>

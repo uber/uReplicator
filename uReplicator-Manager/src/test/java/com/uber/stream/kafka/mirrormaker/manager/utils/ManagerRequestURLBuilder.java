@@ -13,13 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.uber.stream.kafka.mirrormaker.manager.utils;
 
-import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import org.apache.commons.lang.StringUtils;
 import org.restlet.Request;
 import org.restlet.data.Method;
-import org.scalactic.Bool;
 
 public class ManagerRequestURLBuilder {
 
