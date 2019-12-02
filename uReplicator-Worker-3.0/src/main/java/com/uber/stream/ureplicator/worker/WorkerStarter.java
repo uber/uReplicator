@@ -56,7 +56,7 @@ public class WorkerStarter {
     Properties helixProps = null;
     try {
       helixProps = WorkerUtils.loadAndValidateHelixProps(workerConf.getHelixConfigFile());
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOGGER.error(
           "uReplicator Worker failed to start because of load helix config file throws exception",
           e);
