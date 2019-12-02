@@ -16,21 +16,25 @@
 package com.uber.stream.kafka.mirrormaker.manager.rest;
 
 import com.alibaba.fastjson.JSONObject;
+import com.uber.stream.kafka.mirrormaker.common.core.OnlineOfflineStateFactory;
 import com.uber.stream.kafka.mirrormaker.common.utils.ZkStarter;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerStarter;
 import com.uber.stream.kafka.mirrormaker.common.utils.KafkaStarterUtils;
 import com.uber.stream.kafka.mirrormaker.manager.utils.ManagerRequestURLBuilder;
+import com.uber.stream.ureplicator.worker.WorkerConf;
+import com.uber.stream.ureplicator.worker.WorkerInstance;
+import com.uber.stream.ureplicator.worker.WorkerUtils;
+import com.uber.stream.ureplicator.worker.helix.ManagerWorkerHelixHandler;
+import java.io.IOException;
+import java.util.Properties;
 import joptsimple.OptionSet;
-import kafka.mirrormaker.ManagerWorkerHelixHandler;
-import kafka.mirrormaker.ManagerWorkerOnlineOfflineStateModelFactory;
-import kafka.mirrormaker.MirrorMakerWorker;
-import kafka.mirrormaker.MirrorMakerWorkerConf;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.helix.InstanceType;
 import org.apache.helix.manager.zk.ZKHelixManager;
 import org.apache.helix.participant.StateMachineEngine;
+import org.easymock.EasyMock;
 import org.restlet.Request;
 import org.restlet.Response;
 import org.restlet.data.Status;
@@ -67,7 +71,7 @@ public class TestManagerTopicManagement extends RestTestBase {
     LOGGER.info("Trying to stop worker");
     for (int i = 0; i < WORKER_STARTER1.size(); i++) {
       WORKER_STARTER1.get(i).shutdown();
-      WORKER_STARTER2.get(i).stop();
+      WORKER_STARTER2.get(i).shutdown();
       WORKER_STARTER3.get(i).disconnect();
     }
 
@@ -144,28 +148,28 @@ public class TestManagerTopicManagement extends RestTestBase {
           String instanceId = "testWorker" + id;
           String managerWorkerHelixName = "manager-worker-" + deploymentName;
 
-          MirrorMakerWorkerConf workerConf = new MirrorMakerWorkerConf();
-          String[] args = new String[]{
-              "--consumer.config", "/tmp/consumer.properties-" + id,
-              "--producer.config", "/tmp/producer.properties-" + id,
-              "--helix.config", "/tmp/helix.properties-" + id,
-              "--cluster.config", "src/test/resources/clusters.properties"
-          };
-
-          MirrorMakerWorker mirrorMakerWorker = new MirrorMakerWorker();
+          WorkerConf workerConf = new WorkerConf();
+          workerConf.setConsumerConfigFile("/tmp/consumer.properties-" + id);
+          workerConf.setProducerConfigFile("/tmp/producer.properties-" + id);
+          workerConf.setHelixConfigFile("/tmp/helix.properties-" + id);
+          workerConf.setClusterConfigFile("src/test/resources/clusters.properties");
+          workerConf.setFederatedEnabled(true);
+          //WorkerConf mirrorMakerWorker = new WorkerConf();
 
           updateConsumerConfigFile(zkServer, instanceId, id);
           updateProducerConfigFile(instanceId, id);
           updateHelixConfigFile(zkServer, instanceId, id);
 
-          OptionSet options = workerConf.getParser().parse(args);
 
           ZKHelixManager managerWorkerHelix = new ZKHelixManager(managerWorkerHelixName, instanceId,
               InstanceType.PARTICIPANT, zkServer);
           StateMachineEngine stateMachineEngine = managerWorkerHelix.getStateMachineEngine();
-          ManagerWorkerHelixHandler managerWorkerHandler = new ManagerWorkerHelixHandler(mirrorMakerWorker, workerConf, options);
+          WorkerInstance mockWorker = EasyMock.createMock(WorkerInstance.class);
+          Properties helixProps = WorkerUtils.loadAndValidateHelixProps(workerConf.getHelixConfigFile());
+          ManagerWorkerHelixHandler managerWorkerHandler = new ManagerWorkerHelixHandler(workerConf, helixProps, mockWorker);
           // register the MirrorMaker worker to Manager-Worker cluster
-          ManagerWorkerOnlineOfflineStateModelFactory stateModelFactory = new ManagerWorkerOnlineOfflineStateModelFactory(
+
+          OnlineOfflineStateFactory stateModelFactory = new OnlineOfflineStateFactory(
               managerWorkerHandler);
           stateMachineEngine.registerStateModelFactory("OnlineOffline", stateModelFactory);
 
@@ -174,7 +178,7 @@ public class TestManagerTopicManagement extends RestTestBase {
             public void run() {
               LOGGER.info("Shutting down federated worker");
               mainThread.shutdown();
-              managerWorkerHandler.stop();
+              managerWorkerHandler.shutdown();
               managerWorkerHelix.disconnect();
             }
           });
