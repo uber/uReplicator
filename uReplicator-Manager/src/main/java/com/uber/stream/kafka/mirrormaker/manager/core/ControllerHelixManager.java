@@ -591,16 +591,6 @@ public class ControllerHelixManager implements IHelixManager {
     }
   }
 
-  public List<String> extractTopicList(String response) {
-    String topicList = response.substring(25, response.length() - 1);
-    String[] topics = topicList.split(",");
-    List<String> result = new ArrayList<>();
-    for (String topic : topics) {
-      result.add(topic);
-    }
-    return result;
-  }
-
   private String getHostname(String instanceId) throws ControllerException {
     Map<String, String> instanceIdAndNameMap = HelixUtils.getInstanceToHostnameMap(_helixManager);
     String hostname =  instanceIdAndNameMap.containsKey(instanceId) ? instanceIdAndNameMap.get(instanceId) : "";
@@ -655,16 +645,6 @@ public class ControllerHelixManager implements IHelixManager {
       }
     }
     return false;
-  }
-
-  public List<String> getPipelineLists() {
-    List<String> pipelineList = new ArrayList<>();
-    for (String resource : _helixAdmin.getResourcesInCluster(_helixClusterName)) {
-      if (resource.startsWith(SEPARATOR)) {
-        pipelineList.add(resource);
-      }
-    }
-    return pipelineList;
   }
 
   public List<String> getTopicLists() {
@@ -975,7 +955,10 @@ public class ControllerHelixManager implements IHelixManager {
               hostname, _controllerPort, "/admin/workloadinfo");
           ControllerWorkloadInfo workloadInfo = JSONObject.parseObject(result, ControllerWorkloadInfo.class);
           TopicWorkload totalWorkload = workloadInfo.getTopicWorkload();
-
+          if (!workloadInfo.isAutoBalancingEnabled()) {
+            LOGGER.warn("Skip scaling worker for route {} because of auto balancing is disabled on controller", routeString);
+            continue;
+          }
           if (workloadInfo != null && workloadInfo.getNumOfExpectedWorkers() != 0) {
             _pipelineWorkloadMap.put(itph.getRouteString(), totalWorkload);
             int expectedNumWorkers = workloadInfo.getNumOfExpectedWorkers();
@@ -1027,13 +1010,6 @@ public class ControllerHelixManager implements IHelixManager {
       return _maxNumWorkersPerRoute;
     }
     return (int) (Math.ceil((double) (expectedNumWorkers - initWorkerPerRoute) / _numOfWorkersBatchSize) * _numOfWorkersBatchSize) + initWorkerPerRoute;
-  }
-
-  public int getExpectedNumWorkers(int currNumPartitions) {
-    return Math.min(_maxNumWorkersPerRoute, _initMaxNumWorkersPerRoute +
-        (_maxNumWorkersPerRoute - _initMaxNumWorkersPerRoute) *
-            (currNumPartitions - _initMaxNumPartitionsPerRoute) /
-            (_maxNumPartitionsPerRoute - _initMaxNumPartitionsPerRoute));
   }
 
   public InstanceTopicPartitionHolder createNewRoute(String pipeline, int routeId) throws Exception {
@@ -1244,7 +1220,6 @@ public class ControllerHelixManager implements IHelixManager {
         }
       }
 
-
       _workerHelixManager.deletePipelineInMirrorMaker(pipeline);
       _helixAdmin.dropResource(_helixClusterName, pipeline);
 
@@ -1304,10 +1279,6 @@ public class ControllerHelixManager implements IHelixManager {
         .forResource(topicName).build(), new HashMap<>());
   }
 
-  public KafkaClusterValidationManager getKafkaValidationManager() {
-    return _kafkaValidationManager;
-  }
-
   public WorkerHelixManager getWorkerHelixManager() {
     return _workerHelixManager;
   }
@@ -1318,11 +1289,6 @@ public class ControllerHelixManager implements IHelixManager {
 
   private static String getPipelineFromRoute(String route) {
     return route.substring(0, route.lastIndexOf("@"));
-  }
-
-  private static String getSrc(String pipeline) {
-    String[] srcDst = pipeline.split(SEPARATOR);
-    return srcDst[1];
   }
 
   public void disableAutoScaling() {
