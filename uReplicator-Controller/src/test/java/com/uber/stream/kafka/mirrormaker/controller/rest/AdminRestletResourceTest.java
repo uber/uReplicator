@@ -101,6 +101,7 @@ public class AdminRestletResourceTest {
 
     EasyMock.expect(_helixMirrorMakerManager.getMaxDedicatedInstancesRatio()).andReturn(0.2);
     EasyMock.expect(_helixMirrorMakerManager.getMaxWorkloadPerWorkerBytes()).andReturn(700.0);
+    EasyMock.expect(_helixMirrorMakerManager.isAutoBalancingEnabled()).andReturn(true);
 
 
     EasyMock.replay(_helixMirrorMakerManager, _workloadInfoRetriever);
@@ -117,6 +118,8 @@ public class AdminRestletResourceTest {
     Assert.assertEquals(controllerWorkloadInfo.getWorkerInstances().size(), 2);
     Assert.assertEquals(controllerWorkloadInfo.getNumOfLaggingWorkers(), 1);
     Assert.assertEquals(controllerWorkloadInfo.getNumOfExpectedWorkers(), 4);
+    Assert.assertEquals(controllerWorkloadInfo.isAutoBalancingEnabled(), true);
+
   }
 
   @AfterTest

@@ -662,7 +662,6 @@ public class ControllerHelixManager implements IHelixManager {
         LOGGER.warn("Failed to curl topic info from controller: {}", itph.getInstanceName(), e);
       }
     }
-
     return resultJson;
   }
 
@@ -692,16 +691,6 @@ public class ControllerHelixManager implements IHelixManager {
       }
     }
     return false;
-  }
-
-  public List<String> getPipelineLists() {
-    List<String> pipelineList = new ArrayList<>();
-    for (String resource : _helixAdmin.getResourcesInCluster(_helixClusterName)) {
-      if (resource.startsWith(SEPARATOR)) {
-        pipelineList.add(resource);
-      }
-    }
-    return pipelineList;
   }
 
   public List<String> getTopicLists() {
@@ -1040,7 +1029,10 @@ public class ControllerHelixManager implements IHelixManager {
           ControllerWorkloadInfo workloadInfo = JSONObject
               .parseObject(result, ControllerWorkloadInfo.class);
           TopicWorkload totalWorkload = workloadInfo.getTopicWorkload();
-
+          if (!workloadInfo.isAutoBalancingEnabled()) {
+            LOGGER.warn("Skip scaling worker for route {} because of auto balancing is disabled on controller", routeString);
+            continue;
+          }
           if (workloadInfo != null && workloadInfo.getNumOfExpectedWorkers() != 0) {
             _pipelineWorkloadMap.put(itph.getRouteString(), totalWorkload);
             int expectedNumWorkers = workloadInfo.getNumOfExpectedWorkers();
@@ -1106,15 +1098,7 @@ public class ControllerHelixManager implements IHelixManager {
             * _numOfWorkersBatchSize) + initWorkerPerRoute;
   }
 
-  public int getExpectedNumWorkers(int currNumPartitions) {
-    return Math.min(_maxNumWorkersPerRoute, _initMaxNumWorkersPerRoute +
-        (_maxNumWorkersPerRoute - _initMaxNumWorkersPerRoute) *
-            (currNumPartitions - _initMaxNumPartitionsPerRoute) /
-            (_maxNumPartitionsPerRoute - _initMaxNumPartitionsPerRoute));
-  }
-
-  public InstanceTopicPartitionHolder createNewRoute(String pipeline, int routeId)
-      throws Exception {
+  public InstanceTopicPartitionHolder createNewRoute(String pipeline, int routeId) throws Exception {
     if (_availableControllerList.isEmpty()) {
       LOGGER.info("No available controller!");
       throw new Exception("No available controller!");
@@ -1400,10 +1384,6 @@ public class ControllerHelixManager implements IHelixManager {
         .forResource(topicName).build(), new HashMap<>());
   }
 
-  public KafkaClusterValidationManager getKafkaValidationManager() {
-    return _kafkaValidationManager;
-  }
-
   public WorkerHelixManager getWorkerHelixManager() {
     return _workerHelixManager;
   }
@@ -1414,11 +1394,6 @@ public class ControllerHelixManager implements IHelixManager {
 
   private static String getPipelineFromRoute(String route) {
     return route.substring(0, route.lastIndexOf("@"));
-  }
-
-  private static String getSrc(String pipeline) {
-    String[] srcDst = pipeline.split(SEPARATOR);
-    return srcDst[1];
   }
 
   public void disableAutoScaling() {

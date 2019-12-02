@@ -155,7 +155,6 @@ public class TestManagerTopicManagement extends RestTestBase {
           workerConf.setHelixConfigFile("/tmp/helix.properties-" + id);
           workerConf.setClusterConfigFile("src/test/resources/clusters.properties");
           workerConf.setFederatedEnabled(true);
-          //WorkerConf mirrorMakerWorker = new WorkerConf();
 
           updateConsumerConfigFile(zkServer, instanceId, id);
           updateProducerConfigFile(instanceId, id);
