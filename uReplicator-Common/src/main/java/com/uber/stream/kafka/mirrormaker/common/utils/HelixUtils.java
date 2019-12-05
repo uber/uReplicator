@@ -17,6 +17,7 @@ package com.uber.stream.kafka.mirrormaker.common.utils;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
+import com.google.common.net.HostAndPort;
 import com.uber.stream.kafka.mirrormaker.common.Constants;
 import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
 import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
@@ -115,6 +116,19 @@ public class HelixUtils {
 
 
   @Deprecated
+  public static Map<String, HostAndPort> getInstanceToHostInfoMap(HelixManager helixManager) {
+    List<String> instances = liveInstances(helixManager);
+    HashMap<String, HostAndPort> retVal = new HashMap<>(instances.size());
+    for (String instance: instances) {
+      InstanceConfig config = helixManager.getConfigAccessor().getInstanceConfig(
+              helixManager.getClusterName(), instance);
+      if (config != null) {
+        retVal.put(instance, HostAndPort.fromParts(config.getHostName(), Integer.valueOf(config.getPort())));
+      }
+    }
+    return retVal;
+  }
+
   public static List<String> liveInstances(HelixManager helixManager) {
     return getCurrentLiveInstanceNames(helixManager);
   }

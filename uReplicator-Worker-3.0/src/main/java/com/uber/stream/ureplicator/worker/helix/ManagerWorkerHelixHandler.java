@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 
 public class ManagerWorkerHelixHandler implements HelixHandler {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(WorkerStarter.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ManagerWorkerHelixHandler.class);
 
   private final WorkerConf workerConf;
   private final String instanceId;

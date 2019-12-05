@@ -133,6 +133,7 @@
     <lombok.version>1.16.16</lombok.version>
     <easymock.version>3.0</easymock.version>
     <jacoco.version>0.7.9</jacoco.version>
+    <guava.version>23.0</guava.version>
   </properties>
 
   <dependencies>
@@ -344,6 +345,11 @@
       <artifactId>spotbugs-annotations</artifactId>
       <version>3.1.12</version>
       <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>${guava.version}</version>
     </dependency>
   </dependencies>
 
