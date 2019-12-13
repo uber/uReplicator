@@ -17,7 +17,7 @@ package com.uber.stream.ureplicator.worker;
 
 import com.google.common.annotations.VisibleForTesting;
 
-import com.uber.stream.ureplicator.common.KafkaClusterObserver;
+import com.uber.stream.ureplicator.common.observer.TopicPartitionLeaderObserver;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -40,12 +40,12 @@ public class FetcherManagerGroupByLeaderId extends FetcherManager {
       .getLogger(FetcherManagerGroupByLeaderId.class);
 
   @VisibleForTesting
-  protected KafkaClusterObserver clusterObserver;
+  protected TopicPartitionLeaderObserver clusterObserver;
 
   public FetcherManagerGroupByLeaderId(String threadName,
       CustomizedConsumerConfig consumerProperties,
       List<BlockingQueue<FetchedDataChunk>> messageQueue,
-      KafkaClusterObserver clusterObserver) {
+      TopicPartitionLeaderObserver clusterObserver) {
     this(threadName, consumerProperties, new ConcurrentHashMap<>(), messageQueue, clusterObserver);
   }
 
@@ -54,7 +54,7 @@ public class FetcherManagerGroupByLeaderId extends FetcherManager {
       CustomizedConsumerConfig consumerProperties,
       Map<String, ConsumerFetcherThread> fetcherThreadMap,
       List<BlockingQueue<FetchedDataChunk>> messageQueue,
-      KafkaClusterObserver clusterObserver) {
+      TopicPartitionLeaderObserver clusterObserver) {
     super(threadName, consumerProperties, fetcherThreadMap, messageQueue);
     this.clusterObserver = clusterObserver;
   }

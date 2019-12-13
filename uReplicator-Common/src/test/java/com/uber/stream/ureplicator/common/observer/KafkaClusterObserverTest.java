@@ -13,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.uber.stream.ureplicator.common;
+package com.uber.stream.ureplicator.common.observer;
 
 import com.google.common.collect.ImmutableList;
+import com.uber.stream.ureplicator.common.observer.TopicPartitionLeaderObserver;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -33,7 +34,7 @@ import org.testng.annotations.Test;
 public class KafkaClusterObserverTest {
 
   private final KafkaConsumer kafkaConsumer = EasyMock.createMock(KafkaConsumer.class);
-  private final KafkaClusterObserver observer = new KafkaClusterObserver(kafkaConsumer);
+  private final TopicPartitionLeaderObserver topicPartitionLeaderObserver = new TopicPartitionLeaderObserver(kafkaConsumer);
   private String testTopic1 = "KafkaClusterObserverTest1";
   private final List<PartitionInfo> partitionInfo1 = new ArrayList<>();
   private String testTopic2 = "KafkaClusterObserverTest2";
@@ -74,7 +75,7 @@ public class KafkaClusterObserverTest {
     EasyMock.replay(kafkaConsumer);
 
     Map<TopicPartition, Integer> result =
-        observer.findLeaderForPartitions(ImmutableList.of(tp1, tp2));
+        topicPartitionLeaderObserver.findLeaderForPartitions(ImmutableList.of(tp1, tp2));
     Assert.assertEquals(result.get(tp1), Integer.valueOf(1));
     Assert.assertEquals(result.get(tp2), Integer.valueOf(2));
 

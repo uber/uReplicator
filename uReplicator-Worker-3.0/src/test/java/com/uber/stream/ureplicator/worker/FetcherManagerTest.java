@@ -20,7 +20,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.RateLimiter;
-import com.uber.stream.ureplicator.common.KafkaClusterObserver;
+import com.uber.stream.ureplicator.common.observer.TopicPartitionLeaderObserver;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -31,7 +31,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.stream.Collectors;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.easymock.EasyMock;
@@ -47,8 +46,8 @@ public class FetcherManagerTest {
       .createMock(ConsumerFetcherThread.class);
   private final ConsumerFetcherThread mockFetcherThread2 = EasyMock
       .createMock(ConsumerFetcherThread.class);
-  private KafkaClusterObserver kafkaClusterObserver = EasyMock
-      .createMock(KafkaClusterObserver.class);
+  private TopicPartitionLeaderObserver kafkaClusterObserver = EasyMock
+      .createMock(TopicPartitionLeaderObserver.class);
   private ConsumerFetcherThread mockConsumerFetcherThread = EasyMock
       .createMock(ConsumerFetcherThread.class);
 

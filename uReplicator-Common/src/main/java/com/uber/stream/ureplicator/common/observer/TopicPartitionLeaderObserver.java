@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.uber.stream.ureplicator.common;
+package com.uber.stream.ureplicator.common.observer;
 
 import com.google.common.annotations.VisibleForTesting;
 import java.io.Closeable;
@@ -30,17 +30,15 @@ import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+public class TopicPartitionLeaderObserver implements Closeable {
 
-// TODO: implement topic count observer
-public class KafkaClusterObserver implements Closeable {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(KafkaClusterObserver.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TopicPartitionLeaderObserver.class);
 
   private static final String DESERIALIZER_CLASS = "org.apache.kafka.common.serialization.ByteArrayDeserializer";
 
   private final KafkaConsumer kafkaConsumer;
 
-  public KafkaClusterObserver(String bootstrapServer) {
+  public TopicPartitionLeaderObserver(String bootstrapServer) {
     Properties properties = new Properties();
     properties.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServer);
     properties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, String.valueOf(false));
@@ -52,7 +50,7 @@ public class KafkaClusterObserver implements Closeable {
   }
 
   @VisibleForTesting
-  protected KafkaClusterObserver(KafkaConsumer kafkaConsumer) {
+  protected TopicPartitionLeaderObserver(KafkaConsumer kafkaConsumer) {
     this.kafkaConsumer = kafkaConsumer;
   }
 

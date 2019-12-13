@@ -16,9 +16,10 @@
 package com.uber.stream.ureplicator.worker;
 
 import com.codahale.metrics.Gauge;
-import com.uber.stream.kafka.mirrormaker.common.core.TopicPartitionCountObserver;
 import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import com.uber.stream.ureplicator.common.MetricsReporterConf;
+import com.uber.stream.ureplicator.common.observer.HeaderWhitelistObserver;
+import com.uber.stream.ureplicator.common.observer.TopicPartitionCountObserver;
 import com.uber.stream.ureplicator.worker.interfaces.ICheckPointManager;
 import com.uber.stream.ureplicator.worker.interfaces.IConsumerFetcherManager;
 import com.uber.stream.ureplicator.worker.interfaces.IMessageTransformer;
@@ -61,7 +62,8 @@ public class WorkerInstance {
   private ProducerManager producerManager;
   private ICheckPointManager checkpointManager;
   // use to observe destination topic partition
-  protected TopicPartitionCountObserver observer;
+  protected TopicPartitionCountObserver topicPartitionCountObserver;
+  protected HeaderWhitelistObserver headerWhitelistObserver;
   protected String srcCluster;
   protected String dstCluster;
 
@@ -116,7 +118,8 @@ public class WorkerInstance {
     initializeProperties(srcCluster, dstCluster);
     // Init blocking queue
     initializeConsumerStream();
-    initializeTopicObserver();
+    initializeTopicPartitionCountObserver();
+    initializeHeaderWhitelistObserver();
     initializeMetricsReporter(srcCluster, dstCluster, routeId, federatedDeploymentName);
     additionalConfigs(srcCluster, dstCluster);
 
@@ -139,7 +142,7 @@ public class WorkerInstance {
   }
 
   public IMessageTransformer createMessageTransformer() {
-    return new DefaultMessageTransformer(observer, topicMapping);
+    return new DefaultMessageTransformer(topicPartitionCountObserver, headerWhitelistObserver, topicMapping);
   }
 
   public ICheckPointManager createCheckpointManager() {
@@ -188,8 +191,8 @@ public class WorkerInstance {
    */
   public void addTopicPartition(String topic, int partition, Long startingOffset,
       Long endingOffset, String dstTopic) {
-    if (observer != null) {
-      observer.addTopic(topic);
+    if (topicPartitionCountObserver != null) {
+      topicPartitionCountObserver.addTopic(topic);
     }
     if (StringUtils.isNotBlank(dstTopic)) {
       topicMapping.put(topic, dstTopic);
@@ -229,15 +232,15 @@ public class WorkerInstance {
       }
 
       LOGGER.info("Start clean shutdown");
-      if (observer != null) {
+      if (topicPartitionCountObserver != null) {
         try {
           LOGGER.info("Shutdown observer");
 
-          observer.shutdown();
+          topicPartitionCountObserver.shutdown();
         } catch (Exception e) {
           LOGGER.error("Failed to shut down observer", e);
         } finally {
-          observer = null;
+          topicPartitionCountObserver = null;
         }
       }
 
@@ -340,22 +343,39 @@ public class WorkerInstance {
     KafkaUReplicatorMetricsReporter.init(metricsReporterConf);
   }
 
-  private void initializeTopicObserver() {
+  private void initializeTopicPartitionCountObserver() {
     if (StringUtils.isNotBlank(topicObserverZk) && workerConf
         .enableDestinationPartitionCountObserver()) {
+
       String zkPath = producerProps
           .getProperty(Constants.PRODUCER_ZK_OBSERVER, Constants.DEFAULT_PRODUCER_ZK_OBSERVER);
-      observer = new TopicPartitionCountObserver(topicObserverZk,
+      topicPartitionCountObserver = new TopicPartitionCountObserver(topicObserverZk,
           zkPath,
           Integer.parseInt(producerProps.getProperty("connection.timeout.ms", "120000")),
           Integer.parseInt(producerProps.getProperty("session.timeout.ms", "600000")),
           Integer.parseInt(producerProps.getProperty("refresh.interval.ms", "3600000")));
-      observer.start();
+      topicPartitionCountObserver.start();
       for (String dstTopic : topicMapping.values()) {
-        observer.addTopic(dstTopic);
+        topicPartitionCountObserver.addTopic(dstTopic);
       }
     } else {
       LOGGER.info("Disable TopicPartitionCountObserver to use round robin to produce msg.");
+    }
+  }
+
+  private void initializeHeaderWhitelistObserver() {
+    if (StringUtils.isNotBlank(topicObserverZk) && workerConf
+        .enableHeaderWhitelist()) {
+      String zkPath = producerProps
+          .getProperty(Constants.HEADER_WHITELIST_ZK_PATH, Constants.DEFAULT_HEADER_WHITELIST_ZK_PATH);
+      headerWhitelistObserver = new HeaderWhitelistObserver(topicObserverZk,
+          zkPath,
+          Integer.parseInt(producerProps.getProperty("connection.timeout.ms", "120000")),
+          Integer.parseInt(producerProps.getProperty("session.timeout.ms", "600000")),
+          Integer.parseInt(producerProps.getProperty("refresh.interval.ms", "3600000")));
+      headerWhitelistObserver.start();
+    } else {
+      LOGGER.info("Disable HeaderWhitelistObserver.");
     }
   }
 

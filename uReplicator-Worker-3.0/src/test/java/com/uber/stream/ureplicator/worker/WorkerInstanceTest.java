@@ -17,7 +17,7 @@ package com.uber.stream.ureplicator.worker;
 
 import com.uber.stream.kafka.mirrormaker.common.utils.KafkaStarterUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.ZkStarter;
-import com.uber.stream.ureplicator.common.KafkaClusterObserver;
+import com.uber.stream.ureplicator.common.observer.TopicPartitionLeaderObserver;
 import com.uber.stream.ureplicator.worker.interfaces.IConsumerFetcherManager;
 import java.util.Arrays;
 import java.util.List;
@@ -176,9 +176,9 @@ public class WorkerInstanceTest {
 
       @Override
       public IConsumerFetcherManager createFetcherManager() {
-        KafkaClusterObserver observer = new KafkaClusterObserver(srcCluster1BootstrapServer);
+        TopicPartitionLeaderObserver topicPartitionLeaderObserver = new TopicPartitionLeaderObserver(srcCluster1BootstrapServer);
         return new FetcherManagerGroupByLeaderId("FetcherManagerGroupByHashId", consumerProps,
-            messageQueue, observer);
+            messageQueue, topicPartitionLeaderObserver);
       }
     }
     WorkerConf conf = TestUtils.initWorkerConf();

@@ -52,6 +52,9 @@ public class WorkerConf extends PropertiesConfiguration {
   private static final String ENABLE_TOPIC_PARTITION_COUNT_OBSERVER = "topic_partition_count_observer";
   private static final boolean DEFAULT_ENABLE_TOPIC_PARTITION_COUNT_OBSERVER = false;
 
+  private static final String ENABLE_HEADER_WHITELIST = "enable_header_whitelist";
+  private static final boolean DEFAULT_ENABLE_HEADER_WHITELIST = false;
+
   private static final String OFFSET_COMMIT_INTERVAL_MS = "offset_commit_interval_ms";
   private static final int DEFAULT_OFFSET_COMMIT_INTERVAL_MS = 60000;
 
@@ -136,17 +139,18 @@ public class WorkerConf extends PropertiesConfiguration {
   public boolean enableDestinationPartitionCountObserver() {
     return getProperty(ENABLE_TOPIC_PARTITION_COUNT_OBSERVER,
         DEFAULT_ENABLE_TOPIC_PARTITION_COUNT_OBSERVER);
+  }
 
+  public boolean enableHeaderWhitelist() {
+    return getProperty(ENABLE_HEADER_WHITELIST, DEFAULT_ENABLE_HEADER_WHITELIST);
   }
 
   public Integer getOffsetCommitIntervalMs() {
     return getProperty(OFFSET_COMMIT_INTERVAL_MS, DEFAULT_OFFSET_COMMIT_INTERVAL_MS);
-
   }
 
   public boolean getAbortOnSendFailure() {
     return getProperty(ABORT_ON_SEND_FAILURE, DEFAULT_ABORT_ON_SEND_FAILURE);
-
   }
 
   public boolean getEnableFilter() {
@@ -251,7 +255,7 @@ public class WorkerConf extends PropertiesConfiguration {
   public void setWorkerPort(int workerPort) {
     setProperty(WORKER_PORT, workerPort);
   }
-  
+
   public static Options constructWorkerOptions() {
     final Options workerOptions = new Options();
     workerOptions.addOption("help", false, "Help")
@@ -263,7 +267,9 @@ public class WorkerConf extends PropertiesConfiguration {
         .addOption(CLUSTER_CONFIG_FILE, true, "Embedded cluster config.")
         .addOption(TOPIC_MAPPING_FILE, true,
             "Path to file containing line deliminated mappings of topics to consume from and produce to.")
-        .addOption(ENABLE_TOPIC_PARTITION_COUNT_OBSERVER, true,
+        .addOption(ENABLE_TOPIC_PARTITION_COUNT_OBSERVER,true,
+            "Configure the uReplicator to observe destination topic partition count")
+        .addOption(ENABLE_HEADER_WHITELIST, String.valueOf(DEFAULT_ENABLE_HEADER_WHITELIST), true,
             "Configure the uReplicator to observe destination topic partition count")
         .addOption(OFFSET_COMMIT_INTERVAL_MS, true, "Offset commit interval in ms")
         .addOption(ABORT_ON_SEND_FAILURE, true, "Configure the uReplicator exit on a failed send.")

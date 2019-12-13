@@ -39,6 +39,9 @@ public final class Constants {
   public static final String PRODUCER_ZK_OBSERVER = "zkPath";
   public static final String DEFAULT_PRODUCER_ZK_OBSERVER = "/brokers/topics";
 
+  public static final String HEADER_WHITELIST_ZK_PATH = "headerWhitelistZkPath";
+  public static final String DEFAULT_HEADER_WHITELIST_ZK_PATH = "/accepted_headers";
+
   public static final String PRODUCER_NUMBER_OF_PRODUCERS = "num.of.producers";
   public static final String DEFAULT_NUMBER_OF_PRODUCERS = "2";
 
