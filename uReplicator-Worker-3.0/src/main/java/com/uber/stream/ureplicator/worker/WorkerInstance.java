@@ -118,9 +118,10 @@ public class WorkerInstance {
     initializeProperties(srcCluster, dstCluster);
     // Init blocking queue
     initializeConsumerStream();
+    initializeMetricsReporter(srcCluster, dstCluster, routeId, federatedDeploymentName);
     initializeTopicPartitionCountObserver();
     initializeHeaderWhitelistObserver();
-    initializeMetricsReporter(srcCluster, dstCluster, routeId, federatedDeploymentName);
+
     additionalConfigs(srcCluster, dstCluster);
 
     messageTransformer = createMessageTransformer();
