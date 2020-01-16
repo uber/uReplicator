@@ -60,6 +60,8 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
           public void run() {
             try {
               rebalanceCurrentCluster(false);
+              // Validation
+              _controllerHelixManager.validateInstanceToTopicPartitionsMap();
             } catch (Exception e) {
               LOGGER.error("Got exception during periodically rebalancing the whole cluster! ", e);
             }

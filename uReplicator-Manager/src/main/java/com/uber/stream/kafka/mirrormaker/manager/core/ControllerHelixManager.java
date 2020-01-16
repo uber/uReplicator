@@ -241,10 +241,14 @@ public class ControllerHelixManager implements IHelixManager {
     return route.replace('@', '-').substring(1);
   }
 
-  private void validateInstanceToTopicPartitionsMap(
-      Map<String, Set<TopicPartition>> instanceToTopicPartitionsMap,
-      Map<String, InstanceTopicPartitionHolder> instanceMap) {
+  public void validateInstanceToTopicPartitionsMap() {
     LOGGER.info("validateInstanceToTopicPartitionsMap()");
+    Map<String, Set<TopicPartition>> instanceToTopicPartitionsMap = HelixUtils
+        .getInstanceToTopicPartitionsMap(_helixManager,
+            _kafkaValidationManager.getClusterToObserverMap());
+    Map<TopicPartition, List<String>> workerRouteToInstanceMap = _workerHelixManager.getWorkerRouteToInstanceMap();
+    LOGGER.info("instanceToTopicPartitionsMap size: {}", instanceToTopicPartitionsMap.size());
+
     int validateWrongCount = 0;
     int lowUrgencyValidateWrongCount = 0;
     for (String instanceId : instanceToTopicPartitionsMap.keySet()) {
@@ -257,10 +261,15 @@ public class ControllerHelixManager implements IHelixManager {
       Set<TopicPartition> topicPartitions = instanceToTopicPartitionsMap.get(instanceId);
       Set<TopicPartition> routeSet = new HashSet<>();
       // TODO: one instance suppose to have only one route
+      Set<String> managerWorkers = new HashSet<>();
+
       for (TopicPartition tp : topicPartitions) {
         String topicName = tp.getTopic();
         if (topicName.startsWith(SEPARATOR)) {
           routeSet.add(tp);
+          if (workerRouteToInstanceMap.containsKey(tp)) {
+            managerWorkers.addAll(workerRouteToInstanceMap.get(tp));
+          }
         }
       }
 
@@ -274,7 +283,7 @@ public class ControllerHelixManager implements IHelixManager {
         }
         validateWrongCount++;
         LOGGER.error("Validate WRONG: Incorrect route found for hostInfo: {}, InstanceId: {}, route: {}, pipelines: {}, #workers: {}, worker: {}",
-                hostInfo, instanceId, routeSet, topicRouteSet, instanceMap.get(instanceId).getWorkerSet().size(), instanceMap.get(instanceId).getWorkerSet());
+                hostInfo, instanceId, routeSet, topicRouteSet, managerWorkers.size(), managerWorkers);
       } else {
         int partitionCount = 0;
         Set<TopicPartition> mismatchTopicPartition = new HashSet<>();
@@ -291,7 +300,7 @@ public class ControllerHelixManager implements IHelixManager {
         }
         if (mismatchTopicPartition.isEmpty() && hostInfo != null) {
           LOGGER.info("Validate OK: hostInfo: {}, InstanceId: {}, route: {}, #topics: {}, #partitions: {}, #workers: {}, worker: {}", hostInfo, instanceId, routeSet,
-              topicPartitions.size() - 1, partitionCount, instanceMap.get(instanceId).getWorkerSet().size(), instanceMap.get(instanceId).getWorkerSet());
+              topicPartitions.size() - 1, partitionCount, managerWorkers.size(), managerWorkers);
 
           try {
             // try find topic mismatch between manager and controller
@@ -345,7 +354,6 @@ public class ControllerHelixManager implements IHelixManager {
               controllerWorkers.add(String.valueOf(instance));
             }
 
-            Set<String> managerWorkers = instanceMap.get(instanceId).getWorkerSet();
             Set<String> workerOnlyInManager = new HashSet<>();
             for (String worker : managerWorkers) {
               if (!controllerWorkers.contains(worker)) {
@@ -374,7 +382,7 @@ public class ControllerHelixManager implements IHelixManager {
         } else {
           validateWrongCount++;
           LOGGER.error("Validate WRONG: mismatch route found for hostInfo: {}, InstanceId: {}, route: {}, mismatch: {}, #workers: {}, worker: {}",
-                  hostInfo, instanceId, routeSet, mismatchTopicPartition, instanceMap.get(instanceId).getWorkerSet().size(), instanceMap.get(instanceId).getWorkerSet());
+                  hostInfo, instanceId, routeSet, mismatchTopicPartition, managerWorkers.size(), managerWorkers);
         }
       }
     }
@@ -444,8 +452,8 @@ public class ControllerHelixManager implements IHelixManager {
     if (_helixManager.isLeader()) {
       _validateWrongCount.inc(validateWrongCount - _validateWrongCount.getCount());
       _lowUrgencyValidateWrongCount.inc(lowUrgencyValidateWrongCount - _lowUrgencyValidateWrongCount.getCount());
-      updateMetrics(instanceToTopicPartitionsMap, instanceMap);
     }
+    LOGGER.info("validateInstanceToTopicPartitionsMap finished");
   }
 
   private void updateMetrics(
@@ -571,10 +579,8 @@ public class ControllerHelixManager implements IHelixManager {
         _availableController.inc(_availableControllerList.size() - _availableController.getCount());
         _availableWorker.inc(_workerHelixManager.getAvailableWorkerList().size() - _availableWorker.getCount());
         _assignedControllerCount.inc(assignedControllerCount - _assignedControllerCount.getCount());
+        updateMetrics(instanceToTopicPartitionsMap, instanceMap);
       }
-
-      // Validation
-      validateInstanceToTopicPartitionsMap(instanceToTopicPartitionsMap, instanceMap);
 
       //LOGGER.info("For controller _pipelineToInstanceMap: {}", _pipelineToInstanceMap);
       //LOGGER.info("For controller _topicToPipelineInstanceMap: {}", _topicToPipelineInstanceMap);
@@ -586,16 +592,6 @@ public class ControllerHelixManager implements IHelixManager {
     } finally {
       _lock.unlock();
     }
-  }
-
-  public List<String> extractTopicList(String response) {
-    String topicList = response.substring(25, response.length() - 1);
-    String[] topics = topicList.split(",");
-    List<String> result = new ArrayList<>();
-    for (String topic : topics) {
-      result.add(topic);
-    }
-    return result;
   }
 
   private HostAndPort getHostInfo(String instanceId) throws ControllerException {
@@ -1304,11 +1300,11 @@ public class ControllerHelixManager implements IHelixManager {
     return route.substring(0, route.lastIndexOf("@"));
   }
 
-  public void disableAutoScaling() {
+  public synchronized void disableAutoScaling() {
     _enableAutoScaling = false;
   }
 
-  public void enableAutoScaling() {
+  public synchronized void enableAutoScaling() {
     _enableAutoScaling = true;
   }
 
@@ -1316,11 +1312,11 @@ public class ControllerHelixManager implements IHelixManager {
     return _enableAutoScaling;
   }
 
-  public void disableAutoBalancing() {
+  public synchronized void disableAutoBalancing() {
     _enableRebalance = false;
   }
 
-  public void enableAutoBalancing() {
+  public synchronized void enableAutoBalancing() {
     _enableRebalance = true;
   }
 
