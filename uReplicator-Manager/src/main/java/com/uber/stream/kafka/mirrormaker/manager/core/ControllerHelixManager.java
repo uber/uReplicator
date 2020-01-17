@@ -78,7 +78,7 @@ public class ControllerHelixManager implements IHelixManager {
 
   private final WorkerHelixManager _workerHelixManager;
   private LiveInstanceChangeListener _liveInstanceChangeListener;
-  private Map<String, TopicWorkload> _pipelineWorkloadMap;
+  private ControllerWorkloadSnapshot _controllerWorkloadSnapshot;
 
   private final CloseableHttpClient _httpClient;
   private final RequestConfig _requestConfig;
@@ -133,7 +133,6 @@ public class ControllerHelixManager implements IHelixManager {
     _maxNumWorkersPerRoute = managerConf.getMaxNumWorkersPerRoute();
     _workloadRefreshPeriodInSeconds = managerConf.getWorkloadRefreshPeriodInSeconds();
     _workerHelixManager = new WorkerHelixManager(managerConf);
-    _pipelineWorkloadMap = new ConcurrentHashMap<>();
     _helixZkURL = HelixUtils.getAbsoluteZkPathForHelix(managerConf.getManagerZkStr());
     _helixClusterName = MANAGER_CONTROLLER_HELIX_PREFIX + "-" + managerConf.getManagerDeployment();
     _instanceId = managerConf.getManagerInstanceId();
@@ -158,6 +157,7 @@ public class ControllerHelixManager implements IHelixManager {
         .setConnectTimeout(30000)
         .setSocketTimeout(30000)
         .build();
+    _controllerWorkloadSnapshot = new ControllerWorkloadSnapshot(_httpClient, _requestConfig);
   }
 
   public synchronized void start() {
@@ -255,8 +255,8 @@ public class ControllerHelixManager implements IHelixManager {
       HostAndPort hostInfo = null;
       try {
         hostInfo = getHostInfo(instanceId);
-      } catch (ControllerException ex){
-          LOGGER.error("Validate WRONG: Trying to get hostInfo for InstanceId: {} failed ", instanceId);
+      } catch (ControllerException ex) {
+        LOGGER.error("Validate WRONG: Trying to get hostInfo for InstanceId: {} failed ", instanceId);
       }
       Set<TopicPartition> topicPartitions = instanceToTopicPartitionsMap.get(instanceId);
       Set<TopicPartition> routeSet = new HashSet<>();
@@ -283,7 +283,7 @@ public class ControllerHelixManager implements IHelixManager {
         }
         validateWrongCount++;
         LOGGER.error("Validate WRONG: Incorrect route found for hostInfo: {}, InstanceId: {}, route: {}, pipelines: {}, #workers: {}, worker: {}",
-                hostInfo, instanceId, routeSet, topicRouteSet, managerWorkers.size(), managerWorkers);
+            hostInfo, instanceId, routeSet, topicRouteSet, managerWorkers.size(), managerWorkers);
       } else {
         int partitionCount = 0;
         Set<TopicPartition> mismatchTopicPartition = new HashSet<>();
@@ -305,7 +305,7 @@ public class ControllerHelixManager implements IHelixManager {
           try {
             // try find topic mismatch between manager and controller
             String topicResult = HttpClientUtils.getData(_httpClient, _requestConfig,
-                    hostInfo.getHost(), hostInfo.getPort(), "/topics");
+                hostInfo.getHost(), hostInfo.getPort(), "/topics");
             LOGGER.debug("Get topics from {}: {}", hostInfo, topicResult);
             String rawTopicNames = topicResult;
             if (!rawTopicNames.equals("No topic is added in MirrorMaker Controller!")) {
@@ -345,7 +345,7 @@ public class ControllerHelixManager implements IHelixManager {
           try {
             // try find worker mismatch between manager and controller
             String instanceResult = HttpClientUtils.getData(_httpClient, _requestConfig,
-                    hostInfo.getHost(), hostInfo.getPort(), "/instances");
+                hostInfo.getHost(), hostInfo.getPort(), "/instances");
             LOGGER.debug("Get workers from {}: {}", hostInfo, instanceResult);
             JSONObject instanceResultJson = JSON.parseObject(instanceResult);
             JSONArray allInstances = instanceResultJson.getJSONArray("allInstances");
@@ -382,7 +382,7 @@ public class ControllerHelixManager implements IHelixManager {
         } else {
           validateWrongCount++;
           LOGGER.error("Validate WRONG: mismatch route found for hostInfo: {}, InstanceId: {}, route: {}, mismatch: {}, #workers: {}, worker: {}",
-                  hostInfo, instanceId, routeSet, mismatchTopicPartition, managerWorkers.size(), managerWorkers);
+              hostInfo, instanceId, routeSet, mismatchTopicPartition, managerWorkers.size(), managerWorkers);
         }
       }
     }
@@ -546,7 +546,7 @@ public class ControllerHelixManager implements IHelixManager {
           String topicName = tp.getTopic();
           if (topicName.startsWith(SEPARATOR)) {
             currPipelineToInstanceMap.putIfAbsent(topicName, new PriorityQueue<>(1,
-                InstanceTopicPartitionHolder.totalWorkloadComparator(_pipelineWorkloadMap)));
+                InstanceTopicPartitionHolder.totalWorkloadComparator(_controllerWorkloadSnapshot.getPipelineWorkloadMap())));
             InstanceTopicPartitionHolder itph = new InstanceTopicPartitionHolder(instanceId, tp);
             if (workerRouteToInstanceMap.get(tp) != null) {
               itph.addWorkers(workerRouteToInstanceMap.get(tp));
@@ -570,6 +570,12 @@ public class ControllerHelixManager implements IHelixManager {
           }
         }
       }
+      Map<String, HostAndPort> pipelineHostInfoMap = new HashMap<>();
+      for (InstanceTopicPartitionHolder holder : instanceMap.values()) {
+        pipelineHostInfoMap.put(holder.getRouteString(), getHostInfo(holder.getInstanceName()));
+      }
+      _controllerWorkloadSnapshot.updatePipelineHostInfoMap(pipelineHostInfoMap);
+      _controllerWorkloadSnapshot.refreshWorkloadInfo();
 
       _pipelineToInstanceMap = currPipelineToInstanceMap;
       _topicToPipelineInstanceMap = currTopicToPipelineInstanceMap;
@@ -596,7 +602,7 @@ public class ControllerHelixManager implements IHelixManager {
 
   private HostAndPort getHostInfo(String instanceId) throws ControllerException {
     Map<String, HostAndPort> instanceIdAndNameMap = HelixUtils.getInstanceToHostInfoMap(_helixManager);
-    HostAndPort hostInfo =  instanceIdAndNameMap.containsKey(instanceId) ? instanceIdAndNameMap.get(instanceId) : null;
+    HostAndPort hostInfo = instanceIdAndNameMap.containsKey(instanceId) ? instanceIdAndNameMap.get(instanceId) : null;
     if (hostInfo == null) {
       throw new ControllerException(String.format("Failed to find hostInfo for instanceId %s", instanceId));
     }
@@ -611,7 +617,7 @@ public class ControllerHelixManager implements IHelixManager {
       try {
         HostAndPort hostInfo = getHostInfo(itph.getInstanceName());
         String topicResponseBody = HttpClientUtils.getData(_httpClient, _requestConfig,
-                hostInfo.getHost(), hostInfo.getPort(), "/topics/" + topicName);
+            hostInfo.getHost(), hostInfo.getPort(), "/topics/" + topicName);
         JSONObject topicsInfoInJson = JSON.parseObject(topicResponseBody);
         resultJson.put(itph.getRouteString(), topicsInfoInJson);
       } catch (Exception e) {
@@ -703,7 +709,7 @@ public class ControllerHelixManager implements IHelixManager {
             if (tpOrRoute.getTopic().startsWith(SEPARATOR)) {
               String pipeline = tpOrRoute.getTopic();
               int routeId = tpOrRoute.getPartition();
-              if(_availableControllerList.isEmpty()){
+              if (_availableControllerList.isEmpty()) {
                 LOGGER.warn("no available controller to process the route {}@{}", pipeline, routeId);
                 break;
               }
@@ -847,7 +853,6 @@ public class ControllerHelixManager implements IHelixManager {
       if (!routeControllerDown && !routeWorkerDown) {
         updateCurrentStatus();
       }
-
       if (_enableAutoScaling) {
         scaleCurrentCluster();
       } else {
@@ -865,7 +870,7 @@ public class ControllerHelixManager implements IHelixManager {
       String[] srcDst = routeName.split(SEPARATOR);
       String controllerWorkerHelixClusterName = "/controller-worker-" + srcDst[1] + "-" + srcDst[2] + "-" + routeId;
       String leaderPath = controllerWorkerHelixClusterName + "/CONTROLLER/LEADER";
-      if(!_zkClient.exists(leaderPath)){
+      if (!_zkClient.exists(leaderPath)) {
         LOGGER.info("leaderPath : {} not existed", leaderPath);
         return false;
       }
@@ -886,7 +891,7 @@ public class ControllerHelixManager implements IHelixManager {
     for (String pipeline : _pipelineToInstanceMap.keySet()) {
       LOGGER.info("Start rescale pipeline: {}", pipeline);
       PriorityQueue<InstanceTopicPartitionHolder> newItphQueue = new PriorityQueue<>(1,
-          InstanceTopicPartitionHolder.totalWorkloadComparator(_pipelineWorkloadMap));
+          InstanceTopicPartitionHolder.totalWorkloadComparator(_controllerWorkloadSnapshot.getPipelineWorkloadMap()));
       // TODO: what if routeId is not continuous
       int nextRouteId = _pipelineToInstanceMap.get(pipeline).size();
       for (InstanceTopicPartitionHolder itph : _pipelineToInstanceMap.get(pipeline)) {
@@ -959,17 +964,18 @@ public class ControllerHelixManager implements IHelixManager {
         }
 
         try {
-          HostAndPort hostInfo = getHostInfo(itph.getInstanceName());
-          String result = HttpClientUtils.getData(_httpClient, _requestConfig,
-                  hostInfo.getHost(), hostInfo.getPort(), "/admin/workloadinfo");
-          ControllerWorkloadInfo workloadInfo = JSONObject.parseObject(result, ControllerWorkloadInfo.class);
-          TopicWorkload totalWorkload = workloadInfo.getTopicWorkload();
-          if (!workloadInfo.isAutoBalancingEnabled()) {
+          boolean isFailed = _controllerWorkloadSnapshot.getFailedPipelines().contains(itph.getRouteString());
+          if (isFailed) {
+            LOGGER.error(String.format("Get workload error on route %s. No change on number of workers", itph.getInstanceName(), itph.getRouteString()));
+            continue;
+          }
+          ControllerWorkloadInfo workloadInfo = _controllerWorkloadSnapshot.getPipelineWorkloadMap().get(itph.getRouteString());
+
+          if (workloadInfo == null || !workloadInfo.isAutoBalancingEnabled()) {
             LOGGER.warn("Skip scaling worker for route {} because of auto balancing is disabled on controller", routeString);
             continue;
           }
           if (workloadInfo != null && workloadInfo.getNumOfExpectedWorkers() != 0) {
-            _pipelineWorkloadMap.put(itph.getRouteString(), totalWorkload);
             int expectedNumWorkers = workloadInfo.getNumOfExpectedWorkers();
             LOGGER.info("Current {} workers in route {}, expect {} workers",
                 itph.getWorkerSet().size(), itph.getRouteString(), expectedNumWorkers);
@@ -994,15 +1000,15 @@ public class ControllerHelixManager implements IHelixManager {
             }
             newTotalNumWorker += actualExpectedNumWorkers;
           } else {
-            LOGGER.warn("Get workload on {} for route: {} returns 0. No change on number of workers", hostInfo, itph.getRouteString());
+            LOGGER.warn("Get workload on {} for route: {} returns 0. No change on number of workers", itph.getRouteString(), itph.getRouteString());
             newTotalNumWorker += itph.getWorkerSet().size();
-            rescaleFailedCount ++;
+            rescaleFailedCount++;
           }
         } catch (Exception e) {
-          rescaleFailedCount ++;
-          LOGGER.error(String.format("Get workload error when connecting to %s for route %s. No change on number of workers", itph.getInstanceName(), itph.getRouteString()), e);
+          rescaleFailedCount++;
+          LOGGER.error(String.format("rescale instance %s failed for route %s.", itph.getInstanceName(), itph.getRouteString()), e);
           newTotalNumWorker += itph.getWorkerSet().size();
-          rescaleFailedCount ++;
+          rescaleFailedCount++;
         }
       }
       _pipelineToInstanceMap.put(pipeline, newItphQueue);
@@ -1072,7 +1078,7 @@ public class ControllerHelixManager implements IHelixManager {
 
     _availableControllerList.remove(instanceName);
     _pipelineToInstanceMap.put(pipeline, new PriorityQueue<>(1,
-        InstanceTopicPartitionHolder.totalWorkloadComparator(_pipelineWorkloadMap)));
+        InstanceTopicPartitionHolder.totalWorkloadComparator(_controllerWorkloadSnapshot.getPipelineWorkloadMap())));
     _pipelineToInstanceMap.get(pipeline).add(instance);
     _assignedControllerCount.inc();
     _workerHelixManager.addTopicToMirrorMaker(instance, pipeline, routeId);
@@ -1200,7 +1206,7 @@ public class ControllerHelixManager implements IHelixManager {
       entity.put("numPartitions", newNumPartitions);
       HostAndPort hostInfo = getHostInfo(itph.getInstanceName());
       int respCode = HttpClientUtils.putData(_httpClient, _requestConfig,
-              hostInfo.getHost(), hostInfo.getPort(), "/topics", entity);
+          hostInfo.getHost(), hostInfo.getPort(), "/topics", entity);
       if (respCode != 200) {
         LOGGER.info("Got error from controller {} when expanding topic {} with respCode {}",
             itph.getInstanceName(), topicName, respCode);
@@ -1340,12 +1346,10 @@ public class ControllerHelixManager implements IHelixManager {
   }
 
   /**
-   * RPC call to notify controller to change autobalancing status.
-   * No retry
+   * RPC call to notify controller to change autobalancing status. No retry
    *
    * @param controllerInstance The controller InstanceName
-   * @param enable             whether to enable autobalancing
-   * @return
+   * @param enable whether to enable autobalancing
    */
   public boolean notifyControllerAutobalancing(String controllerInstance, boolean enable) throws ControllerException {
     String cmd = enable ? "enable_autobalancing" : "disable_autobalancing";

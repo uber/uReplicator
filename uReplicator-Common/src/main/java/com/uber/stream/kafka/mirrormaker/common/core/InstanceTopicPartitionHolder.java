@@ -17,6 +17,7 @@ package com.uber.stream.kafka.mirrormaker.common.core;
 
 import com.google.common.collect.ImmutableSet;
 
+import com.uber.stream.kafka.mirrormaker.common.modules.ControllerWorkloadInfo;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -146,11 +147,11 @@ public class InstanceTopicPartitionHolder {
   }
 
   public static Comparator<InstanceTopicPartitionHolder> totalWorkloadComparator(
-      final Map<String, TopicWorkload> topicWorkloadMap) {
+      final Map<String, ControllerWorkloadInfo> topicWorkloadMap) {
     return (InstanceTopicPartitionHolder o1, InstanceTopicPartitionHolder o2) -> {
       if (topicWorkloadMap != null) {
-        TopicWorkload workload1 = topicWorkloadMap.containsKey(o1.getRouteString()) ? topicWorkloadMap.get(o1.getRouteString()) : new TopicWorkload(0, 0);
-        TopicWorkload workload2 = topicWorkloadMap.containsKey(o2.getRouteString()) ? topicWorkloadMap.get(o2.getRouteString()) : new TopicWorkload(0, 0);
+        TopicWorkload workload1 = topicWorkloadMap.get(o1.getRouteString()) != null ? topicWorkloadMap.get(o1.getRouteString()).getTopicWorkload() : new TopicWorkload(0, 0);
+        TopicWorkload workload2 = topicWorkloadMap.get(o2.getRouteString()) != null ? topicWorkloadMap.get(o2.getRouteString()).getTopicWorkload() : new TopicWorkload(0, 0);
         int cmp = workload1.compareTotal(workload2);
         if (cmp != 0) {
           return cmp;

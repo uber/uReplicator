@@ -59,6 +59,9 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
           @Override
           public void run() {
             try {
+              if (skipRebalanceCurrentCluster()) {
+                return;
+              }
               rebalanceCurrentCluster(false);
               // Validation
               _controllerHelixManager.validateInstanceToTopicPartitionsMap();
@@ -76,6 +79,9 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
       @Override
       public void run() {
         try {
+          if (skipRebalanceCurrentCluster()) {
+            return;
+          }
           rebalanceCurrentCluster(true);
         } catch (Exception e) {
           LOGGER.error("Got exception during rebalance the whole cluster! ", e);
@@ -84,28 +90,32 @@ public class ControllerLiveInstanceChangeListener implements LiveInstanceChangeL
     }, 5, TimeUnit.SECONDS);
   }
 
-  public synchronized void rebalanceCurrentCluster(boolean onlyCheckOffline) {
-    if (_helixManager.isLeader()) {
-      _isLeaderCounter.inc(1 - _isLeaderCounter.getCount());
-    } else {
-      LOGGER.info("Not leader, do nothing!");
-      return;
-    }
-
-    if (HelixUtils.liveInstances(_helixManager).isEmpty() ||
-        HelixUtils.liveInstances(_controllerHelixManager.getWorkerHelixManager().getHelixManager()).isEmpty()) {
-      LOGGER.info("No live instances, do nothing!");
-      return;
-    }
-
+  private synchronized void rebalanceCurrentCluster(boolean onlyCheckOffline) {
     LOGGER.info("onlyCheckOffline={}", onlyCheckOffline);
     try {
       _controllerHelixManager.handleLiveInstanceChange(onlyCheckOffline, false);
     } catch (Exception e) {
       LOGGER.error("Failed to handle live instance change!", e);
     }
-
   }
+
+  private boolean skipRebalanceCurrentCluster() {
+    if (_helixManager.isLeader()) {
+      _isLeaderCounter.inc(1 - _isLeaderCounter.getCount());
+    } else {
+      LOGGER.info("Not leader, do nothing!");
+      return true;
+    }
+
+    if (HelixUtils.liveInstances(_helixManager).isEmpty() ||
+        HelixUtils.liveInstances(_controllerHelixManager.getWorkerHelixManager().getHelixManager()).isEmpty()) {
+      LOGGER.info("No live instances, do nothing!");
+      return true;
+    }
+    return false;
+  }
+
+
 
   private void registerMetrics() {
     try {
