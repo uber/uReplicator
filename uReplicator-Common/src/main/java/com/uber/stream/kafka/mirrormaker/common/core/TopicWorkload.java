@@ -15,6 +15,7 @@
  */
 package com.uber.stream.kafka.mirrormaker.common.core;
 
+import com.google.common.base.Objects;
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
@@ -130,5 +131,25 @@ public class TopicWorkload implements Comparable<TopicWorkload> {
   @Override
   public String toString() {
     return String.format("{%.1f bytes/s, %.1f msgs/s, %d partitions}", bytesPerSecond, msgsPerSecond, partitions);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    TopicWorkload that = (TopicWorkload) o;
+    return Double.compare(that.bytesPerSecond, bytesPerSecond) == 0 &&
+        Double.compare(that.msgsPerSecond, msgsPerSecond) == 0 &&
+        partitions == that.partitions &&
+        lastUpdate == that.lastUpdate;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(bytesPerSecond, msgsPerSecond, partitions, lastUpdate);
   }
 }
