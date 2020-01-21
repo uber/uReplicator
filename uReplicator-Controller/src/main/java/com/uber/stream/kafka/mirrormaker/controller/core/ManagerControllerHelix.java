@@ -15,6 +15,7 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
+import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
@@ -62,7 +63,7 @@ public class ManagerControllerHelix {
     _port = controllerConf.getControllerPort();
   }
 
-  public synchronized void start() {
+  public synchronized void start() throws Exception{
     LOGGER.info("Trying to start ManagerControllerHelix!");
     _helixZkManager = HelixManagerFactory.getZKHelixManager(_helixClusterName,
         _instanceId,
@@ -80,6 +81,7 @@ public class ManagerControllerHelix {
           instanceConfig);
     } catch (Exception e) {
       LOGGER.error("Failed to start ManagerControllerHelix " + _helixClusterName, e);
+      throw e;
     }
   }
 

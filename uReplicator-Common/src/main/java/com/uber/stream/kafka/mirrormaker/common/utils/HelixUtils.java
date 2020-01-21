@@ -183,16 +183,10 @@ public class HelixUtils {
       for (String partition : is.getPartitionSet()) {
         TopicPartition tpi;
         if (partition.startsWith("@")) {
-          // topic
           if (clusterToObserverMap != null) {
-            // TODO: topic not existed
-            try {
-              int trueNumPartition = clusterToObserverMap.get(getSrcFromRoute(partition))
-                  .getTopicPartitionWithRefresh(topic).getPartition();
-              tpi = new TopicPartition(topic, trueNumPartition, partition);
-            } catch (Exception e) {
-              tpi = new TopicPartition(topic, -1, partition);
-            }
+            TopicPartition topicParition = clusterToObserverMap.get(getSrcFromRoute(partition)).getTopicPartitionWithRefresh(topic);
+            int trueNumPartition = topicParition != null ? topicParition.getPartition() : -1;
+            tpi = new TopicPartition(topic, trueNumPartition, partition);
           } else {
             tpi = new TopicPartition(topic, -1, partition);
           }

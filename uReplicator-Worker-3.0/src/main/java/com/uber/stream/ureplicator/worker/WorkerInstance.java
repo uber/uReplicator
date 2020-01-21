@@ -340,7 +340,8 @@ public class WorkerInstance {
     }
     MetricsReporterConf metricsReporterConf = new MetricsReporterConf(workerConf.getRegion(),
         additionalInfo, workerConf.getHostname(), workerConf.getGraphiteHost(),
-        workerConf.getGraphitePort());
+        workerConf.getGraphitePort(), workerConf.getGraphiteReportFreqInSec(),
+            workerConf.getEnableJmxReport(), workerConf.getEnableGraphiteReport());
     KafkaUReplicatorMetricsReporter.init(metricsReporterConf);
   }
 
@@ -411,7 +412,7 @@ public class WorkerInstance {
   }
 
   private void removeMetrics() {
-    if (KafkaUReplicatorMetricsReporter.get() == null) {
+    if (!KafkaUReplicatorMetricsReporter.isStart() || KafkaUReplicatorMetricsReporter.get() == null) {
       return;
     }
     for (int index = 0; index < messageQueue.size(); index++) {

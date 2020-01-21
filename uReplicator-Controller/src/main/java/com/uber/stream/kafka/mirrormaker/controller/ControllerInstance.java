@@ -15,12 +15,12 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller;
 
+import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.controller.core.AutoTopicWhitelistingManager;
 import com.uber.stream.kafka.mirrormaker.controller.core.ClusterInfoBackupManager;
 import com.uber.stream.kafka.mirrormaker.controller.core.FileBackUpHandler;
 import com.uber.stream.kafka.mirrormaker.controller.core.GitBackUpHandler;
 import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
-import com.uber.stream.kafka.mirrormaker.controller.core.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.controller.core.ManagerControllerHelix;
 import com.uber.stream.kafka.mirrormaker.controller.rest.ControllerRestApplication;
 import com.uber.stream.kafka.mirrormaker.controller.validation.SourceKafkaClusterValidationManager;
@@ -96,7 +96,7 @@ public class ControllerInstance {
       }
       MetricsReporterConf metricsReporterConf = new MetricsReporterConf(dcEnv[0],
           additionalInfo, hostName, conf.getGraphiteHost(),
-          conf.getGraphitePort());
+          conf.getGraphitePort(), conf.getGraphiteReportFreqInSec(), conf.getEnableJmxReport(), conf.getEnableGraphiteReport());
       KafkaUReplicatorMetricsReporter.init(metricsReporterConf);
     } else {
       LOGGER.warn("Skip initializeMetricsReporter because of environment not found in controllerConf");
@@ -229,17 +229,6 @@ public class ControllerInstance {
   public boolean stop() {
     boolean success = true;
     started = false;
-    LOGGER.info("stopping broker topic observers");
-    for (String key : _kafkaBrokerTopicObserverMap.keySet()) {
-      try {
-        KafkaBrokerTopicObserver observer = _kafkaBrokerTopicObserverMap.get(key);
-        observer.stop();
-      } catch (Exception e) {
-        LOGGER.error("Failed to stop KafkaBrokerTopicObserver " + key, e);
-        success = false;
-      }
-    }
-
     LOGGER.info("stopping api component");
     try {
       _component.stop();
@@ -270,6 +259,7 @@ public class ControllerInstance {
 
     LOGGER.info("stopping resource manager");
     _helixMirrorMakerManager.stop();
+    KafkaUReplicatorMetricsReporter.stop();
 
     return success;
   }

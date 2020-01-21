@@ -19,6 +19,8 @@ import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.manager.ManagerConf;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,16 +41,19 @@ public class KafkaClusterValidationManager {
     _clusterToObserverMap = new HashMap<>();
     for (String cluster : conf.getSourceClusters()) {
       String srcKafkaZkPath = (String) conf.getProperty(CONFIG_KAFKA_CLUSTER_KEY_PREFIX + cluster);
-      _clusterToObserverMap.put(cluster, new KafkaBrokerTopicObserver(cluster, srcKafkaZkPath));
+      _clusterToObserverMap.put(cluster, new KafkaBrokerTopicObserver(cluster, srcKafkaZkPath, TimeUnit.MINUTES.toMillis(5)));
     }
     for (String cluster : conf.getDestinationClusters()) {
       String dstKafkaZkPath = (String) conf.getProperty(CONFIG_KAFKA_CLUSTER_KEY_PREFIX + cluster);
-      _clusterToObserverMap.put(cluster, new KafkaBrokerTopicObserver(cluster, dstKafkaZkPath));
+      _clusterToObserverMap.put(cluster, new KafkaBrokerTopicObserver(cluster, dstKafkaZkPath, TimeUnit.MINUTES.toMillis(5)));
     }
   }
 
   public void start() {
-    LOGGER.info("Register KafkaBrokerTopicObserver");
+    LOGGER.info("Start KafkaBrokerTopicObserver");
+    for (KafkaBrokerTopicObserver observer : _clusterToObserverMap.values()) {
+      observer.start();
+    }
   }
 
   public void stop() {

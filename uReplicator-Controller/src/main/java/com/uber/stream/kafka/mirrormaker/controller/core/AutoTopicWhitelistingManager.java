@@ -16,6 +16,7 @@
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
 import com.codahale.metrics.Counter;
+import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import java.util.Arrays;
@@ -107,7 +108,8 @@ public class AutoTopicWhitelistingManager {
 
   public void start() {
     registerMetrics();
-
+    _srcKafkaTopicObserver.start();
+    _destKafkaTopicObserver.start();
     LOGGER.info("Creating zkpath={} for blacklisted topics", _blacklistedTopicsZPath);
     maybeCreateZkPath(_blacklistedTopicsZPath);
 
@@ -140,6 +142,8 @@ public class AutoTopicWhitelistingManager {
   }
 
   public void stop() {
+    _destKafkaTopicObserver.stop();
+    _srcKafkaTopicObserver.stop();
     _executorService.shutdown();
     try {
       _executorService.awaitTermination(STOP_TIMEOUT_SEC, TimeUnit.SECONDS);
