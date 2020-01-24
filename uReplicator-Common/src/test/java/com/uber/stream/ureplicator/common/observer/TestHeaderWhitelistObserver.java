@@ -15,12 +15,13 @@
  */
 package com.uber.stream.ureplicator.common.observer;
 
+import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import org.I0Itec.zkclient.ZkClient;
 import org.easymock.EasyMock;
-import org.junit.Assert;
-import org.junit.Test;
+import org.testng.Assert;
+import org.testng.annotations.Test;
 
-public class HeaderWhitelistObserverTest {
+public class TestHeaderWhitelistObserver {
 
   private ZkClient zkClient = EasyMock.createMock(ZkClient.class);
   private String clusterRootPath = "localhost:2181/test";
@@ -31,6 +32,7 @@ public class HeaderWhitelistObserverTest {
 
   @Test
   public void HeaderWhitelistObserverTest() throws Exception {
+    KafkaUReplicatorMetricsReporter.init(null);
     zkClient.subscribeDataChanges(EasyMock.anyObject(), EasyMock.anyObject());
     EasyMock.expectLastCall().once();
 

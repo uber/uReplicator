@@ -31,7 +31,7 @@ import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
-public class KafkaClusterObserverTest {
+public class TestKafkaClusterObserver {
 
   private final KafkaConsumer kafkaConsumer = EasyMock.createMock(KafkaConsumer.class);
   private final TopicPartitionLeaderObserver topicPartitionLeaderObserver = new TopicPartitionLeaderObserver(kafkaConsumer);

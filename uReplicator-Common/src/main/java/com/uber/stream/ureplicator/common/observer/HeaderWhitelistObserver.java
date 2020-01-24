@@ -139,7 +139,7 @@ public class HeaderWhitelistObserver extends PeriodicMonitor implements IZkDataL
     // use trim to remove any leading and trailing whitespace
     String[] newWhitelist = StringUtils.split(data.trim(), SEPARATOR);
     if (newWhitelist.length == 0) {
-      headerWhitelist.clear();
+      headerWhitelist = ImmutableSet.of();
       return;
     }
     HashSet<String> newWhitelistSet = new HashSet<>(Arrays.asList(newWhitelist));
