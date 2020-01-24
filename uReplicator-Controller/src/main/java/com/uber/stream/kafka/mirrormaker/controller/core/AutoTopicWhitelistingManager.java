@@ -142,8 +142,8 @@ public class AutoTopicWhitelistingManager {
   }
 
   public void stop() {
-    _destKafkaTopicObserver.stop();
-    _srcKafkaTopicObserver.stop();
+    _destKafkaTopicObserver.shutdown();
+    _srcKafkaTopicObserver.shutdown();
     _executorService.shutdown();
     try {
       _executorService.awaitTermination(STOP_TIMEOUT_SEC, TimeUnit.SECONDS);

@@ -16,6 +16,8 @@
 package com.uber.stream.ureplicator.common.observer;
 
 import com.codahale.metrics.Meter;
+import com.codahale.metrics.Timer;
+import com.codahale.metrics.Timer.Context;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import java.util.concurrent.Executors;
@@ -30,35 +32,46 @@ import org.slf4j.LoggerFactory;
 public abstract class PeriodicMonitor {
 
   public static final String METRIC_PERIODIC_MONITOR_FAILURE_PREFIX = "periodicMonitorFailure_";
+  public static final String METRIC_PERIODIC_MONITOR_LATENCY_PREFIX = "periodicMonitorLatency_";
 
   private static final Logger logger = LoggerFactory.getLogger(PeriodicMonitor.class);
   private final ScheduledExecutorService cronExecutor;
-  private final int refreshIntervalMs;
+  protected final long refreshIntervalMs;
   private final String monitorName;
   public final Meter periodicMonitorFailureMeter;
+  private final Timer updateDataSetLatency = new Timer();
 
-  public PeriodicMonitor(int refreshIntervalMs, String monitorName) {
+  public PeriodicMonitor(long refreshIntervalMs, String monitorName) {
 
     this.refreshIntervalMs = refreshIntervalMs;
     this.monitorName = monitorName;
     this.cronExecutor = Executors.newSingleThreadScheduledExecutor(
         new ThreadFactoryBuilder().setNameFormat(monitorName).build());
-    this.periodicMonitorFailureMeter  = new Meter();
+    this.periodicMonitorFailureMeter = new Meter();
   }
 
   public void start() {
     logger.info("Start periodic monitor: {}", monitorName);
-    KafkaUReplicatorMetricsReporter.get()
-        .registerMetric(METRIC_PERIODIC_MONITOR_FAILURE_PREFIX + monitorName,
-            periodicMonitorFailureMeter);
+    try {
+      KafkaUReplicatorMetricsReporter.get()
+          .registerMetric(METRIC_PERIODIC_MONITOR_FAILURE_PREFIX + monitorName,
+              periodicMonitorFailureMeter);
+      KafkaUReplicatorMetricsReporter.get().registerMetric(METRIC_PERIODIC_MONITOR_LATENCY_PREFIX+ monitorName,
+          updateDataSetLatency);
+    } catch (Exception e) {
+      logger.error("Failed to register metrics to KafkaUReplicatorMetricsReporter ", e);
+    }
     if (refreshIntervalMs > 0) {
       cronExecutor.scheduleAtFixedRate(() -> {
+        Context context = updateDataSetLatency.time();
         try {
           logger.info("Update updateDataSet periodically for {}", monitorName);
           updateDataSet();
         } catch (Exception e) {
           logger.warn("Failed to updateDataSet for {}", monitorName, e);
           periodicMonitorFailureMeter.mark();
+        } finally {
+          context.stop();
         }
       }, 0, refreshIntervalMs, TimeUnit.MILLISECONDS);
     }

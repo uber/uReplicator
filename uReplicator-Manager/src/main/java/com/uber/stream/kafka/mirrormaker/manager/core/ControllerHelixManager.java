@@ -1210,7 +1210,7 @@ public class ControllerHelixManager implements IHelixManager {
 
       itph.removeTopicPartition(new TopicPartition(topicName, oldNumPartitions, pipeline));
       itph.addTopicPartition(new TopicPartition(topicName, newNumPartitions, pipeline));
-      _kafkaValidationManager.getClusterToObserverMap().get(srcCluster).tryUpdateTopic(topicName);
+      _kafkaValidationManager.getClusterToObserverMap().get(srcCluster).addTopic(topicName);
     } finally {
       _lock.unlock();
     }

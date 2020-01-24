@@ -17,6 +17,7 @@ package com.uber.stream.kafka.mirrormaker.common.core;
 
 import com.uber.stream.kafka.mirrormaker.common.utils.KafkaStarterUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.ZkStarter;
+import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import kafka.server.KafkaServerStartable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +45,7 @@ public class TestKafkaBrokerTopicObserver {
 
     // Create Kafka topic
     KafkaStarterUtils.createTopic("testTopic0", KafkaStarterUtils.DEFAULT_ZK_STR);
+    KafkaUReplicatorMetricsReporter.init(null);
     kafkaBrokerTopicObserver = new KafkaBrokerTopicObserver("broker0", KafkaStarterUtils.DEFAULT_ZK_STR, 1);
     kafkaBrokerTopicObserver.start();
     try {
@@ -55,7 +57,7 @@ public class TestKafkaBrokerTopicObserver {
   @AfterTest
   public void shutdown() {
     LOGGER.info("Trying to shutdown");
-    kafkaBrokerTopicObserver.stop();
+    kafkaBrokerTopicObserver.shutdown();
     KafkaStarterUtils.stopServer(kafkaStarter);
     ZkStarter.stopLocalZkServer();
   }

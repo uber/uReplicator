@@ -75,6 +75,7 @@ public class DefaultMessageTransformer implements IMessageTransformer {
 
   /**
    * Gets headers that is in the whitelist
+   *
    * @param originalHeaders original headers from consumer record
    * @param headerWhitelist header whitelist
    * @return headers in the whitelist

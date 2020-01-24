@@ -67,7 +67,7 @@ public class TestAutoTopicWhitelistingManager {
   public void shutdown() {
     LOGGER.info("Trying to shutdown");
     helixMirrorMakerManager.stop();
-    kafkaBrokerTopicObserver.stop();
+    kafkaBrokerTopicObserver.shutdown();
     KafkaStarterUtils.stopServer(kafkaStarter);
     ZkStarter.stopLocalZkServer();
   }

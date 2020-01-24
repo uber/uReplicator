@@ -104,7 +104,7 @@ public class SourceKafkaClusterValidationManager {
   }
 
   public void stop() {
-    _sourceKafkaTopicObserver.stop();
+    _sourceKafkaTopicObserver.shutdown();
     _executorService.shutdown();
     try {
       _executorService.awaitTermination(STOP_TIMEOUT_SEC, TimeUnit.SECONDS);

@@ -22,6 +22,8 @@ import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerStarter;
 import com.uber.stream.kafka.mirrormaker.controller.utils.ControllerTestUtils;
 import com.uber.stream.kafka.mirrormaker.controller.utils.FakeInstance;
+import java.util.ArrayList;
+import java.util.List;
 import kafka.server.KafkaServerStartable;
 import org.I0Itec.zkclient.ZkClient;
 import org.restlet.Client;
@@ -30,9 +32,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class RestTestBase {
   private static final Logger LOGGER = LoggerFactory.getLogger(ControllerStarterTest.class);
@@ -88,7 +87,7 @@ public class RestTestBase {
     CONTROLLER_STARTER.stop();
     LOGGER.info("Trying to stop zk");
 
-    kafkaBrokerTopicObserver.stop();
+    kafkaBrokerTopicObserver.shutdown();
     KafkaStarterUtils.stopServer(kafkaStarter);
 
     ZK_CLIENT.deleteRecursive("/" + HELIX_CLUSTER_NAME);

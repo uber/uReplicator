@@ -351,11 +351,11 @@ public class WorkerInstance {
 
       String zkPath = producerProps
           .getProperty(Constants.PRODUCER_ZK_OBSERVER, Constants.DEFAULT_PRODUCER_ZK_OBSERVER);
-      topicPartitionCountObserver = new TopicPartitionCountObserver(topicObserverZk,
+      topicPartitionCountObserver = new TopicPartitionCountObserver(srcCluster, topicObserverZk,
           zkPath,
           Integer.parseInt(producerProps.getProperty("connection.timeout.ms", "120000")),
           Integer.parseInt(producerProps.getProperty("session.timeout.ms", "600000")),
-          Integer.parseInt(producerProps.getProperty("refresh.interval.ms", "3600000")));
+          Integer.parseInt(producerProps.getProperty("refresh.interval.ms", "300000")));
       topicPartitionCountObserver.start();
       for (String dstTopic : topicMapping.values()) {
         topicPartitionCountObserver.addTopic(dstTopic);
@@ -374,7 +374,7 @@ public class WorkerInstance {
           zkPath,
           Integer.parseInt(producerProps.getProperty("connection.timeout.ms", "120000")),
           Integer.parseInt(producerProps.getProperty("session.timeout.ms", "600000")),
-          Integer.parseInt(producerProps.getProperty("refresh.interval.ms", "3600000")));
+          Integer.parseInt(producerProps.getProperty("refresh.interval.ms", "300000")));
       headerWhitelistObserver.start();
     } else {
       LOGGER.info("Disable HeaderWhitelistObserver.");
