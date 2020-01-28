@@ -18,7 +18,7 @@ package com.uber.stream.kafka.mirrormaker.manager.rest.resources;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
-import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
+import com.uber.stream.ureplicator.common.observer.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.kafka.mirrormaker.manager.ManagerConf;
 import com.uber.stream.kafka.mirrormaker.manager.core.ControllerHelixManager;

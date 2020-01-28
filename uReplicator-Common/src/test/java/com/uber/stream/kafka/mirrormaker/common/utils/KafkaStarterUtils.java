@@ -133,4 +133,19 @@ public class KafkaStarterUtils {
       System.out.println("Topic already existed");
     }
   }
+
+  public static void expandTopic(String kafkaTopic, int numOfPartitions, String zkStr) {
+    try {
+      String[] args = new String[]{"--alter", "--zookeeper", zkStr,
+          "--partitions", String.valueOf(numOfPartitions), "--topic", kafkaTopic};
+      KafkaZkClient zkClient = KafkaZkClient
+          .apply(zkStr, false, 3000, 3000, Integer.MAX_VALUE, Time.SYSTEM, "kafka.server",
+              "SessionExpireListener");
+      TopicCommand.TopicCommandOptions opts = new TopicCommand.TopicCommandOptions(args);
+      TopicCommand.alterTopic(zkClient, opts);
+    } catch (TopicExistsException e) {
+      // Catch TopicExistsException otherwise it will break maven-surefire-plugin
+      System.out.println("Expand topic failed");
+    }
+  }
 }

@@ -13,12 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.uber.stream.kafka.mirrormaker.common.core;
+package com.uber.stream.ureplicator.common.observer;
 
 import com.uber.stream.kafka.mirrormaker.common.utils.KafkaStarterUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.ZkStarter;
 import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
+import junit.framework.AssertionFailedError;
 import kafka.server.KafkaServerStartable;
+import org.easymock.EasyMock;
+import org.easymock.IAnswer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -33,6 +36,7 @@ public class TestKafkaBrokerTopicObserver {
   private static final Logger LOGGER = LoggerFactory.getLogger(TestKafkaBrokerTopicObserver.class);
   private static KafkaBrokerTopicObserver kafkaBrokerTopicObserver;
   private KafkaServerStartable kafkaStarter;
+  private ObserverCallback observerCallback = EasyMock.createMock(ObserverCallback.class);
 
   @BeforeTest
   public void setup() {
@@ -46,7 +50,8 @@ public class TestKafkaBrokerTopicObserver {
     // Create Kafka topic
     KafkaStarterUtils.createTopic("testTopic0", KafkaStarterUtils.DEFAULT_ZK_STR);
     KafkaUReplicatorMetricsReporter.init(null);
-    kafkaBrokerTopicObserver = new KafkaBrokerTopicObserver("broker0", KafkaStarterUtils.DEFAULT_ZK_STR, 1);
+    kafkaBrokerTopicObserver = new KafkaBrokerTopicObserver("broker0", KafkaStarterUtils.DEFAULT_ZK_STR, 10,
+        observerCallback);
     kafkaBrokerTopicObserver.start();
     try {
       Thread.sleep(1000);
@@ -74,7 +79,7 @@ public class TestKafkaBrokerTopicObserver {
       // Create Kafka topic
       KafkaStarterUtils.createTopic(topicName, KafkaStarterUtils.DEFAULT_ZK_STR);
       try {
-        Thread.sleep(1000);
+        Thread.sleep(100);
       } catch (Exception e) {
       }
       Assert.assertEquals(kafkaBrokerTopicObserver.getNumTopics(), 1 + i);
@@ -83,5 +88,34 @@ public class TestKafkaBrokerTopicObserver {
         Assert.assertEquals(kafkaBrokerTopicObserver.getTopicPartition("testTopic" + j).getPartition(), 1);
       }
     }
+  }
+
+  @Test
+  public void testPartitionChangeWatcherCallback() throws InterruptedException {
+    String topicName = "testTopicExpansionWatcher";
+    KafkaStarterUtils.createTopic(topicName, KafkaStarterUtils.DEFAULT_ZK_STR);
+
+    observerCallback.onPartitionNumberChange(topicName, 4);
+    EasyMock.expectLastCall().once();
+
+    EasyMock.replay(observerCallback);
+
+    Thread.sleep(100);
+    kafkaBrokerTopicObserver.registerPartitionChangeWatcher(topicName);
+
+    KafkaStarterUtils.expandTopic(topicName, 4, KafkaStarterUtils.DEFAULT_ZK_STR);
+    Thread.sleep(100);
+
+    int partitionCount = kafkaBrokerTopicObserver.getPartitionCount(topicName);
+    Assert.assertEquals(partitionCount, 4);
+
+    kafkaBrokerTopicObserver.unsubscribePartitionChangeWatcher(topicName);
+
+    KafkaStarterUtils.expandTopic(topicName, 8, KafkaStarterUtils.DEFAULT_ZK_STR);
+    Thread.sleep(100);
+    partitionCount = kafkaBrokerTopicObserver.getPartitionCount(topicName);
+    Assert.assertEquals(partitionCount, 8);
+
+    EasyMock.verify(observerCallback);
   }
 }

@@ -15,7 +15,7 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.rest;
 
-import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
+import com.uber.stream.ureplicator.common.observer.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.common.utils.KafkaStarterUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.ZkStarter;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
@@ -57,7 +57,7 @@ public class RestTestBase {
             KafkaStarterUtils.DEFAULT_ZK_STR, KafkaStarterUtils.getDefaultKafkaConfiguration());
 
     kafkaBrokerTopicObserver =
-        new KafkaBrokerTopicObserver("broker0", KafkaStarterUtils.DEFAULT_ZK_STR, 1);
+        new KafkaBrokerTopicObserver("broker0", KafkaStarterUtils.DEFAULT_ZK_STR, 1, null);
     kafkaBrokerTopicObserver.start();
 
     ZK_CLIENT = new ZkClient(ZkStarter.DEFAULT_ZK_STR);

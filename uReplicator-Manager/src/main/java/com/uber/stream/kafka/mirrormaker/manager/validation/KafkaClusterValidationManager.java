@@ -15,7 +15,7 @@
  */
 package com.uber.stream.kafka.mirrormaker.manager.validation;
 
-import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
+import com.uber.stream.ureplicator.common.observer.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.manager.ManagerConf;
 import java.util.HashMap;
 import java.util.Map;
@@ -40,11 +40,11 @@ public class KafkaClusterValidationManager {
     _clusterToObserverMap = new HashMap<>();
     for (String cluster : conf.getSourceClusters()) {
       String srcKafkaZkPath = (String) conf.getProperty(CONFIG_KAFKA_CLUSTER_KEY_PREFIX + cluster);
-      _clusterToObserverMap.put(cluster, new KafkaBrokerTopicObserver(cluster, srcKafkaZkPath, TimeUnit.MINUTES.toMillis(5)));
+      _clusterToObserverMap.put(cluster, new KafkaBrokerTopicObserver(cluster, srcKafkaZkPath, TimeUnit.MINUTES.toMillis(5), null));
     }
     for (String cluster : conf.getDestinationClusters()) {
       String dstKafkaZkPath = (String) conf.getProperty(CONFIG_KAFKA_CLUSTER_KEY_PREFIX + cluster);
-      _clusterToObserverMap.put(cluster, new KafkaBrokerTopicObserver(cluster, dstKafkaZkPath, TimeUnit.MINUTES.toMillis(5)));
+      _clusterToObserverMap.put(cluster, new KafkaBrokerTopicObserver(cluster, dstKafkaZkPath, TimeUnit.MINUTES.toMillis(5), null));
     }
   }
 

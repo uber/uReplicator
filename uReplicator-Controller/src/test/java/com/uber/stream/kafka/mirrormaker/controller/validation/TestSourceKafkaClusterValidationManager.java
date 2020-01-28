@@ -16,7 +16,7 @@
 package com.uber.stream.kafka.mirrormaker.controller.validation;
 
 import com.alibaba.fastjson.JSONObject;
-import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
+import com.uber.stream.ureplicator.common.observer.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.common.utils.KafkaStarterUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.ZkStarter;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
@@ -52,7 +52,7 @@ public class TestSourceKafkaClusterValidationManager {
     } catch (Exception e) {
     }
     kafkaBrokerTopicObserver =
-        new KafkaBrokerTopicObserver("broker0", KafkaStarterUtils.DEFAULT_ZK_STR, 1);
+        new KafkaBrokerTopicObserver("broker0", KafkaStarterUtils.DEFAULT_ZK_STR, 1, null);
     kafkaBrokerTopicObserver.start();
 
     ControllerConf controllerConf = new ControllerConf();

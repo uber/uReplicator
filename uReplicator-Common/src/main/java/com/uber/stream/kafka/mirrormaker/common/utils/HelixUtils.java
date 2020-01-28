@@ -20,7 +20,7 @@ import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.net.HostAndPort;
 import com.uber.stream.kafka.mirrormaker.common.Constants;
 import com.uber.stream.kafka.mirrormaker.common.core.InstanceTopicPartitionHolder;
-import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
+import com.uber.stream.ureplicator.common.observer.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.common.core.OnlineOfflineStateModel;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import java.util.Arrays;

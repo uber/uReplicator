@@ -15,13 +15,14 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller;
 
-import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
+import com.uber.stream.ureplicator.common.observer.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.controller.core.AutoTopicWhitelistingManager;
 import com.uber.stream.kafka.mirrormaker.controller.core.ClusterInfoBackupManager;
 import com.uber.stream.kafka.mirrormaker.controller.core.FileBackUpHandler;
 import com.uber.stream.kafka.mirrormaker.controller.core.GitBackUpHandler;
 import com.uber.stream.kafka.mirrormaker.controller.core.HelixMirrorMakerManager;
 import com.uber.stream.kafka.mirrormaker.controller.core.ManagerControllerHelix;
+import com.uber.stream.kafka.mirrormaker.controller.core.TopicPartitionExpansionCallback;
 import com.uber.stream.kafka.mirrormaker.controller.rest.ControllerRestApplication;
 import com.uber.stream.kafka.mirrormaker.controller.validation.SourceKafkaClusterValidationManager;
 import com.uber.stream.kafka.mirrormaker.controller.validation.ValidationManager;
@@ -52,6 +53,7 @@ public class ControllerInstance {
   private final Application _controllerRestApp;
   private final ManagerControllerHelix _managerControllerHelix;
   private final HelixMirrorMakerManager _helixMirrorMakerManager;
+  private final TopicPartitionExpansionCallback _topicPartitionExpansionCallback;
   private final ValidationManager _validationManager;
   private final SourceKafkaClusterValidationManager _srcKafkaValidationManager;
   private final AutoTopicWhitelistingManager _autoTopicWhitelistingManager;
@@ -71,6 +73,8 @@ public class ControllerInstance {
     _component = new Component();
     _controllerRestApp = new ControllerRestApplication(null);
     _helixMirrorMakerManager = new HelixMirrorMakerManager(_config);
+    _topicPartitionExpansionCallback = new TopicPartitionExpansionCallback(_helixMirrorMakerManager);
+
     _validationManager = new ValidationManager(_helixMirrorMakerManager);
     _srcKafkaValidationManager = getSourceKafkaClusterValidationManager();
     _autoTopicWhitelistingManager = getAutoTopicWhitelistingManager();
@@ -96,7 +100,8 @@ public class ControllerInstance {
       }
       MetricsReporterConf metricsReporterConf = new MetricsReporterConf(dcEnv[0],
           additionalInfo, hostName, conf.getGraphiteHost(),
-          conf.getGraphitePort(), conf.getGraphiteReportFreqInSec(), conf.getEnableJmxReport(), conf.getEnableGraphiteReport());
+          conf.getGraphitePort(), conf.getGraphiteReportFreqInSec(), conf.getEnableJmxReport(),
+          conf.getEnableGraphiteReport());
       KafkaUReplicatorMetricsReporter.init(metricsReporterConf);
     } else {
       LOGGER.warn("Skip initializeMetricsReporter because of environment not found in controllerConf");
@@ -109,7 +114,7 @@ public class ControllerInstance {
       if (!_kafkaBrokerTopicObserverMap.containsKey(SRC_KAFKA_CLUSTER)) {
         _kafkaBrokerTopicObserverMap.put(SRC_KAFKA_CLUSTER,
             new KafkaBrokerTopicObserver(SRC_KAFKA_CLUSTER, _config.getSrcKafkaZkPath(),
-                TimeUnit.MINUTES.toMillis(5)));
+                TimeUnit.MINUTES.toMillis(5), _topicPartitionExpansionCallback));
       }
       return new SourceKafkaClusterValidationManager(
           _kafkaBrokerTopicObserverMap.get(SRC_KAFKA_CLUSTER),
@@ -130,12 +135,12 @@ public class ControllerInstance {
       if (!_kafkaBrokerTopicObserverMap.containsKey(SRC_KAFKA_CLUSTER)) {
         _kafkaBrokerTopicObserverMap.put(SRC_KAFKA_CLUSTER,
             new KafkaBrokerTopicObserver(SRC_KAFKA_CLUSTER, _config.getSrcKafkaZkPath(),
-                TimeUnit.MINUTES.toMillis(5)));
+                TimeUnit.MINUTES.toMillis(5), _topicPartitionExpansionCallback));
       }
       if (!_kafkaBrokerTopicObserverMap.containsKey(DEST_KAFKA_CLUSTER)) {
         _kafkaBrokerTopicObserverMap.put(DEST_KAFKA_CLUSTER,
             new KafkaBrokerTopicObserver(DEST_KAFKA_CLUSTER, _config.getDestKafkaZkPath(),
-                TimeUnit.MINUTES.toMillis(5)));
+                TimeUnit.MINUTES.toMillis(5), null));
       }
 
       String patternToExcludeTopics = _config.getPatternToExcludeTopics();

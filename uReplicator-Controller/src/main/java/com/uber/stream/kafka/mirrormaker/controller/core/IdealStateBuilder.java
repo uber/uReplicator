@@ -71,6 +71,10 @@ public class IdealStateBuilder {
         .setMaxPartitionsPerNode(newNumTopicPartitions);
 
     int numOldPartitions = oldIdealState.getNumPartitions();
+    if (numOldPartitions >= newNumTopicPartitions) {
+      LOGGER.info("Skip expand topic {} because of numOldPartitions {} is greater or the same as newNumTopicPartitions {}",
+          topicName, numOldPartitions, newNumTopicPartitions);
+    }
     for (int i = 0; i < numOldPartitions; ++i) {
       String partitionName = Integer.toString(i);
       try {

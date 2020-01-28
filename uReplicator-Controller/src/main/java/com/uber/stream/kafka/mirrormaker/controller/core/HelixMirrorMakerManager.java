@@ -219,6 +219,11 @@ public class HelixMirrorMakerManager implements IHelixManager {
 
   public synchronized void expandTopicInMirrorMaker(String topicName, int newNumTopicPartitions) {
     updateCurrentServingInstance();
+    if (!isTopicExisted(topicName)) {
+      LOGGER.warn("Skip expandTopicInMirrorMaker for topic {}, newNumTopicPartitions {} because of "
+          + "topic doesn't exists in current pipeline", topicName, newNumTopicPartitions);
+      return;
+    }
     synchronized (_currentServingInstance) {
       _helixAdmin.setResourceIdealState(_helixClusterName, topicName,
           IdealStateBuilder.expandCustomRebalanceModeIdealStateFor(

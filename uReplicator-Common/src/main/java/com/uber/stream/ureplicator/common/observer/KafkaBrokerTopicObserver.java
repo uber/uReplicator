@@ -13,18 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.uber.stream.kafka.mirrormaker.common.core;
+package com.uber.stream.ureplicator.common.observer;
 
 import com.google.common.collect.ImmutableSet;
-import com.uber.stream.ureplicator.common.observer.TopicPartitionCountObserver;
+import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import java.util.HashSet;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * KafkaBrokerTopicObserver provides topic information on this broker such as all topic names and
- * partitions for each topic
+ * KafkaBrokerTopicObserver provides topic information on this broker such as all topic names and partitions for each
+ * topic
  */
 public class KafkaBrokerTopicObserver extends TopicPartitionCountObserver {
 
@@ -33,9 +33,11 @@ public class KafkaBrokerTopicObserver extends TopicPartitionCountObserver {
 
   private static final Logger logger = LoggerFactory.getLogger(KafkaBrokerTopicObserver.class);
 
-  public KafkaBrokerTopicObserver(String kakfaClusterName, String clusterRootPath, long refreshTimeIntervalInMillis) {
+  public KafkaBrokerTopicObserver(String kakfaClusterName, String clusterRootPath, long refreshTimeIntervalInMillis, ObserverCallback observerCallback) {
     super(kakfaClusterName, clusterRootPath, ZOOKEEPER_TOPIC_OBSERVER_PATH, 30000, 30000,
-        refreshTimeIntervalInMillis);
+        refreshTimeIntervalInMillis, observerCallback);
+    // initialize the topics
+    updateDataSet();
   }
 
   @Override
@@ -59,23 +61,4 @@ public class KafkaBrokerTopicObserver extends TopicPartitionCountObserver {
     topicsFromZookeeper.removeAll(currentServingTopics);
     return topicsFromZookeeper;
   }
-
-  public TopicPartition getTopicPartition(String topicName) {
-    int partitionCount = getPartitionCount(topicName);
-    if (partitionCount > 0) {
-      return new TopicPartition(topicName, partitionCount);
-    } else {
-      return null;
-    }
-  }
-
-  public TopicPartition getTopicPartitionWithRefresh(String topicName) {
-    TopicPartition topicPartition = getTopicPartition(topicName);
-    if (topicPartition == null) {
-      addTopic(topicName);
-      return getTopicPartition(topicName);
-    }
-    return topicPartition;
-  }
-
 }

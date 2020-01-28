@@ -15,7 +15,7 @@
  */
 package com.uber.stream.kafka.mirrormaker.controller.core;
 
-import com.uber.stream.kafka.mirrormaker.common.core.KafkaBrokerTopicObserver;
+import com.uber.stream.ureplicator.common.observer.KafkaBrokerTopicObserver;
 import com.uber.stream.kafka.mirrormaker.common.core.TopicPartition;
 import com.uber.stream.kafka.mirrormaker.common.utils.HelixUtils;
 import com.uber.stream.kafka.mirrormaker.controller.ControllerConf;
@@ -164,7 +164,7 @@ public class ManagerControllerHelix {
     _controllerConf.setGroupId("ureplicator-" + srcCluster + "-" + dstCluster);
     _controllerConf.setSourceCluster(srcCluster);
     _controllerConf.setDestinationCluster(dstCluster);
-    
+
     _currentControllerInstance = new ControllerInstance(this, _controllerConf);
     LOGGER.info("Starting controller instance for route {}", clusterName);
     try {
@@ -257,12 +257,13 @@ public class ManagerControllerHelix {
 
   private boolean handleTopicAssignmentOnline(String topic, String srcCluster, String dstCluster) {
     HelixMirrorMakerManager helixManager = _currentControllerInstance.getHelixResourceManager();
+    KafkaBrokerTopicObserver topicObserver = _currentControllerInstance.getSourceKafkaTopicObserver();
+    topicObserver.registerPartitionChangeWatcher(topic);
     if (helixManager.isTopicExisted(topic)) {
       LOGGER.warn("Topic {} already exists from cluster {} to {}", topic, srcCluster, dstCluster);
       return false;
     }
     TopicPartition topicPartitionInfo = null;
-    KafkaBrokerTopicObserver topicObserver = _currentControllerInstance.getSourceKafkaTopicObserver();
     if (topicObserver == null) {
       // no source partition information, use partitions=1 and depend on auto-expanding later
       topicPartitionInfo = new TopicPartition(topic, 1);
@@ -283,6 +284,10 @@ public class ManagerControllerHelix {
 
   private boolean handleTopicAssignmentOffline(String topic, String srcCluster, String dstCluster) {
     HelixMirrorMakerManager helixManager = _currentControllerInstance.getHelixResourceManager();
+    KafkaBrokerTopicObserver topicObserver = _currentControllerInstance.getSourceKafkaTopicObserver();
+    if (topicObserver!= null) {
+      topicObserver.unsubscribePartitionChangeWatcher(topic);
+    }
     if (!helixManager.isTopicExisted(topic)) {
       LOGGER.warn("Topic {} does not exist from cluster {} to {}", topic, srcCluster, dstCluster);
       return false;
