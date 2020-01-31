@@ -541,6 +541,14 @@
               <goal>prepare-agent</goal>
             </goals>
           </execution>
+          <!-- attached to Maven test phase -->
+          <execution>
+            <id>report</id>
+            <phase>test</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
         </executions>
       </plugin>
       <plugin>

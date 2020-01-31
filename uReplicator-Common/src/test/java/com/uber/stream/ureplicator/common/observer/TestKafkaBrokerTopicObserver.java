@@ -72,8 +72,7 @@ public class TestKafkaBrokerTopicObserver {
     Assert.assertEquals(kafkaBrokerTopicObserver.getNumTopics(), 1);
     Assert.assertEquals(kafkaBrokerTopicObserver.getTopicPartition("testTopic0").getPartition(), 1);
 
-    Random random = new Random();
-    int topicCount = 3 + random.nextInt(5);
+    int topicCount = 3;
     for (int i = 1; i < topicCount; ++i) {
       String topicName = "testTopic" + i;
       // Create Kafka topic

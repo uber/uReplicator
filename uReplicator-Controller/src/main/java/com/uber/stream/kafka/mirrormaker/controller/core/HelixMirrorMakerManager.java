@@ -49,11 +49,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Main logic for Helix Controller. Provided all necessary APIs for topics management.
- * Have two modes auto/custom:
- * Auto mode is for helix taking care of all the idealStates changes
- * Custom mode is for creating a balanced idealStates when necessary,
- * like instances added/removed, new topic added/expanded, old topic deleted
+ * Main logic for Helix Controller. Provided all necessary APIs for topics management. Have two modes auto/custom: Auto
+ * mode is for helix taking care of all the idealStates changes Custom mode is for creating a balanced idealStates when
+ * necessary, like instances added/removed, new topic added/expanded, old topic deleted
  *
  * @author xiangfu
  */
@@ -131,8 +129,10 @@ public class HelixMirrorMakerManager implements IHelixManager {
     LOGGER.info("Trying to register AutoRebalanceLiveInstanceChangeListener");
     _autoRebalanceLiveInstanceChangeListener = new AutoRebalanceLiveInstanceChangeListener(this, _helixZkManager,
         _controllerConf);
-    _maxWorkloadPerWorkerBytes = isSameRegion(_controllerConf.getSourceCluster(), _controllerConf.getDestinationCluster()) ?
-        _controllerConf.getMaxWorkloadPerWorkerByteWithinRegion() : _controllerConf.getMaxWorkloadPerWorkerByteCrossRegion();
+    _maxWorkloadPerWorkerBytes =
+        isSameRegion(_controllerConf.getSourceCluster(), _controllerConf.getDestinationCluster()) ?
+            _controllerConf.getMaxWorkloadPerWorkerByteWithinRegion()
+            : _controllerConf.getMaxWorkloadPerWorkerByteCrossRegion();
     LOGGER.info("environment:maxWorkloadPerWorkerBytes {}", _maxWorkloadPerWorkerBytes);
     updateCurrentServingInstance();
     _workloadInfoRetriever.start();
@@ -143,6 +143,12 @@ public class HelixMirrorMakerManager implements IHelixManager {
     } catch (Exception e) {
       LOGGER.error("Failed to add LiveInstanceChangeListener");
     }
+  }
+
+  @VisibleForTesting
+  void start(HelixManager helixZKManager, HelixAdmin helixAdmin) {
+    _helixZkManager = helixZKManager;
+    _helixAdmin = helixAdmin;
   }
 
   public synchronized void stop() {
@@ -218,16 +224,25 @@ public class HelixMirrorMakerManager implements IHelixManager {
   }
 
   public synchronized void expandTopicInMirrorMaker(String topicName, int newNumTopicPartitions) {
-    updateCurrentServingInstance();
     if (!isTopicExisted(topicName)) {
       LOGGER.warn("Skip expandTopicInMirrorMaker for topic {}, newNumTopicPartitions {} because of "
           + "topic doesn't exists in current pipeline", topicName, newNumTopicPartitions);
       return;
     }
+    IdealState oldIdealState = _helixAdmin.getResourceIdealState(_helixClusterName, topicName);
+    int numOldPartitions = oldIdealState.getNumPartitions();
+    if (numOldPartitions >= newNumTopicPartitions) {
+      LOGGER.info(
+          "Skip expand topic {} because of numOldPartitions {} is greater or the same as newNumTopicPartitions {}",
+          topicName, numOldPartitions, newNumTopicPartitions);
+      return;
+    }
+
+    updateCurrentServingInstance();
     synchronized (_currentServingInstance) {
       _helixAdmin.setResourceIdealState(_helixClusterName, topicName,
           IdealStateBuilder.expandCustomRebalanceModeIdealStateFor(
-              _helixAdmin.getResourceIdealState(_helixClusterName, topicName), topicName,
+              oldIdealState, topicName,
               newNumTopicPartitions, _controllerConf, _currentServingInstance));
     }
   }
@@ -251,7 +266,8 @@ public class HelixMirrorMakerManager implements IHelixManager {
 
   public synchronized void updateTopicPartitionStateInMirrorMaker(String topicName, int partition, String state) {
     updateCurrentServingInstance();
-    if (!Constants.HELIX_OFFLINE_STATE.equalsIgnoreCase(state) && !Constants.HELIX_ONLINE_STATE.equalsIgnoreCase(state)) {
+    if (!Constants.HELIX_OFFLINE_STATE.equalsIgnoreCase(state) && !Constants.HELIX_ONLINE_STATE
+        .equalsIgnoreCase(state)) {
       throw new IllegalArgumentException(String.format("Failed to update topic %s, partition %d to invalid state %s.",
           topicName, partition, state));
     }
