@@ -245,6 +245,17 @@ public class WorkerInstance {
         }
       }
 
+      if (headerWhitelistObserver != null) {
+        try {
+          LOGGER.info("Shutdown header whitelist observer");
+          headerWhitelistObserver.shutdown();
+        } catch (Exception e) {
+          LOGGER.error("Failed to shutdown header whitelist observer", e);
+        } finally {
+          headerWhitelistObserver = null;
+        }
+      }
+
       if (fetcherManager != null) {
         try {
           LOGGER.info("Shutdown Consumer");
