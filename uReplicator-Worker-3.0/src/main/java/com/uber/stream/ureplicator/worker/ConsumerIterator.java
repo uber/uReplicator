@@ -87,6 +87,8 @@ public class ConsumerIterator extends IteratorTemplate<ConsumerRecord> {
 
   public void cleanCurrentChunk() {
     current.set(null);
+    channel.clear();
+    currentPartitionInfo = null;
   }
 
   public static class ConsumerTimeoutException extends RuntimeException {
