@@ -231,6 +231,7 @@ public class FetcherManager extends ShutdownableThread implements
       partitionThreadMap.clear();
       LOGGER.info("CompactConsumerFetcherManager stopConnections finished");
     }
+    fetcherThreadMap.clear();
   }
 
   /**
