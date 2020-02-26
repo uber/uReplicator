@@ -25,7 +25,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import kafka.utils.ZKGroupTopicDirs;
 import kafka.utils.ZkUtils;
 import org.I0Itec.zkclient.ZkClient;
@@ -37,14 +39,13 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * CheckpointManager provides interface allows consumer/producer to access topic partition offset
- * checkpoint. To avoid data loss, commit should execute after producer flush succeed. Offset
- * checkpoint is currently stored on zookeeper.
+ * CheckpointManager provides interface allows consumer/producer to access topic partition offset checkpoint. To avoid
+ * data loss, commit should execute after producer flush succeed. Offset checkpoint is currently stored on zookeeper.
  */
 // TODO: deprecate zookeeper offset checkpoint
 public class ZookeeperCheckpointManager implements ICheckPointManager {
 
-  private final Executor commitExecutor;
+  private final ExecutorService commitExecutor;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ZookeeperCheckpointManager.class);
   private final Map<TopicPartition, Long> offsetCheckpoints = new ConcurrentHashMap();
@@ -123,5 +124,14 @@ public class ZookeeperCheckpointManager implements ICheckPointManager {
   public void shutdown() {
     commitZkClient.close();
     KafkaUReplicatorMetricsReporter.get().removeMetric(COMMIT_FAILURE_METER_NAME);
+    commitExecutor.shutdown();
+    try {
+      if (!commitExecutor.awaitTermination(1000, TimeUnit.MILLISECONDS)) {
+        LOGGER.error("Shutdown commitExecutor timeout");
+      }
+    } catch (InterruptedException e) {
+      LOGGER.error("Shutdown commitExecutor failed", e);
+    }
+    offsetCheckpoints.clear();
   }
 }
