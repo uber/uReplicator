@@ -70,6 +70,7 @@ RUN echo "127.0.0.1 devenv" >> /etc/hosts
 ENV PATH="/usr/share/zookeeper/bin:${PATH}"
 
 
-ADD prepare-zk.sh .
+WORKDIR /usr/src/app
+COPY . /usr/src/app
 
 CMD ["supervisord", "-n"]

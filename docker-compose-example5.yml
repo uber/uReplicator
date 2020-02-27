@@ -24,11 +24,12 @@ services:
     - "9093:9093"
     - "9094:9094"
     healthcheck:
-      test: ["CMD", "./prepare-zk.sh", "devenv", "5"]
+      test: ["CMD", "./prepare-devenv.sh", "devenv", "5"]
       interval: 5s
       timeout: 10s
       retries: 10
   manager:
+    image: ureplicator
     build: .
     ports:
     - "8100:8100"
@@ -41,23 +42,21 @@ services:
        -enableRebalance true \
        -zookeeper devenv:2181/ureplicator-example \
        -managerPort 8100 \
-       -controllerPort 9000 \
        -initMaxNumWorkersPerRoute 5 \
-       -maxNumWorkersPerRoute 10"
-    depends_on:
-    - devenv
-    deploy:
-      restart_policy:
-        condition: on-failure
+       -maxNumWorkersPerRoute 10
+       "
+    restart: always
     links:
     - devenv
+    environment:
+    - WAIT_FOR_HOST=devenv:2181
     healthcheck:
       test: ["CMD", "./wait-for-it.sh", "manager:8100", "60"]
       interval: 5s
       timeout: 10s
       retries: 5
   controller:
-    image: ureplicator_manager
+    image: ureplicator
     ports:
     - "9000:9000"
     command: "controller \
@@ -75,24 +74,41 @@ services:
           -offsetRefreshIntervalInSec 0 \
           -enableAutoWhitelist false
           "
-    depends_on:
-    - devenv
+    environment:
+    - WAIT_FOR_HOST=manager:8100
+    restart: always
     links:
     - devenv
-    healthcheck:
-      test: ["CMD", "./wait-for-it.sh", "controller:9000", "60"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+    - manager
   worker_1:
-    image: ureplicator_manager
+    image: ureplicator
     command:  "worker \
-        --consumer.config example/example-consumer.properties \
-        --producer.config example/example-producer.properties \
-        --helix.config example/example-helix-3.properties \
-        --topic.mappings example/example-topicmapping.properties \
-        --cluster.config example/example-cluster.properties"
-    depends_on:
-    - controller
+        -consumer_config example/example-consumer.properties \
+        -producer_config example/example-producer.properties \
+        -federated_enabled true \
+        -helix_config example/example-helix-3.properties \
+        -topic_partition_count_observer true \
+        -cluster_config example/example-cluster.properties"
+    environment:
+    - WAIT_FOR_HOST=manager:8100
     links:
+    - devenv
+    - manager
     - controller
+  worker_2:
+    image: ureplicator
+    command:  "worker \
+        -consumer_config example/example-consumer.properties \
+        -producer_config example/example-producer.properties \
+        -federated_enabled true \
+        -helix_config example/example-helix-4.properties \
+        -topic_partition_count_observer true \
+        -cluster_config example/example-cluster.properties"
+    environment:
+    - WAIT_FOR_HOST=manager:8100
+    restart: always
+    links:
+    - devenv
+    - manager
+    - controller
+
