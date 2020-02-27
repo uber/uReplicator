@@ -244,3 +244,27 @@ curl localhost:9000/topics/dummyTopic | jq .
 ```
 curl localhost:9000/instances | jq .
 ```
+
+
+**Example 5** Run Federated uReplicator with 2 workers
+- Build Docker Compose
+```
+docker-compose -f docker-compose-example5.yml build
+```
+
+- Start Docker Compose
+```
+docker-compose -f docker-compose-example5.yml up
+```
+
+- Add topic to uReplicator Manager to start copying from kafka1 to kafka2:
+```
+curl -X POST "localhost:8100/topics/dummyTopic?src=cluster1&dst=cluster2"
+```
+
+- To check if the data is successfully copied to kafka2
+```
+docker exec -it internal_devenv_1 bash;
+$KAFKA_HOME/bin/kafka-console-consumer.sh --zookeeper localhost:2181/cluster2 --topic dummyTopic
+```
+
