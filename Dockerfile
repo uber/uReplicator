@@ -26,7 +26,5 @@ WORKDIR /usr/src/app
 RUN mvn clean package -DskipTests
 RUN chmod +x /usr/src/app/bin/pkg/*.sh
 
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-
-ENTRYPOINT [ "/docker-entrypoint.sh" ]
+ENTRYPOINT [ "./docker-entrypoint.sh" ]
 CMD [ "controller" ]
