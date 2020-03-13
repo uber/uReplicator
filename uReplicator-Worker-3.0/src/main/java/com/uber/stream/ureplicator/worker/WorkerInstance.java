@@ -56,7 +56,6 @@ public class WorkerInstance {
   protected final int numOfProducer;
   protected final int maxQueueSize;
 
-  private String topicObserverZk;
   private IConsumerFetcherManager fetcherManager;
   private IMessageTransformer messageTransformer;
   private ProducerManager producerManager;
@@ -119,11 +118,9 @@ public class WorkerInstance {
     // Init blocking queue
     initializeConsumerStream();
     initializeMetricsReporter(srcCluster, dstCluster, routeId, federatedDeploymentName);
-    initializeTopicPartitionCountObserver();
-    initializeHeaderWhitelistObserver();
-
     additionalConfigs(srcCluster, dstCluster);
 
+    initializeObservers();
     messageTransformer = createMessageTransformer();
 
     checkpointManager = createCheckpointManager();
@@ -303,33 +300,19 @@ public class WorkerInstance {
 
   private void initializeProperties(String srcCluster, String dstCluster) {
     String commitZk = consumerProps.getProperty(Constants.ZK_SERVER, "");
-    topicObserverZk = producerProps.getProperty(Constants.ZK_SERVER, "");
     // override properties for federated
     if (workerConf.getFederatedEnabled()) {
       if (StringUtils.isEmpty(srcCluster) || StringUtils.isEmpty(dstCluster)) {
         throw new RuntimeException(
             String.format(
-                "srcCluster and dstCluster are required for federated mode. current value: {} - {}",
+                "srcCluster and dstCluster are required for federated mode. current value: {%s - %s",
                 srcCluster, dstCluster)
         );
       }
-      String srcServers = clusterProps
-          .getProperty(Constants.FEDERATED_CLUSTER_SERVER_CONFIG_PREFIX + srcCluster, "");
-      String dstServers = clusterProps
-          .getProperty(Constants.FEDERATED_CLUSTER_SERVER_CONFIG_PREFIX + dstCluster, "");
-      producerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, dstServers);
-      consumerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, srcServers);
+      consumerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, getClusterBootstrapServers(srcCluster));
+      producerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, getClusterBootstrapServers(dstCluster));
 
-      commitZk = clusterProps
-          .getProperty(Constants.FEDERATED_CLUSTER_ZK_CONFIG_PREFIX + srcCluster, "");
-      topicObserverZk = clusterProps
-          .getProperty(Constants.FEDERATED_CLUSTER_ZK_CONFIG_PREFIX + dstCluster, "");
-      if (StringUtils.isBlank(commitZk)) {
-        throw new IllegalArgumentException(
-            String.format("Failed to find %s in  config file %s:",
-                Constants.FEDERATED_CLUSTER_ZK_CONFIG_PREFIX + srcCluster,
-                workerConf.getClusterConfigFile()));
-      }
+      commitZk = getClusterZKStr(srcCluster);
     } else {
       commitZk = consumerProps.getProperty(Constants.COMMIT_ZOOKEEPER_SERVER_CONFIG, commitZk);
       if (StringUtils.isBlank(commitZk)) {
@@ -339,6 +322,32 @@ public class WorkerInstance {
       }
     }
     consumerProps.setProperty(Constants.COMMIT_ZOOKEEPER_SERVER_CONFIG, commitZk);
+  }
+
+  protected String getClusterZKStr(String clusterName) {
+    String zkStr = clusterProps
+        .getProperty(Constants.FEDERATED_CLUSTER_ZK_CONFIG_PREFIX + clusterName, "");
+    if (StringUtils.isBlank(zkStr)) {
+      throw new RuntimeException(
+          String.format(
+              "Failed to find zkString for cluster %s",
+              clusterName)
+      );
+    }
+    return zkStr;
+  }
+
+  protected String getClusterBootstrapServers(String clusterName) {
+    String bootstrapServers = clusterProps
+        .getProperty(Constants.FEDERATED_CLUSTER_SERVER_CONFIG_PREFIX + clusterName, "");
+    if (StringUtils.isBlank(bootstrapServers)) {
+      throw new RuntimeException(
+          String.format(
+              "Failed to find bootstrapServers for cluster %s",
+              clusterName)
+      );
+    }
+    return bootstrapServers;
   }
 
   private void initializeMetricsReporter(String srcCluster, String dstCluster, String routeId,
@@ -352,14 +361,29 @@ public class WorkerInstance {
     MetricsReporterConf metricsReporterConf = new MetricsReporterConf(workerConf.getRegion(),
         additionalInfo, workerConf.getHostname(), workerConf.getGraphiteHost(),
         workerConf.getGraphitePort(), workerConf.getGraphiteReportFreqInSec(),
-            workerConf.getEnableJmxReport(), workerConf.getEnableGraphiteReport());
+        workerConf.getEnableJmxReport(), workerConf.getEnableGraphiteReport());
     KafkaUReplicatorMetricsReporter.init(metricsReporterConf);
   }
 
-  private void initializeTopicPartitionCountObserver() {
-    if (StringUtils.isNotBlank(topicObserverZk) && workerConf
-        .enableDestinationPartitionCountObserver()) {
+  protected void initializeObservers() {
+    if (workerConf.enableDestinationPartitionCountObserver() || workerConf.enableHeaderWhitelist()) {
+      String topicObserverZk = producerProps.getProperty(Constants.ZK_SERVER, "");
+      if (workerConf.getFederatedEnabled()) {
+        topicObserverZk = getClusterZKStr(dstCluster);
+      }
+      if (StringUtils.isBlank(topicObserverZk)) {
+        LOGGER.warn("Producer property {} is required by topicPartitionCountObserver "
+            + "and HeaderWhitelistObserver", Constants.ZK_SERVER);
+        return;
+      }
+      initializeHeaderWhitelistObserver(topicObserverZk);
+      initializeTopicPartitionCountObserver(topicObserverZk);
 
+    }
+  }
+
+  private void initializeTopicPartitionCountObserver(String topicObserverZk) {
+    if (workerConf.enableDestinationPartitionCountObserver()) {
       String zkPath = producerProps
           .getProperty(Constants.PRODUCER_ZK_OBSERVER, Constants.DEFAULT_PRODUCER_ZK_OBSERVER);
       topicPartitionCountObserver = new TopicPartitionCountObserver(srcCluster, topicObserverZk,
@@ -371,14 +395,14 @@ public class WorkerInstance {
       for (String dstTopic : topicMapping.values()) {
         topicPartitionCountObserver.addTopic(dstTopic);
       }
+      LOGGER.info("Initialize TopicPartitionCountObserver finished");
     } else {
-      LOGGER.info("Disable TopicPartitionCountObserver to use round robin to produce msg.");
+      LOGGER.info("Disable TopicPartitionCountObserver to use round robin to produce msg");
     }
   }
 
-  private void initializeHeaderWhitelistObserver() {
-    if (StringUtils.isNotBlank(topicObserverZk) && workerConf
-        .enableHeaderWhitelist()) {
+  private void initializeHeaderWhitelistObserver(String topicObserverZk) {
+    if (workerConf.enableHeaderWhitelist()) {
       String zkPath = producerProps
           .getProperty(Constants.HEADER_WHITELIST_ZK_PATH, Constants.DEFAULT_HEADER_WHITELIST_ZK_PATH);
       headerWhitelistObserver = new HeaderWhitelistObserver(topicObserverZk,
@@ -387,12 +411,13 @@ public class WorkerInstance {
           Integer.parseInt(producerProps.getProperty("session.timeout.ms", "600000")),
           Integer.parseInt(producerProps.getProperty("refresh.interval.ms", "300000")));
       headerWhitelistObserver.start();
+      LOGGER.info("Initialize HeaderWhitelistObserver finished");
     } else {
-      LOGGER.info("Disable HeaderWhitelistObserver.");
+      LOGGER.info("Disable HeaderWhitelistObserver");
     }
   }
 
-  private Map<String, String> initializeTopicMapping(Properties topicMappingProps) {
+  protected Map<String, String> initializeTopicMapping(Properties topicMappingProps) {
     Map<String, String> mapping = new HashMap<>();
     if (topicMappingProps == null) {
       return mapping;
@@ -450,7 +475,7 @@ public class WorkerInstance {
   }
 
   /**
-   * Set per second number of messages allowed to process
+   * Sets per second number of messages allowed to process
    *
    * @param messageRatePerSecond message rate per second
    */
