@@ -184,9 +184,17 @@ public class HelixUtils {
         TopicPartition tpi;
         if (partition.startsWith("@")) {
           if (clusterToObserverMap != null) {
-            TopicPartition topicParition = clusterToObserverMap.get(getSrcFromRoute(partition)).getTopicPartitionWithRefresh(topic);
-            int trueNumPartition = topicParition != null ? topicParition.getPartition() : -1;
-            tpi = new TopicPartition(topic, trueNumPartition, partition);
+            if (clusterToObserverMap.containsKey(getSrcFromRoute(partition))) {
+              TopicPartition topicPartition = clusterToObserverMap.get(getSrcFromRoute(partition)).getTopicPartitionWithRefresh(topic);
+              int trueNumPartition = topicPartition != null ? topicPartition.getPartition() : -1;
+              tpi = new TopicPartition(topic, trueNumPartition, partition);
+            } else {
+              // this only happens when source cluster is not in managerConf.getSourceClusters().
+              // TODO: add metrics and alert on this
+              LOGGER.warn("Failed to find cluster {} from clusterToObserverMap", getSrcFromRoute(partition));
+              tpi = new TopicPartition(topic, -1, partition);
+            }
+
           } else {
             tpi = new TopicPartition(topic, -1, partition);
           }
