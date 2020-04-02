@@ -67,7 +67,7 @@ public abstract class PeriodicMonitor {
         try {
           logger.info("Update updateDataSet periodically for {}", monitorName);
           updateDataSet();
-        } catch (Exception e) {
+        } catch (Throwable e) {
           logger.warn("Failed to updateDataSet for {}", monitorName, e);
           periodicMonitorFailureMeter.mark();
         } finally {

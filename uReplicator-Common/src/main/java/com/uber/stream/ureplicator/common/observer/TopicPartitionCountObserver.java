@@ -206,7 +206,7 @@ public class TopicPartitionCountObserver extends PeriodicMonitor implements IZkC
             int currentPartitionNum = partitionAssignmentForTopics.get(topic).get().size();
             int oldPartitionNum = getPartitionCount(topic);
             if (oldPartitionNum != currentPartitionNum) {
-              logger.info("Number of partition changed for topic {}, oldPartitionNum {}, newPartitionNumber {}", topic,
+              logger.debug("Number of partition changed for topic {}, oldPartitionNum {}, newPartitionNumber {}", topic,
                   oldPartitionNum, currentPartitionNum);
               topicPartitionMap.put(topic, currentPartitionNum);
               if (partitionChangeWatcher.contains(topic)) {

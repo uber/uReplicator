@@ -9,7 +9,7 @@
   <parent>
     <artifactId>uReplicator</artifactId>
     <groupId>com.uber.uReplicator</groupId>
-    <version>2.0.0.7-HOTFIX</version>
+    <version>2.0.0.8-HOTFIX</version>
   </parent>
 
   <dependencies>
@@ -40,13 +40,13 @@
     <dependency>
       <groupId>com.uber.uReplicator</groupId>
       <artifactId>uReplicator-Worker-3.0</artifactId>
-      <version>2.0.0.7-HOTFIX</version>
+      <version>2.0.0.8-HOTFIX</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.uber.uReplicator</groupId>
       <artifactId>uReplicator-Worker-3.0</artifactId>
-      <version>2.0.0.7-HOTFIX</version>
+      <version>2.0.0.8-HOTFIX</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

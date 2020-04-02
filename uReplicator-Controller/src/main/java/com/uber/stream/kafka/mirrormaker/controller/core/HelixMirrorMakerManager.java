@@ -240,6 +240,10 @@ public class HelixMirrorMakerManager implements IHelixManager {
 
     updateCurrentServingInstance();
     synchronized (_currentServingInstance) {
+      LOGGER.info(
+          "Expand topic {} from numOldPartitions {} to newNumTopicPartitions {}",
+          topicName, numOldPartitions, newNumTopicPartitions);
+
       _helixAdmin.setResourceIdealState(_helixClusterName, topicName,
           IdealStateBuilder.expandCustomRebalanceModeIdealStateFor(
               oldIdealState, topicName,

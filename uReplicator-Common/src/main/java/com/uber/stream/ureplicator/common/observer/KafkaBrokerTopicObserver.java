@@ -36,17 +36,15 @@ public class KafkaBrokerTopicObserver extends TopicPartitionCountObserver {
   public KafkaBrokerTopicObserver(String kakfaClusterName, String clusterRootPath, long refreshTimeIntervalInMillis, ObserverCallback observerCallback) {
     super(kakfaClusterName, clusterRootPath, ZOOKEEPER_TOPIC_OBSERVER_PATH, 30000, 30000,
         refreshTimeIntervalInMillis, observerCallback);
-    // initialize the topics
-    updateDataSet();
   }
 
   @Override
   public void updateDataSet() {
-    logger.info("updating topic cache map for {} new topics", topicPartitionMap.size());
-
+    logger.info("updating topic cache map for {} new topics in Kafka cluster {}", topicPartitionMap.size(), kafkaClusterName);
     Set<String> servingTopics;
     servingTopics = new HashSet<>(zkClient.getChildren(topicZkPath));
     servingTopics.removeAll(KAFKA_INNER_TOPICS);
+
     for (String existedTopic : getAllTopics()) {
       if (!servingTopics.contains(existedTopic)) {
         topicPartitionMap.remove(existedTopic);
