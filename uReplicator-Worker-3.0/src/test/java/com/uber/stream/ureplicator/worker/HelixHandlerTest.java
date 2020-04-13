@@ -64,10 +64,10 @@ public class HelixHandlerTest {
     String instanceId = helixProps.getProperty("instanceId");
 
     EasyMock.reset(mockWorker);
-    mockWorker.start(TestUtils.SRC_CLUSTER, TestUtils.DST_CLUSTER, "0", deployment);
+    mockWorker.start(TestUtils.SRC_CLUSTER, TestUtils.DST_CLUSTER, "0", deployment, "0");
     EasyMock.expectLastCall().times(1);
 
-    mockWorker.start(TestUtils.SRC_CLUSTER_2, TestUtils.DST_CLUSTER, "0", deployment);
+    mockWorker.start(TestUtils.SRC_CLUSTER_2, TestUtils.DST_CLUSTER, "0", deployment, "0");
     EasyMock.expectLastCall().times(1);
 
     mockWorker.cleanShutdown();
@@ -140,10 +140,10 @@ public class HelixHandlerTest {
 
     EasyMock.expect(mockWorker.isRunning()).andReturn(false).anyTimes();
 
-    mockWorker.start(TestUtils.SRC_CLUSTER, TestUtils.DST_CLUSTER, "0", deployment);
+    mockWorker.start(TestUtils.SRC_CLUSTER, TestUtils.DST_CLUSTER, "0", deployment, "0");
     EasyMock.expectLastCall().andThrow(new RuntimeException("start mockWorker failed")).times(1);
 
-    mockWorker.start(TestUtils.SRC_CLUSTER, TestUtils.DST_CLUSTER, "0", deployment);
+    mockWorker.start(TestUtils.SRC_CLUSTER, TestUtils.DST_CLUSTER, "0", deployment, "0");
     EasyMock.expectLastCall().times(3);
 
     mockWorker.cleanShutdown();

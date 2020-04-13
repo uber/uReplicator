@@ -93,6 +93,10 @@ public class WorkerInstance {
     return isRunning.get();
   }
 
+  public void start(String srcCluster, String dstCluster, String routeId,
+      String federatedDeploymentName) {
+    start(srcCluster, dstCluster, routeId, federatedDeploymentName, StringUtils.EMPTY);
+  }
   /**
    * Starts worker instance, srcCluster and dstCluster for non federated mode is empty
    *
@@ -102,7 +106,7 @@ public class WorkerInstance {
    * @param federatedDeploymentName deployment name for federated uReplicator
    */
   public void start(String srcCluster, String dstCluster, String routeId,
-      String federatedDeploymentName) {
+      String federatedDeploymentName, String instanceId) {
     if (!isRunning.compareAndSet(false, true)) {
       LOGGER.error(
           "Instance already running, srcCluster: {}, dstCluster:{}",
@@ -117,7 +121,7 @@ public class WorkerInstance {
     initializeProperties(srcCluster, dstCluster);
     // Init blocking queue
     initializeConsumerStream();
-    initializeMetricsReporter(srcCluster, dstCluster, routeId, federatedDeploymentName);
+    initializeMetricsReporter(srcCluster, dstCluster, routeId, federatedDeploymentName, instanceId);
     additionalConfigs(srcCluster, dstCluster);
 
     initializeObservers();
@@ -351,15 +355,19 @@ public class WorkerInstance {
   }
 
   private void initializeMetricsReporter(String srcCluster, String dstCluster, String routeId,
-      String federatedDeploymentName) {
+      String federatedDeploymentName, String instanceId) {
     List<String> additionalInfo = new ArrayList<>();
     additionalInfo.add(workerConf.getMetricsPrefix());
     if (workerConf.getFederatedEnabled()) {
       additionalInfo.add(federatedDeploymentName);
       additionalInfo.add(String.format("%s-%s-%s", srcCluster, dstCluster, routeId));
     }
+    String hostname = workerConf.getHostname();
+    if (StringUtils.isNotBlank(instanceId)) {
+      hostname = instanceId;
+    }
     MetricsReporterConf metricsReporterConf = new MetricsReporterConf(workerConf.getRegion(),
-        additionalInfo, workerConf.getHostname(), workerConf.getGraphiteHost(),
+        additionalInfo, hostname, workerConf.getGraphiteHost(),
         workerConf.getGraphitePort(), workerConf.getGraphiteReportFreqInSec(),
         workerConf.getEnableJmxReport(), workerConf.getEnableGraphiteReport());
     KafkaUReplicatorMetricsReporter.init(metricsReporterConf);
