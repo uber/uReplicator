@@ -109,7 +109,7 @@
     <zkclient.version>0.11</zkclient.version>
     <jopt-simple.version>5.0.2</jopt-simple.version>
     <junit.version>4.6</junit.version>
-    <jackson.version>2.9.10.1</jackson.version>
+    <jackson.version>2.9.10.4</jackson.version>
     <restlet.version>2.4.0</restlet.version>
     <io.dropwizard.metrics.version>4.0.2</io.dropwizard.metrics.version>
     <commons.config.version>1.6</commons.config.version>
