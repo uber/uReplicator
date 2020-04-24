@@ -120,7 +120,8 @@ public class DefaultProducer {
     public void onCompletion(RecordMetadata metadata, Exception e) {
       try {
         if (e != null) {
-          LOGGER.error("[{}] Closing producer due to send failure. topic: {}", producerClientId, topic, e);
+          LOGGER.error("[{}] Closing producer due to send failure. topic: {}, message: {}", producerClientId, topic,
+              e.getMessage(), e);
           if (abortOnSendFailure) {
             producerAbort = true;
             producer.close();
