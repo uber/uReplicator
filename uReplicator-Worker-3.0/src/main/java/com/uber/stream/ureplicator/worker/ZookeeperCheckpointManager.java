@@ -16,6 +16,7 @@
 package com.uber.stream.ureplicator.worker;
 
 import com.codahale.metrics.Meter;
+import com.google.common.annotations.VisibleForTesting;
 import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import com.uber.stream.ureplicator.worker.interfaces.ICheckPointManager;
 import java.util.ArrayList;
@@ -55,18 +56,23 @@ public class ZookeeperCheckpointManager implements ICheckPointManager {
   private static final String COMMIT_FAILURE_METER_NAME = "commitFailure";
 
   public ZookeeperCheckpointManager(CustomizedConsumerConfig config, String groupId) {
-    this.commitZkClient = ZkUtils.createZkClient(
+    this(ZkUtils.createZkClient(
         config.getProperty(Constants.COMMIT_ZOOKEEPER_SERVER_CONFIG),
         config.getInt(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 10000),
-        config.getInt(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG, 10000));
+        config.getInt(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG, 10000)), groupId);
+  }
+
+  @VisibleForTesting
+  protected ZookeeperCheckpointManager(ZkClient commitZkClient, String groupId) {
+    this.commitZkClient = commitZkClient;
     this.groupId = groupId;
     this.commitExecutor = Executors.newFixedThreadPool(10);
     KafkaUReplicatorMetricsReporter.get().registerMetric(COMMIT_FAILURE_METER_NAME, commitFailure);
   }
 
-  public void commitOffset(Map<TopicPartition, Long> topicPartitionOffsets) {
+  public boolean commitOffset(Map<TopicPartition, Long> topicPartitionOffsets) {
     if (topicPartitionOffsets == null || topicPartitionOffsets.size() == 0) {
-      return;
+      return true;
     }
     LOGGER.trace("Committing offset to zookeepr for topics: {}", topicPartitionOffsets.keySet());
     List<CompletableFuture<Void>> futureList = new ArrayList<>();
@@ -81,11 +87,14 @@ public class ZookeeperCheckpointManager implements ICheckPointManager {
     } catch (InterruptedException e) {
       LOGGER.error("[{}]Caught InterruptedException on commitOffset.", e);
       commitFailure.mark(topicPartitionOffsets.size());
+      return false;
     } catch (ExecutionException e) {
       LOGGER.error("[{}]Caught ExecutionException on commitOffset.", e);
       commitFailure.mark(topicPartitionOffsets.size());
+      return false;
     }
     LOGGER.info("commitOffset finished, number of topics: {}", topicPartitionOffsets.size());
+    return true;
   }
 
   private void commitOffsetToZookeeper(TopicPartition topicPartition, long offset) {
