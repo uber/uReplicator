@@ -17,6 +17,7 @@ package com.uber.stream.ureplicator.worker;
 
 import com.codahale.metrics.Timer;
 import com.codahale.metrics.UniformReservoir;
+import com.google.common.annotations.VisibleForTesting;
 import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import com.uber.stream.ureplicator.worker.ConsumerIterator.ConsumerTimeoutException;
 import com.uber.stream.ureplicator.worker.interfaces.ICheckPointManager;
@@ -32,6 +33,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +49,8 @@ public class ProducerThread extends Thread {
 
   private final ICheckPointManager checkpointManager;
   private final ConsumerIterator incomeData;
-  private final Map<TopicPartition, Long> consumedOffsets = new HashMap<>();
+  @VisibleForTesting
+  final Map<TopicPartition, Long> consumedOffsets = new HashMap<>();
   private final WorkerInstance workerInstance;
   protected AtomicBoolean isShuttingDown = new AtomicBoolean(false);
   protected Timer flushLatencyMsTimer = new Timer(new UniformReservoir());
@@ -93,6 +96,24 @@ public class ProducerThread extends Thread {
 
   }
 
+
+  protected ProducerThread(
+      String clientId,
+      DefaultProducer defaultProducer,
+      ConsumerIterator incomeData,
+      IMessageTransformer messageTransformer,
+      ICheckPointManager checkpointManager,
+      WorkerInstance workerInstance) {
+    this.messageTransformer = messageTransformer;
+    this.checkpointManager = checkpointManager;
+    this.incomeData = incomeData;
+    this.workerInstance = workerInstance;
+    this.producer = defaultProducer;
+    this.clientId = clientId;
+    setName(clientId);
+    registerMetrics(clientId);
+  }
+
   private void registerMetrics(String clientId) {
     KafkaUReplicatorMetricsReporter.get()
         .registerMetric("producer." + clientId + ".flushLatencyMs", flushLatencyMsTimer);
@@ -107,27 +128,7 @@ public class ProducerThread extends Thread {
   public void run() {
     try {
       while (!producer.producerAbort() && !isShuttingDown.get()) {
-        try {
-          // poll consume record
-          if (incomeData.hasNext()) {
-            ConsumerRecord record = incomeData.next();
-            ProducerRecord resp = messageTransformer.process(record);
-            if (resp == null) {
-              numDroppedMessage.getAndIncrement();
-            } else {
-              producer.send(resp, record.partition(), record.offset());
-            }
-            TopicPartition tp = new TopicPartition(record.topic(), record.partition());
-            consumedOffsets.put(tp, record.offset() + 1);
-          }
-        } catch (ConsumerTimeoutException e) {
-          LOGGER.trace("[{}]Caught ConsumerTimeoutException, continue iteration.", getName());
-          // TODO: add backoff ms for ConsumerTimeoutException
-        } catch (Throwable e) {
-          LOGGER.error("[{}]Caught Throwable, thread exit.", getName(), e);
-          return;
-        }
-        flushAndCommitOffset(false);
+        pollOnce();
       }
     } catch (Throwable e) {
       LOGGER.error("[{}]Caught Throwable, thread exit.", getName(), e);
@@ -142,14 +143,44 @@ public class ProducerThread extends Thread {
     }
   }
 
-  private synchronized void flushAndCommitOffset(boolean forceCommit) {
+  @VisibleForTesting
+  void pollOnce() {
+    try {
+      // poll consume record
+      if (incomeData.hasNext()) {
+        ConsumerRecord record = incomeData.next();
+        ProducerRecord resp = messageTransformer.process(record);
+        if (resp == null) {
+          numDroppedMessage.getAndIncrement();
+        } else {
+          producer.send(resp, record.partition(), record.offset());
+        }
+        TopicPartition tp = new TopicPartition(record.topic(), record.partition());
+        consumedOffsets.put(tp, record.offset() + 1);
+      }
+    } catch (ConsumerTimeoutException e) {
+      LOGGER.trace("[{}]Caught ConsumerTimeoutException, continue iteration.", getName());
+      // TODO: add backoff ms for ConsumerTimeoutException
+    } catch (Throwable e) {
+      LOGGER.error("[{}]Caught Throwable, thread exit.", getName(), e);
+      return;
+    }
+    flushAndCommitOffset(false);
+  }
+
+  @VisibleForTesting
+  synchronized void flushAndCommitOffset(boolean forceCommit) {
     try {
       Long flushStartTime = System.currentTimeMillis();
       if (consumedOffsets.size() != 0 && producer.maybeFlush(forceCommit)) {
         flushLatencyMsTimer
             .update(System.currentTimeMillis() - flushStartTime, TimeUnit.MILLISECONDS);
-        commitLatencyMsTimer.time(() -> checkpointManager.commitOffset(consumedOffsets));
-        consumedOffsets.clear();
+        commitLatencyMsTimer.time(() -> {
+          boolean succeed = checkpointManager.commitOffset(consumedOffsets);
+          if (succeed) {
+            consumedOffsets.clear();
+          }
+        });
       }
     } catch (InterruptedException e) {
       LOGGER.error("[{}]Caught InterruptedException on flush.", getName(), e);

@@ -20,7 +20,12 @@ import org.apache.kafka.common.TopicPartition;
 
 public interface ICheckPointManager {
 
-  void commitOffset(Map<TopicPartition, Long> topicPartitionOffsets);
+  /**
+   * Commits topic partition offsets to offset store
+   * @param topicPartitionOffsets topic partition offsets map
+   * @return the status of offset commit
+   */
+  boolean commitOffset(Map<TopicPartition, Long> topicPartitionOffsets);
 
   Long fetchOffset(TopicPartition topicPartition);
 
