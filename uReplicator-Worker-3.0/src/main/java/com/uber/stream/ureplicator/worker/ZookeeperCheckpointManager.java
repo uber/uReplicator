@@ -85,11 +85,11 @@ public class ZookeeperCheckpointManager implements ICheckPointManager {
     try {
       CompletableFuture.allOf(futureList.toArray(new CompletableFuture[futureList.size()])).get();
     } catch (InterruptedException e) {
-      LOGGER.error("[{}]Caught InterruptedException on commitOffset.", e);
+      LOGGER.error("Caught InterruptedException on commitOffset.", e);
       commitFailure.mark(topicPartitionOffsets.size());
       return false;
     } catch (ExecutionException e) {
-      LOGGER.error("[{}]Caught ExecutionException on commitOffset.", e);
+      LOGGER.error("Caught ExecutionException on commitOffset.", e);
       commitFailure.mark(topicPartitionOffsets.size());
       return false;
     }
@@ -98,16 +98,22 @@ public class ZookeeperCheckpointManager implements ICheckPointManager {
   }
 
   private void commitOffsetToZookeeper(TopicPartition topicPartition, long offset) {
-    if (!offsetCheckpoints.containsKey(topicPartition)
-        || offsetCheckpoints.get(topicPartition) != offset) {
-      ZKGroupTopicDirs dirs = new ZKGroupTopicDirs(groupId, topicPartition.topic());
-      String path = dirs.consumerOffsetDir() + "/" + topicPartition.partition();
-      if (!commitZkClient.exists(path)) {
-        commitZkClient.createPersistent(path, true);
+    try {
+      if (!offsetCheckpoints.containsKey(topicPartition)
+          || offsetCheckpoints.get(topicPartition) != offset) {
+        ZKGroupTopicDirs dirs = new ZKGroupTopicDirs(groupId, topicPartition.topic());
+        String path = dirs.consumerOffsetDir() + "/" + topicPartition.partition();
+        if (!commitZkClient.exists(path)) {
+          commitZkClient.createPersistent(path, true);
+        }
+        commitZkClient.writeData(path,
+            String.valueOf(offset));
+        offsetCheckpoints.put(topicPartition, offset);
       }
-      commitZkClient.writeData(path,
-          String.valueOf(offset));
-      offsetCheckpoints.put(topicPartition, offset);
+    } catch (Exception e) {
+      LOGGER.error("Caught Exception on commitOffset for topic: {}, partition: {}, offset: {}", topicPartition.topic(),
+          topicPartition.partition(), offset, e);
+      throw e;
     }
   }
 

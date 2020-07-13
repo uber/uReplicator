@@ -18,18 +18,14 @@ package com.uber.stream.ureplicator.common.observer;
 import com.uber.stream.kafka.mirrormaker.common.utils.KafkaStarterUtils;
 import com.uber.stream.kafka.mirrormaker.common.utils.ZkStarter;
 import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
-import junit.framework.AssertionFailedError;
 import kafka.server.KafkaServerStartable;
 import org.easymock.EasyMock;
-import org.easymock.IAnswer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
-
-import java.util.Random;
 
 public class TestKafkaBrokerTopicObserver {
 

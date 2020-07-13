@@ -31,7 +31,7 @@ import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
-public class ZookeeperCheckpointManagerTest {
+public class ZookeeperCheckpointManagerIntegrationTests {
 
   private final String SRC_CLUSTER_ZK = ZkStarter.DEFAULT_ZK_STR + "/" + TestUtils.SRC_CLUSTER;
   private final String TEST_TOPIC_PREFIX = "testZookeeperCheckpointManager";
