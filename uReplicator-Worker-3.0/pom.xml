@@ -10,6 +10,10 @@
   <modelVersion>4.0.0</modelVersion>
 
   <artifactId>uReplicator-Worker-3.0</artifactId>
+  <properties>
+    <cassandra-driver-core.version>3.5.0</cassandra-driver-core.version>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>com.uber.uReplicator</groupId>
@@ -28,6 +32,12 @@
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
       <version>23.0</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/com.datastax.cassandra/cassandra-driver-core -->
+    <dependency>
+      <groupId>com.datastax.cassandra</groupId>
+      <artifactId>cassandra-driver-core</artifactId>
+      <version>${cassandra-driver-core.version}</version>
     </dependency>
   </dependencies>
 </project>

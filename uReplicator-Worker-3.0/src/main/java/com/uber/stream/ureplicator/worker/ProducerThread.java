@@ -115,7 +115,7 @@ public class ProducerThread extends Thread {
             if (resp == null) {
               numDroppedMessage.getAndIncrement();
             } else {
-              producer.send(resp, record.partition(), record.offset());
+              producer.send(resp, record.partition(), record.offset(), record.topic());
             }
             TopicPartition tp = new TopicPartition(record.topic(), record.partition());
             consumedOffsets.put(tp, record.offset() + 1);

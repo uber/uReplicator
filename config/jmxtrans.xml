@@ -115,10 +115,10 @@
 
   </queries>
   <outputWriter class="org.jmxtrans.agent.GraphitePlainTextTcpOutputWriter">
-    <host>localhost</host>
-    <port>4756</port>
-    <namePrefix>##YOUR_PREFIX##</namePrefix>
+    <host>127.0.0.1</host>
+    <port>2003</port>
+    <namePrefix>ureplicator</namePrefix>
   </outputWriter>
 
-  <collectIntervalInSeconds>60</collectIntervalInSeconds>
+  <collectIntervalInSeconds>5</collectIntervalInSeconds>
 </jmxtrans-agent>

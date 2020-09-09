@@ -42,6 +42,9 @@ public class WorkerInstance {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WorkerInstance.class);
 
+  private static final String OFFSET_MAPPER_CASSANDRA_HOST = "localhost";
+  private static final int OFFSET_MAPPER_CASSANDRA_PORT = 9042;
+
   protected final AtomicBoolean isShuttingDown = new AtomicBoolean(false);
   protected final AtomicBoolean isRunning = new AtomicBoolean(false);
 
@@ -60,6 +63,10 @@ public class WorkerInstance {
   private IMessageTransformer messageTransformer;
   private ProducerManager producerManager;
   private ICheckPointManager checkpointManager;
+
+  // Map src<>dst offsets
+  private OffsetMapper offsetMapper;
+
   // use to observe destination topic partition
   protected TopicPartitionCountObserver observer;
   protected String srcCluster;
@@ -86,6 +93,7 @@ public class WorkerInstance {
         Constants.DEFAULT_NUMBER_OF_PRODUCERS);
     maxQueueSize = consumerProps.getConsumerMaxQueueSize();
     numOfProducer = Math.max(1, Integer.parseInt(numOfProducerStr));
+    offsetMapper = new OffsetMapper(OFFSET_MAPPER_CASSANDRA_HOST, OFFSET_MAPPER_CASSANDRA_PORT);
   }
 
   public boolean isRunning() {
@@ -418,7 +426,10 @@ public class WorkerInstance {
    * @param srcOffset source cluster offset
    */
   protected void onProducerCompletionWithoutException(RecordMetadata metadata, int srcPartition,
-      long srcOffset) {
+      long srcOffset, String srcTopic) {
+    LOGGER.info("Message Mapping:\nSRC Partition-Offset: {}-{}\nDST PartitionOffset: {}-{}", srcPartition, srcOffset, metadata.partition(), metadata.offset());
+    offsetMapper.mapOffset(srcTopic, srcPartition, srcOffset, metadata.topic(), metadata.partition(), metadata.offset());
+    //  metadata.topic()
   }
 
   /**

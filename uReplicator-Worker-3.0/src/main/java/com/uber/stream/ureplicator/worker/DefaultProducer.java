@@ -64,14 +64,14 @@ public class DefaultProducer {
     producer = new KafkaProducer(producerProps);
   }
 
-  public void send(ProducerRecord record, int srcPartition, long srcOffset)
+  public void send(ProducerRecord record, int srcPartition, long srcOffset, String srcTopic)
       throws ExecutionException, InterruptedException {
     recordCount.getAndIncrement();
     if (syncProducer) {
       this.producer.send(record).get();
     } else {
       this.producer.send(record,
-          new UReplicatorProducerCallback(record.topic(), srcPartition, srcOffset));
+          new UReplicatorProducerCallback(record.topic(), srcPartition, srcOffset, srcTopic));
     }
   }
 
@@ -108,10 +108,12 @@ public class DefaultProducer {
 
     private final int srcPartition;
     private final long srcOffset;
-    private final String topic;
+    private final String dstTopic;
+    private final String srcTopic;
 
-    public UReplicatorProducerCallback(String topic, int srcPartition, long srcOffset) {
-      this.topic = topic;
+    public UReplicatorProducerCallback(String dstTopic, int srcPartition, long srcOffset, String srcTopic) {
+      this.dstTopic = dstTopic;
+      this.srcTopic = srcTopic;
       this.srcPartition = srcPartition;
       this.srcOffset = srcOffset;
     }
@@ -120,13 +122,13 @@ public class DefaultProducer {
     public void onCompletion(RecordMetadata metadata, Exception e) {
       try {
         if (e != null) {
-          LOGGER.error("[{}] Closing producer due to send failure. topic: {}", producerClientId, topic, e);
+          LOGGER.error("[{}] Closing producer due to send failure. topic: {}", producerClientId, dstTopic, e);
           if (abortOnSendFailure) {
             producerAbort = true;
             producer.close();
           }
         } else {
-          onCompletionWithoutException(metadata, srcPartition, srcOffset);
+          onCompletionWithoutException(metadata, srcPartition, srcOffset, srcTopic);
         }
       } finally {
         recordCount.decrementAndGet();
@@ -134,8 +136,8 @@ public class DefaultProducer {
     }
 
     public void onCompletionWithoutException(RecordMetadata metadata, int srcPartition,
-        long srcOffset) {
-      workerInstance.onProducerCompletionWithoutException(metadata, srcPartition, srcOffset);
+        long srcOffset, String srcTopic) {
+      workerInstance.onProducerCompletionWithoutException(metadata, srcPartition, srcOffset, srcTopic);
     }
   }
 

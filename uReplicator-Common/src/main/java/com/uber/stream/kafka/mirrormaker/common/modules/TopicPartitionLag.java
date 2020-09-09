@@ -40,7 +40,7 @@ public class TopicPartitionLag {
 
   @Override
   public String toString() {
-    return String.format("%s:%d-%d/%d", topicName, latestOffset, commitOffset);
+    return String.format("%s:%d-%d/%d", topicName, partitionId, latestOffset, commitOffset);
   }
 
 }
