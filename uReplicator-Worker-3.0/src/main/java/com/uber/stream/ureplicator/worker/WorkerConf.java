@@ -47,6 +47,9 @@ public class WorkerConf extends PropertiesConfiguration {
   private static final String CLUSTER_CONFIG_FILE = "cluster_config";
   private static final String DEFAULT_CLUSTER_CONFIG_FILE = null;
 
+  private static final String OFFSET_MAPPER_CONFIG_FILE = "offset_mapper_config";
+  private static final String DEFAULT_OFFSET_MAPPER_CONFIG_FILE = null;
+
   private static final String TOPIC_MAPPING_FILE = "topic_mappings";
   private static final String DEFAULT_TOPIC_MAPPING_FILE = null;
 
@@ -151,6 +154,10 @@ public class WorkerConf extends PropertiesConfiguration {
     return getProperty(CLUSTER_CONFIG_FILE, DEFAULT_CLUSTER_CONFIG_FILE);
   }
 
+  public String getOffsetMapperConfigFile() {
+    return getProperty(OFFSET_MAPPER_CONFIG_FILE, DEFAULT_OFFSET_MAPPER_CONFIG_FILE);
+  }
+
   public String getTopicMappingFile() {
     return getProperty(TOPIC_MAPPING_FILE, DEFAULT_TOPIC_MAPPING_FILE);
   }
@@ -237,6 +244,10 @@ public class WorkerConf extends PropertiesConfiguration {
     setProperty(CLUSTER_CONFIG_FILE, clusterConfig);
   }
 
+  public void setOffsetMapperConfigFile(String offsetMapperConfig) {
+    setProperty(OFFSET_MAPPER_CONFIG_FILE, offsetMapperConfig);
+  }
+
   public void setTopicMappingFile(String topicMapping) {
     setProperty(TOPIC_MAPPING_FILE, topicMapping);
   }
@@ -306,6 +317,8 @@ public class WorkerConf extends PropertiesConfiguration {
         .addOption(FEDERATED_ENABLED, true, "Whether to enable federated uReplicator")
         .addOption(CONSUMER_CONFIG_FILE, true,
             "Embedded consumer config for consuming from the source cluster.")
+        .addOption(OFFSET_MAPPER_CONFIG_FILE, true,
+                "File containing the configurations for the offset mapper.")
         .addOption(PRODUCER_CONFIG_FILE, true, "Embedded producer config.")
         .addOption(HELIX_CONFIG_FILE, true, "Embedded helix config.")
         .addOption(CLUSTER_CONFIG_FILE, true, "Embedded cluster config.")

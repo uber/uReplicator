@@ -30,6 +30,9 @@ import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import com.uber.stream.ureplicator.worker.offsetmapper.OffsetMapper;
+import com.uber.stream.ureplicator.worker.offsetmapper.OffsetMapperFactory;
 import org.apache.commons.lang.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -42,9 +45,6 @@ public class WorkerInstance {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WorkerInstance.class);
 
-  private static final String OFFSET_MAPPER_CASSANDRA_HOST = "localhost";
-  private static final int OFFSET_MAPPER_CASSANDRA_PORT = 9042;
-
   protected final AtomicBoolean isShuttingDown = new AtomicBoolean(false);
   protected final AtomicBoolean isRunning = new AtomicBoolean(false);
 
@@ -53,6 +53,7 @@ public class WorkerInstance {
   protected final Properties producerProps;
   protected final CustomizedConsumerConfig consumerProps;
   protected final Properties clusterProps;
+  protected final Properties offsetMapperProps;
   protected final List<BlockingQueue<FetchedDataChunk>> messageQueue = new ArrayList<>();
   protected final List<ConsumerIterator> consumerStream = new ArrayList<>();
   protected final int numOfProducer;
@@ -64,13 +65,15 @@ public class WorkerInstance {
   private ProducerManager producerManager;
   private ICheckPointManager checkpointManager;
 
-  // Map src<>dst offsets
-  private OffsetMapper offsetMapper;
-
   // use to observe destination topic partition
   protected TopicPartitionCountObserver observer;
   protected String srcCluster;
   protected String dstCluster;
+
+
+  // Offset Mapper
+  private final OffsetMapperFactory offsetMapperFactory;
+  private final OffsetMapper offsetMapper;
 
   /**
    * Main constructor
@@ -93,7 +96,11 @@ public class WorkerInstance {
         Constants.DEFAULT_NUMBER_OF_PRODUCERS);
     maxQueueSize = consumerProps.getConsumerMaxQueueSize();
     numOfProducer = Math.max(1, Integer.parseInt(numOfProducerStr));
-    offsetMapper = new OffsetMapper(OFFSET_MAPPER_CASSANDRA_HOST, OFFSET_MAPPER_CASSANDRA_PORT);
+
+    // Offset Mapper
+    offsetMapperProps = WorkerUtils.loadProperties(workerConf.getOffsetMapperConfigFile());
+    offsetMapperFactory = new OffsetMapperFactory(offsetMapperProps);
+    offsetMapper = offsetMapperFactory.getOffsetMapper();
   }
 
   public boolean isRunning() {

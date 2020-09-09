@@ -1,4 +1,4 @@
-package com.uber.stream.ureplicator.worker;
+package com.uber.stream.ureplicator.worker.offsetmapper;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ResultSet;
@@ -6,9 +6,9 @@ import com.datastax.driver.core.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class OffsetMapper {
+public class CassandraOffsetMapper implements OffsetMapper{
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(OffsetMapper.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(CassandraOffsetMapper.class);
 
     private static final String INSERT_STATEMENT = "INSERT INTO ureplicator.offset_mapping " +
             "(src_topic, src_partition, src_offset, dst_topic, dst_partition, dst_offset)" +
@@ -19,7 +19,7 @@ public class OffsetMapper {
     private CassandraConnector connector;
     private Session session;
 
-    public OffsetMapper(String cassandraHost, int cassandraPort){
+    public CassandraOffsetMapper(String cassandraHost, int cassandraPort){
         this.cassandraHost = cassandraHost;
         this.cassandraPort = cassandraPort;
         init();
@@ -58,13 +58,15 @@ public class OffsetMapper {
         }
     }
 
-    protected void mapOffset(String srcTopic, int srcPartition, long srcOffset, String dstTopic, int dstPartition, long dstOffset){
+    @Override
+    public void mapOffset(String srcTopic, int srcPartition, long srcOffset, String dstTopic, int dstPartition, long dstOffset){
         String insertStmt = String.format(INSERT_STATEMENT, srcTopic, srcPartition, srcOffset, dstTopic, dstPartition, dstOffset);
         ResultSet rs = session.execute(insertStmt);
-        LOGGER.info("Finished mapping {}-{}:{} to {}-{}:{}.", srcTopic, srcPartition, srcOffset, dstTopic, dstPartition, dstOffset);
+            LOGGER.info("Finished mapping {}-{}:{} to {}-{}:{}.", srcTopic, srcPartition, srcOffset, dstTopic, dstPartition, dstOffset);
     }
 
-    protected void close(){
+    @Override
+    public void close(){
         connector.close();
     }
 }
