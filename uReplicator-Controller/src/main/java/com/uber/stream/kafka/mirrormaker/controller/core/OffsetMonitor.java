@@ -117,8 +117,7 @@ public class OffsetMonitor {
   public void start() {
     if (refreshIntervalInSec > 0) {
       // delay for 1-5 minutes
-      // int delaySec = 60 + new Random().nextInt(240);
-      int delaySec = 5;
+      int delaySec = 60 + new Random().nextInt(240);
       logger.info("OffsetMonitor starts updating offsets every {} seconds with delay {} seconds",
           refreshIntervalInSec,
           delaySec);
