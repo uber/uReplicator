@@ -25,12 +25,14 @@ public class OffsetMapperFactory {
             case "cassandra":
                 String cassandraHost = props.getProperty(OFFSET_MAPPER_TYPE_CASSANDRA_HOST);
                 int cassandraPort = Integer.parseInt(props.getProperty(OFFSET_MAPPER_TYPE_CASSANDRA_PORT));
+                LOGGER.info("Using cassandra {}:{} for offset mapping.", cassandraHost, cassandraPort);
                 return new CassandraOffsetMapper(cassandraHost, cassandraPort);
-            // case "kafka":
+            case "kafka":
+                LOGGER.info("Using kafka for offset mapping.");
+                return new KafkaOffsetMapper(props);
             default:
-                cassandraHost = props.getProperty(OFFSET_MAPPER_TYPE_CASSANDRA_HOST);
-                cassandraPort = Integer.parseInt(props.getProperty(OFFSET_MAPPER_TYPE_CASSANDRA_PORT));
-                return new CassandraOffsetMapper(cassandraHost, cassandraPort);
+                LOGGER.info("No option set for offset mapping.");
+                return null;
         }
     }
 }
