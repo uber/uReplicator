@@ -599,7 +599,11 @@ public class ControllerHelixManager implements IHelixManager {
       }
       Map<String, HostAndPort> pipelineHostInfoMap = new HashMap<>();
       for (InstanceTopicPartitionHolder holder : instanceMap.values()) {
-        pipelineHostInfoMap.put(holder.getRouteString(), getHostInfo(holder.getInstanceName()));
+        try {
+          pipelineHostInfoMap.put(holder.getRouteString(), getHostInfo(holder.getInstanceName()));
+        } catch (Exception e) {
+          LOGGER.warn("Failed to find hostInfo for instanceId {}", holder.getInstanceName());
+        }
       }
       _controllerWorkloadSnapshot.updatePipelineHostInfoMap(pipelineHostInfoMap);
       _controllerWorkloadSnapshot.refreshWorkloadInfo();
