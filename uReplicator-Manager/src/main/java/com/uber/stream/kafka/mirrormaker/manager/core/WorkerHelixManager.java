@@ -291,10 +291,9 @@ public class WorkerHelixManager implements IHelixManager {
       for (String pipeline : pipelineToRouteIdToReplace.keySet()) {
         if(!_availableWorkerList.isEmpty()){
           LOGGER.info("replacing pipeline: {} : routeId : {}", pipeline, pipelineToRouteIdToReplace.get(pipeline));
-          String workerInstance = _availableWorkerList.remove(0);
           _helixAdmin.setResourceIdealState(_helixClusterName, pipeline,
                   IdealStateBuilder.resetCustomIdealStateFor(_helixAdmin.getResourceIdealState(_helixClusterName, pipeline),
-                          pipeline, workerToReplace, workerInstance,
+                          pipeline, workerToReplace, _availableWorkerList,
                           _conf.getMaxNumWorkersPerRoute()));
 
         } else {
