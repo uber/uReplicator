@@ -126,7 +126,8 @@ public class IdealStateBuilder {
   }
 
   public static IdealState resetCustomIdealStateFor(IdealState oldIdealState,
-      String topicName, List<String> instanceToReplace, String availableInstance, int maxNumReplica) {
+      String topicName, List<String> instanceToReplace, List<String> availableInstances, int maxNumReplica) {
+
     final CustomModeISBuilder customModeIdealStateBuilder = new CustomModeISBuilder(topicName);
 
     int oldNumPartitions = oldIdealState.getNumPartitions();
@@ -137,10 +138,11 @@ public class IdealStateBuilder {
         .setMaxPartitionsPerNode(oldNumPartitions);
     for (String partitionName : oldIdealState.getPartitionSet()) {
       for (String instanceName : oldIdealState.getInstanceStateMap(partitionName).keySet()) {
-        String instanceToUse = instanceToReplace.contains(instanceName) ? availableInstance : instanceName;
+        String workerInstance = availableInstances.remove(0);
+        String instanceToUse = instanceToReplace.contains(instanceName) ? workerInstance : instanceName;
         customModeIdealStateBuilder.assignInstanceAndState(partitionName, instanceToUse, "ONLINE");
         if (instanceToReplace.contains(instanceName)) {
-          LOGGER.info("replaceing: route: {}@{}, old {}, new {}",
+          LOGGER.info("replacing: route: {}@{}, old {}, new {}",
               topicName, partitionName, instanceName, instanceToUse);
         }
       }
