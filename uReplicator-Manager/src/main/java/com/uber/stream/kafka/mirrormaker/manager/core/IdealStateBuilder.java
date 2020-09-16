@@ -138,12 +138,12 @@ public class IdealStateBuilder {
         .setMaxPartitionsPerNode(oldNumPartitions);
     for (String partitionName : oldIdealState.getPartitionSet()) {
       for (String instanceName : oldIdealState.getInstanceStateMap(partitionName).keySet()) {
-        String workerInstance = availableInstances.remove(0);
-        String instanceToUse = instanceToReplace.contains(instanceName) ? workerInstance : instanceName;
+        String instanceToUse = instanceToReplace.contains(instanceName) ? availableInstances.get(0) : instanceName;
         customModeIdealStateBuilder.assignInstanceAndState(partitionName, instanceToUse, "ONLINE");
         if (instanceToReplace.contains(instanceName)) {
           LOGGER.info("replacing: route: {}@{}, old {}, new {}",
               topicName, partitionName, instanceName, instanceToUse);
+          availableInstances.remove(0);
         }
       }
     }
