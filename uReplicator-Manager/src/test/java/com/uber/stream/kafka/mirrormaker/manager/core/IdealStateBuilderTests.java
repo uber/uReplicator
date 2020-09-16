@@ -35,7 +35,7 @@ public class IdealStateBuilderTests {
 
     List<String> instanceToReplace = ImmutableList.of("1", "2", "3", "4");
     Set<String> availableInstanceSet = ImmutableSet.of("11", "12", "13", "14");
-    Set<String> partitionNames = new HashSet<>();
+
     int maxNumReplica = 4;
     final CustomModeISBuilder customModeIdealStateBuilder = new CustomModeISBuilder("testTopic");
     customModeIdealStateBuilder
@@ -43,19 +43,25 @@ public class IdealStateBuilderTests {
         .setNumPartitions(maxNumReplica).setNumReplica(maxNumReplica)
         .setMaxPartitionsPerNode(instanceToReplace.size());
 
-    for (int i = 0; i < instanceToReplace.size(); i++) {
-      partitionNames.add(String.valueOf(i));
-      customModeIdealStateBuilder.assignInstanceAndState(String.valueOf(i), instanceToReplace.get(i), "ONLINE");
-    }
+
+    customModeIdealStateBuilder.assignInstanceAndState("0", "1", "ONLINE");
+    customModeIdealStateBuilder.assignInstanceAndState("0", "2", "ONLINE");
+    customModeIdealStateBuilder.assignInstanceAndState("0", "5", "ONLINE");
+    customModeIdealStateBuilder.assignInstanceAndState("0", "6", "ONLINE");
+    customModeIdealStateBuilder.assignInstanceAndState("0", "7", "ONLINE");
+
+    customModeIdealStateBuilder.assignInstanceAndState("1", "3", "ONLINE");
+    customModeIdealStateBuilder.assignInstanceAndState("1", "4", "ONLINE");
 
     List<String> availableInstances = Lists.newArrayList(availableInstanceSet);
+    IdealState oldIdealState = customModeIdealStateBuilder.build();
     IdealState result = IdealStateBuilder
-        .resetCustomIdealStateFor(customModeIdealStateBuilder.build(), "testTopic", instanceToReplace,
+        .resetCustomIdealStateFor(oldIdealState, "testTopic", instanceToReplace,
             availableInstances, 40);
 
     Set<String> existingInstances = new HashSet<>();
     for (String partitionName : result.getPartitionSet()) {
-      Assert.assertTrue(partitionNames.contains(partitionName));
+      Assert.assertTrue(oldIdealState.getPartitionSet().contains(partitionName));
       for (String instanceName : result.getInstanceStateMap(partitionName).keySet()) {
         Assert.assertFalse(existingInstances.contains(instanceName));
         existingInstances.add(instanceName);

@@ -48,9 +48,12 @@ import org.apache.helix.model.InstanceConfig;
 import org.apache.helix.model.builder.CustomModeISBuilder;
 import org.apache.helix.model.builder.HelixConfigScopeBuilder;
 import org.apache.helix.store.zk.ZkHelixPropertyStore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HelixUtils {
-
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(HelixUtils.class);
   private static final String BLACKLIST_TAG = "blacklisted";
 
   public static String getAbsoluteZkPathForHelix(String zkBaseUrl) {
