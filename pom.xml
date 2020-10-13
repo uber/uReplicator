@@ -108,7 +108,7 @@
     <zookeeper.version>3.4.14</zookeeper.version>
     <zkclient.version>0.11</zkclient.version>
     <jopt-simple.version>5.0.2</jopt-simple.version>
-    <junit.version>4.6</junit.version>
+    <junit.version>4.13.1</junit.version>
     <jackson.version>2.10.0.pr1</jackson.version>
     <restlet.version>2.4.0</restlet.version>
     <io.dropwizard.metrics.version>4.0.2</io.dropwizard.metrics.version>
