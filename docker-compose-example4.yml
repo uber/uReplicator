@@ -38,11 +38,18 @@ services:
     - "2181:2181"
     - "9093:9093"
     - "9094:9094"
+    healthcheck:
+      test: ["CMD", "./prepare-devenv.sh", "devenv", "5"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
   controller:
+    image: ureplicator
     build: .
     ports:
     - "9000:9000"
     command: "controller \
+      -enableFederated false \
       -mode auto \
       backUpToGit false \
       -enableAutoTopicExpansion true \
@@ -52,34 +59,44 @@ services:
       -zookeeper devenv:2181 \
       -destKafkaZkPath devenv:2181/cluster1 \
       -helixClusterName testMirrorMaker"
-    depends_on:
-    - devenv
     links:
     - devenv
+    environment:
+    - WAIT_FOR_HOST=devenv:2181
+    restart: always
     healthcheck:
       test: ["CMD", "./wait-for-it.sh", "controller:9000", "60"]
       interval: 30s
       timeout: 10s
       retries: 5
   worker_1:
-    image: ureplicator_controller
+    image: ureplicator
     command:  "worker \
-        --consumer.config example/example-consumer.properties \
-        --producer.config example/example-producer.properties \
-        --helix.config example/example-helix.properties \
-        --topic.mappings example/example-topicmapping.properties"
-    depends_on:
-    - controller
+        -consumer_config example/example-consumer.properties \
+        -producer_config example/example-producer.properties \
+        -federated_enabled false \
+        -helix_config example/example-helix.properties \
+        -topic_partition_count_observer true \
+        -cluster_config example/example-cluster.properties"
+    environment:
+    - WAIT_FOR_HOST=controller:9000
+    restart: always
     links:
+    - devenv
     - controller
   worker_2:
-    image: ureplicator_controller
+    image: ureplicator
     command: "worker \
-        --consumer.config example/example-consumer.properties \
-        --producer.config example/example-producer.properties \
-        --helix.config example/example-helix-2.properties \
-        --topic.mappings example/example-topicmapping.properties"
-    depends_on:
-    - controller
+        -consumer_config example/example-consumer.properties \
+        -producer_config example/example-producer.properties \
+        -federated_enabled false \
+        -helix_config example/example-helix-2.properties \
+        -topic_partition_count_observer true \
+        -cluster_config example/example-cluster.properties"
+    environment:
+    - WAIT_FOR_HOST=controller:9000
+    restart: always
     links:
+    - devenv
     - controller
+
