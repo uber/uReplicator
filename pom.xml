@@ -91,6 +91,10 @@
       <name>Public online Restlet repository</name>
       <url>http://maven.restlet.org</url>
     </repository>
+    <repository>
+      <id>snapshots-repo</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    </repository>
   </repositories>
 
   <properties>
@@ -123,6 +127,7 @@
     <easymock.version>3.0</easymock.version>
     <jacoco.version>0.7.9</jacoco.version>
     <guava.version>23.0</guava.version>
+    <jedis.version>3.5.1</jedis.version>
   </properties>
 
   <dependencies>
@@ -329,6 +334,13 @@
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
       <version>${guava.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>redis.clients</groupId>
+      <artifactId>jedis</artifactId>
+      <version>${jedis.version}</version>
+      <type>jar</type>
+      <scope>compile</scope>
     </dependency>
   </dependencies>
 

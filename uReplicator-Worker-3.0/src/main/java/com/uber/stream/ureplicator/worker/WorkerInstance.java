@@ -50,6 +50,7 @@ public class WorkerInstance {
   protected final Properties producerProps;
   protected final CustomizedConsumerConfig consumerProps;
   protected final Properties clusterProps;
+  protected final Properties offsetsDeltaProps;
   protected final List<BlockingQueue<FetchedDataChunk>> messageQueue = new ArrayList<>();
   protected final List<ConsumerIterator> consumerStream = new ArrayList<>();
   protected final int numOfProducer;
@@ -76,6 +77,8 @@ public class WorkerInstance {
     consumerProps = new CustomizedConsumerConfig(
         WorkerUtils.loadProperties(workerConf.getConsumerConfigFile()));
     clusterProps = WorkerUtils.loadProperties(workerConf.getClusterConfigFile());
+    offsetsDeltaProps = WorkerUtils.loadProperties(workerConf.getOffsetsDeltaConfigFile());
+
     if (workerConf.getFederatedEnabled() && clusterProps == null) {
       LOGGER.error("cluster config file required for federated mode");
       throw new IllegalArgumentException("cluster config file required for federated mode");
@@ -113,6 +116,7 @@ public class WorkerInstance {
     isShuttingDown.set(false);
     this.srcCluster = srcCluster;
     this.dstCluster = dstCluster;
+    initializeOffsetsDeltaManager();
     initializeProperties(srcCluster, dstCluster);
     // Init blocking queue
     initializeConsumerStream();
@@ -276,6 +280,16 @@ public class WorkerInstance {
       LOGGER.info("worker instance already shutdown");
       return;
     }
+  }
+
+  private void initializeOffsetsDeltaManager() {
+    final long delay = Long.parseLong(offsetsDeltaProps
+            .getProperty(Constants.OFFSETS_DELTA_SCHEDULER_DELAY, Constants.DEFAULT_OFFSETS_DELTA_SCHEDULER_DELAY));
+    final long period = Long.parseLong(offsetsDeltaProps
+            .getProperty(Constants.OFFSETS_DELTA_SCHEDULER_PERIOD, Constants.DEFAULT_OFFSETS_DELTA_SCHEDULER_PERIOD));
+    OffsetsDeltaManager.getInstance().schedule(delay, period);
+    OffsetsDeltaManager.getInstance().setupRedis(offsetsDeltaProps.getProperty(Constants.OFFSETS_DELTA_REDIS_HOST,
+            Constants.DEFAULT_OFFSETS_DELTA_REDIS_HOST));
   }
 
   private void initializeConsumerStream() {

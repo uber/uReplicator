@@ -19,7 +19,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReentrantLock;
+
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -36,6 +36,7 @@ public class DefaultProducer {
 
   private final boolean syncProducer;
   private final KafkaProducer producer;
+  private final OffsetsDeltaManager offsetsDeltaManager = OffsetsDeltaManager.getInstance();
 
   private final long offsetCommitIntervalMs;
   private final AtomicInteger recordCount = new AtomicInteger(0);
@@ -68,7 +69,8 @@ public class DefaultProducer {
       throws ExecutionException, InterruptedException {
     recordCount.getAndIncrement();
     if (syncProducer) {
-      this.producer.send(record).get();
+      final RecordMetadata metadata = (RecordMetadata) this.producer.send(record).get();
+      offsetsDeltaManager.addDelta(record.topic(), srcPartition, srcOffset - metadata.offset(), record.timestamp());
     } else {
       this.producer.send(record,
           new UReplicatorProducerCallback(record.topic(), srcPartition, srcOffset));
@@ -119,6 +121,7 @@ public class DefaultProducer {
     @Override
     public void onCompletion(RecordMetadata metadata, Exception e) {
       try {
+        offsetsDeltaManager.addDelta(topic, srcPartition, srcOffset - metadata.offset(), metadata.timestamp());
         if (e != null) {
           LOGGER.error("[{}] Closing producer due to send failure. topic: {}", producerClientId, topic, e);
           if (abortOnSendFailure) {

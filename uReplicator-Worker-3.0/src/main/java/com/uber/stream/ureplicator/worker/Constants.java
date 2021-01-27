@@ -34,6 +34,15 @@ public final class Constants {
   public static final String HELIX_ZK_SERVER = "zkServer";
   public static final String DEFAULT_HELIX_ZK_SERVER = "localhost:2181/uReplicator";
 
+  public static final String OFFSETS_DELTA_REDIS_HOST = "redis.host";
+  public static final String DEFAULT_OFFSETS_DELTA_REDIS_HOST = "localhost";
+
+  public static final String OFFSETS_DELTA_SCHEDULER_DELAY = "scheduler.delay";
+  public static final String DEFAULT_OFFSETS_DELTA_SCHEDULER_DELAY = "2000";
+
+  public static final String OFFSETS_DELTA_SCHEDULER_PERIOD = "scheduler.period";
+  public static final String DEFAULT_OFFSETS_DELTA_SCHEDULER_PERIOD = "300000";
+
   public static final String ZK_SERVER = "zookeeper.connect";
 
   public static final String PRODUCER_ZK_OBSERVER = "zkPath";

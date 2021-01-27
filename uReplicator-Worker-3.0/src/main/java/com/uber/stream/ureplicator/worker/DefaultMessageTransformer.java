@@ -43,12 +43,13 @@ public class DefaultMessageTransformer implements IMessageTransformer {
   @Override
   public ProducerRecord process(ConsumerRecord record) {
     String topic = topicMapping.getOrDefault(record.topic(), record.topic());
-    int partitionCount = 0;
-    if (topicPartitionCountObserver != null) {
-      partitionCount = topicPartitionCountObserver.getPartitionCount(topic);
-    }
-    Integer partition =
-        partitionCount > 0 && record.partition() >= 0 ? record.partition() % partitionCount : null;
+//    int partitionCount = 0;
+//    if (topicPartitionCountObserver != null) {
+//      partitionCount = topicPartitionCountObserver.getPartitionCount(topic);
+//    }
+
+//  Integer partition = partitionCount > 0 && record.partition() >= 0 ? record.partition() % partitionCount : null;
+    Integer partition = record.partition();
     Long timpstamp = record.timestamp() <= 0 ? null : record.timestamp();
     return new ProducerRecord(topic, partition, timpstamp,
         record.key(),

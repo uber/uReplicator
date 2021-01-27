@@ -47,6 +47,9 @@ public class WorkerConf extends PropertiesConfiguration {
   private static final String CLUSTER_CONFIG_FILE = "cluster_config";
   private static final String DEFAULT_CLUSTER_CONFIG_FILE = null;
 
+  private static final String OFFSETS_DELTA_CONFIG_FILE = "offsets_delta_config";
+  private static final String DEFAULT_OFFSETS_DELTA_CONFIG_FILE = "offsets-delta.config";
+
   private static final String TOPIC_MAPPING_FILE = "topic_mappings";
   private static final String DEFAULT_TOPIC_MAPPING_FILE = null;
 
@@ -145,6 +148,10 @@ public class WorkerConf extends PropertiesConfiguration {
 
   public String getHelixConfigFile() {
     return getProperty(HELIX_CONFIG_FILE, DEFAULT_HELIX_CONFIG_FILE);
+  }
+
+  public String getOffsetsDeltaConfigFile() {
+    return getProperty(OFFSETS_DELTA_CONFIG_FILE, DEFAULT_OFFSETS_DELTA_CONFIG_FILE);
   }
 
   public String getClusterConfigFile() {
