@@ -77,6 +77,7 @@ services:
         -federated_enabled false \
         -helix_config example/example-helix.properties \
         -topic_partition_count_observer true \
+        -topic_mappings example/example-topicmapping.properties \
         -cluster_config example/example-cluster.properties"
     environment:
     - WAIT_FOR_HOST=controller:9000
@@ -92,6 +93,7 @@ services:
         -federated_enabled false \
         -helix_config example/example-helix-2.properties \
         -topic_partition_count_observer true \
+        -topic_mappings example/example-topicmapping.properties \
         -cluster_config example/example-cluster.properties"
     environment:
     - WAIT_FOR_HOST=controller:9000
