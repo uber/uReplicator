@@ -13,7 +13,7 @@
     <module>uReplicator-Controller</module>
     <module>uReplicator-Manager</module>
     <module>uReplicator-Common</module>
-    <module>uReplicator-Worker-3.0</module>
+    <module>uReplicator-Worker</module>
   </modules>
 
   <licenses>
@@ -70,11 +70,6 @@
       <dependency>
         <groupId>com.uber.uReplicator</groupId>
         <artifactId>uReplicator-Controller</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.uber.uReplicator</groupId>
-        <artifactId>uReplicator-Distribution</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
