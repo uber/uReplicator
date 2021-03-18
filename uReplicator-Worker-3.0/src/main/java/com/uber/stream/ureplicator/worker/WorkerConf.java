@@ -24,7 +24,10 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 
 public class WorkerConf extends PropertiesConfiguration {
 
@@ -33,6 +36,9 @@ public class WorkerConf extends PropertiesConfiguration {
   private static final String FEDERATED_ENABLED = "federated_enabled";
   private static final boolean DEFAULT_FEDERATED_ENABLE = false;
 
+  private static final String SECURE_FEATURE_ENABLED = "secure_feature_enabled";
+  private static final boolean DEFAULT_SECURE_FEATURE_ENABLE = false;
+
   private static final String HOSTNAME = "worker_hostname";
 
   private static final String CONSUMER_CONFIG_FILE = "consumer_config";
@@ -40,6 +46,11 @@ public class WorkerConf extends PropertiesConfiguration {
 
   private static final String PRODUCER_CONFIG_FILE = "producer_config";
   private static final String DEFAULT_PRODUCER_CONFIG_FILE = "producer.properties";
+
+  private static final String SECURE_CLUSTERS_SET = "secure_clusters_set";
+
+  private static final String SECURE_CONFIG_FILE = "secure_config";
+  private static final String DEFAULT_SECURE_CONFIG_FILE = "secure.properties";
 
   private static final String HELIX_CONFIG_FILE = "helix_config";
   private static final String DEFAULT_HELIX_CONFIG_FILE = "helix.config";
@@ -135,12 +146,28 @@ public class WorkerConf extends PropertiesConfiguration {
     return getProperty(FEDERATED_ENABLED, DEFAULT_FEDERATED_ENABLE);
   }
 
+  public boolean getSecureFeatureEnabled() {
+    return getProperty(SECURE_FEATURE_ENABLED, DEFAULT_SECURE_FEATURE_ENABLE);
+  }
+
   public String getConsumerConfigFile() {
     return getProperty(CONSUMER_CONFIG_FILE, DEFAULT_CONSUMER_CONFIG_FILE);
   }
 
   public String getProducerConfigFile() {
     return getProperty(PRODUCER_CONFIG_FILE, DEFAULT_PRODUCER_CONFIG_FILE);
+  }
+
+  public Set<String> getSecureClustersSet() {
+    Set set = new HashSet<String>();
+    if (this.containsKey(SECURE_CLUSTERS_SET)) {
+      set = new HashSet(Arrays.asList(this.getStringArray(SECURE_CLUSTERS_SET)));
+    }
+    return set;
+  }
+
+  public String getSecureConfigFile() {
+    return getProperty(SECURE_CONFIG_FILE, DEFAULT_SECURE_CONFIG_FILE);
   }
 
   public String getHelixConfigFile() {
@@ -221,6 +248,14 @@ public class WorkerConf extends PropertiesConfiguration {
     setProperty(FEDERATED_ENABLED, String.valueOf(federatedEnabled));
   }
 
+  public void setSecureFeatureEnabled(boolean secureFeatureEnabled) {
+    setProperty(SECURE_FEATURE_ENABLED, String.valueOf(secureFeatureEnabled));
+  }
+
+  public void setSecureClustersSet(String secureClusters) {
+    setProperty(SECURE_CLUSTERS_SET, secureClusters);
+  }
+
   public void setConsumerConfigFile(String consumerConfig) {
     setProperty(CONSUMER_CONFIG_FILE, consumerConfig);
   }
@@ -229,6 +264,9 @@ public class WorkerConf extends PropertiesConfiguration {
     setProperty(PRODUCER_CONFIG_FILE, producerConfig);
   }
 
+  public void setSecureConfigFile(String secureConfig) {
+    setProperty(SECURE_CONFIG_FILE, secureConfig);
+  }
   public void setHelixConfigFile(String helixConfig) {
     setProperty(HELIX_CONFIG_FILE, helixConfig);
   }
@@ -304,9 +342,12 @@ public class WorkerConf extends PropertiesConfiguration {
     final Options workerOptions = new Options();
     workerOptions.addOption("help", false, "Help")
         .addOption(FEDERATED_ENABLED, true, "Whether to enable federated uReplicator")
+        .addOption(SECURE_FEATURE_ENABLED, true, "Whether to enable secure support")
+        .addOption(SECURE_CLUSTERS_SET, true, "Comma separated secure cluster names")
         .addOption(CONSUMER_CONFIG_FILE, true,
             "Embedded consumer config for consuming from the source cluster.")
         .addOption(PRODUCER_CONFIG_FILE, true, "Embedded producer config.")
+        .addOption(SECURE_CONFIG_FILE, true, "Secure config to be added to producer/consumer.")
         .addOption(HELIX_CONFIG_FILE, true, "Embedded helix config.")
         .addOption(CLUSTER_CONFIG_FILE, true, "Embedded cluster config.")
         .addOption(TOPIC_MAPPING_FILE, true,
