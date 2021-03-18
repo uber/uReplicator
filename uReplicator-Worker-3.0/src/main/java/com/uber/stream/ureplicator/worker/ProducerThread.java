@@ -22,6 +22,13 @@ import com.uber.stream.ureplicator.common.KafkaUReplicatorMetricsReporter;
 import com.uber.stream.ureplicator.worker.ConsumerIterator.ConsumerTimeoutException;
 import com.uber.stream.ureplicator.worker.interfaces.ICheckPointManager;
 import com.uber.stream.ureplicator.worker.interfaces.IMessageTransformer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.TopicPartition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -29,13 +36,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.TopicPartition;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ProducerThread extends Thread {
 

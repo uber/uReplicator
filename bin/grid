@@ -34,7 +34,7 @@ DOWNLOAD_CACHE_DIR=$HOME/.kafkamirrormaker/download
 COMMAND=$1
 SYSTEM=$2
 
-DOWNLOAD_KAFKA=http://www.us.apache.org/dist/kafka/0.10.2.2/kafka_2.11-0.10.2.2.tgz
+DOWNLOAD_KAFKA=https://archive.apache.org/dist/kafka/1.1.1/kafka_2.11-1.1.1.tgz
 DOWNLOAD_ZOOKEEPER=http://archive.apache.org/dist/zookeeper/zookeeper-3.4.3/zookeeper-3.4.3.tar.gz
 
 bootstrap() {
@@ -43,6 +43,7 @@ bootstrap() {
   rm -rf /tmp/zookeeper/
   rm -rf /tmp/kafka-logs/
   rm -rf "$DEPLOY_ROOT_DIR"
+  rm -rf "$BASE_DIR/config/certs"
   mkdir "$DEPLOY_ROOT_DIR"
   install_all
   start_all
@@ -62,12 +63,32 @@ install_zookeeper() {
 
 install_kafka() {
   mkdir -p "$DEPLOY_ROOT_DIR"
-  install kafka $DOWNLOAD_KAFKA kafka_2.11-0.10.2.2
+  install kafka $DOWNLOAD_KAFKA kafka_2.11-1.1.1
   # have to use SIGTERM since nohup on appears to ignore SIGINT
   # and Kafka switched to SIGINT in KAFKA-1031.
   sed -i.bak 's/SIGINT/SIGTERM/g' $DEPLOY_ROOT_DIR/kafka/bin/kafka-server-stop.sh
   # in order to simplify the wikipedia-stats example job, set topic to have just 1 partition by default
   sed -i.bak 's/^num\.partitions *=.*/num.partitions=1/' $DEPLOY_ROOT_DIR/kafka/config/server.properties
+  # Add secure certs
+  rm -rf "$BASE_DIR/config/certs"
+  mkdir -p "$BASE_DIR/config/certs"
+  cd "$BASE_DIR/config/certs"
+  export PASS=foobar
+
+  keytool -keystore kafka.server.keystore.jks -alias localhost -validity 365 -genkey -storepass $PASS -keypass $PASS -noprompt -dname "CN=localhost, OU=EE, O=DD, L=CC, S=AA, C=BB"
+
+  openssl req -new -x509 -keyout ca-key -out ca-cert -days 365 -passout pass:$PASS -subj '/CN=www.myurep.com/O=MyURep/C=US'
+  keytool -keystore kafka.server.truststore.jks -alias CARoot -import -file ca-cert -storepass $PASS -noprompt
+  keytool -keystore kafka.server.keystore.jks -alias localhost -certreq -file cert-file -storepass $PASS -noprompt
+
+  openssl x509 -req -CA ca-cert -CAkey ca-key -in cert-file -out cert-signed -days 365 -CAcreateserial -passin pass:$PASS
+
+  keytool -keystore kafka.server.keystore.jks -alias CARoot -import -file ca-cert -storepass $PASS -noprompt
+  keytool -keystore kafka.server.keystore.jks -alias localhost -import -file cert-signed -storepass $PASS -noprompt
+  keytool -keystore kafka.client.truststore.jks -alias CARoot -import -file ca-cert -storepass $PASS -noprompt
+
+  rm ca-* cert-*
+  cd - > /dev/null
 }
 
 install() {
@@ -84,6 +105,7 @@ install() {
     mv "${PACKAGE_FILE}.tmp" "$PACKAGE_FILE"
   fi
   rm -rf "$DESTINATION_DIR" "$PACKAGE_DIR"
+  echo "$PACKAGE_FILE"  $DOWNLOAD_CACHE_DIR
   tar -xf "$PACKAGE_FILE" -C $DOWNLOAD_CACHE_DIR
   mv "$PACKAGE_DIR" "$DESTINATION_DIR"
 }
@@ -119,6 +141,7 @@ start_kafka1() {
   if [ -f $DEPLOY_ROOT_DIR/kafka/bin/kafka-server-start.sh ]; then
     mkdir -p $DEPLOY_ROOT_DIR/kafka/logs
     cd $DEPLOY_ROOT_DIR/kafka
+    cp -r $BASE_DIR/config/certs $DEPLOY_ROOT_DIR/kafka
     nohup bin/kafka-server-start.sh $BASE_DIR/bin/server1.properties > logs/kafka1.log 2>&1 &
     cd - > /dev/null
   else
@@ -130,6 +153,7 @@ start_kafka2() {
   if [ -f $DEPLOY_ROOT_DIR/kafka/bin/kafka-server-start.sh ]; then
     mkdir -p $DEPLOY_ROOT_DIR/kafka/logs
     cd $DEPLOY_ROOT_DIR/kafka
+    cp -r $BASE_DIR/config/certs $DEPLOY_ROOT_DIR/kafka
     nohup bin/kafka-server-start.sh $BASE_DIR/bin/server2.properties > logs/kafka2.log 2>&1 &
     cd - > /dev/null
   else

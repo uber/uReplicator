@@ -52,8 +52,10 @@ public class TestUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(TestUtils.class);
 
   public static final String SRC_CLUSTER = "cluster1";
+  public static final String SRC_CLUSTER_SEC = "cluster1_sec";
   public static final String SRC_CLUSTER_2 = "cluster3";
   public static final String DST_CLUSTER = "cluster2";
+  public static final String DST_CLUSTER_SEC = "cluster2_sec";
   public static final String CONTROLLER_WORKER_HELIX_CLUSTER = String
       .format("controller-worker-%s-%s-0", SRC_CLUSTER, DST_CLUSTER);
   public static final String ROUTE_NAME = String
@@ -74,7 +76,7 @@ public class TestUtils {
       "--offset.commit.interval.ms", "6000"
   };
 
-  private static KafkaProducer createProducer(String bootstrapServer) {
+  private static KafkaProducer createProducer(String bootstrapServer, boolean useSecure) {
     Properties producerProps = new Properties();
     producerProps
         .setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServer);
@@ -83,11 +85,14 @@ public class TestUtils {
         ByteArraySerializer.class.getName());
     producerProps.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
         ByteArraySerializer.class.getName());
+    if (useSecure) {
+      producerProps.putAll(WorkerUtils.loadProperties("src/test/resources/secure.properties"));
+    }
     KafkaProducer producer = new KafkaProducer(producerProps);
     return producer;
   }
 
-  private static Consumer<Byte[], Byte[]> createConsumer(String bootstrapServer) {
+  private static Consumer<Byte[], Byte[]> createConsumer(String bootstrapServer, boolean useSecure) {
     final Properties consumerProps = new Properties();
     consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServer);
     consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG,
@@ -97,6 +102,9 @@ public class TestUtils {
     consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
         ByteArrayDeserializer.class.getName());
     consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+    if (useSecure) {
+      consumerProps.putAll(WorkerUtils.loadProperties("src/test/resources/secure.properties"));
+    }
     // Create the consumer using props.
     final Consumer<Byte[], Byte[]> consumer =
         new KafkaConsumer<>(consumerProps);
@@ -106,7 +114,7 @@ public class TestUtils {
 
 
   public static void produceMessages(String bootstrapServer, String topicname, int messageCount) {
-    KafkaProducer producer = createProducer(bootstrapServer);
+    KafkaProducer producer = createProducer(bootstrapServer, false);
     for (int i = 0; i < messageCount; i++) {
       ProducerRecord<Byte[], Byte[]> record = new ProducerRecord(topicname, null,
           String.format("Test Value - %d", i).getBytes());
@@ -117,8 +125,8 @@ public class TestUtils {
   }
 
   public static void produceMessages(String bootstrapServer, String topicname, int messageCount,
-      int numOfPartitions) {
-    KafkaProducer producer = createProducer(bootstrapServer);
+                                     int numOfPartitions, boolean useSecure) {
+    KafkaProducer producer = createProducer(bootstrapServer, useSecure);
     for (int i = 0; i < messageCount; i++) {
       ProducerRecord<Byte[], Byte[]> record = new ProducerRecord(topicname, i % numOfPartitions,
           null,
@@ -130,12 +138,12 @@ public class TestUtils {
   }
 
   public static List<ConsumerRecord<Byte[], Byte[]>> consumeMessage(String bootstrapServer,
-      String topicName,
-      int timeoutMs
-  ) throws InterruptedException {
+                                                                    String topicName,
+                                                                    int timeoutMs,
+                                                                    boolean useSecure) throws InterruptedException {
 
     long time = new Date().getTime();
-    Consumer<Byte[], Byte[]> consumer = createConsumer(bootstrapServer);
+    Consumer<Byte[], Byte[]> consumer = createConsumer(bootstrapServer, useSecure);
     consumer.subscribe(Collections.singletonList(topicName));
 
     List<ConsumerRecord<Byte[], Byte[]>> result = new ArrayList<>();
@@ -217,8 +225,7 @@ public class TestUtils {
     return conf;
   }
 
-  public static ZKHelixAdmin initHelixClustersForWorkerTest(Properties properties, String route1,
-      String route2) throws InterruptedException {
+  public static ZKHelixAdmin initHelixClustersForWorkerTest(Properties properties, String... routes) throws InterruptedException {
     String zkRoot = properties.getProperty("zkServer");
     Thread.sleep(500);
     ZkClient zkClient = ZkUtils.createZkClient(ZkStarter.DEFAULT_ZK_STR, 1000, 1000);
@@ -227,14 +234,15 @@ public class TestUtils {
     ZKHelixAdmin helixAdmin = new ZKHelixAdmin(zkRoot);
     String deployment = properties.getProperty("federated.deployment.name");
     String managerHelixClusterName = WorkerUtils.getManagerWorkerHelixClusterName(deployment);
-    String controllerHelixClusterName = WorkerUtils.getControllerWorkerHelixClusterName(route1);
-    if (StringUtils.isNotBlank(route2)) {
-      String controllerHelixClusterName2 = WorkerUtils.getControllerWorkerHelixClusterName(route2);
-      HelixSetupUtils.setup(controllerHelixClusterName2, zkRoot, "0");
+
+    for (String route: routes) {
+      if (StringUtils.isNotBlank(route)) {
+        String controllerHelixClusterName2 = WorkerUtils.getControllerWorkerHelixClusterName(route);
+        HelixSetupUtils.setup(controllerHelixClusterName2, zkRoot, "0");
+      }
     }
 
     HelixSetupUtils.setup(managerHelixClusterName, zkRoot, "0");
-    HelixSetupUtils.setup(controllerHelixClusterName, zkRoot, "0");
 
     return helixAdmin;
   }

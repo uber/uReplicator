@@ -100,7 +100,11 @@ public class KafkaStarterUtils {
   }
 
   public static void configureKafkaPort(Properties configuration, int port) {
-    configuration.put("port", Integer.toString(port));
+    if (configuration.containsKey("ssl.keystore.location")) {
+      configuration.put("listeners", "SSL://:" + port);
+    } else {
+      configuration.put("port", Integer.toString(port));
+    }
   }
 
   public static void stopServer(KafkaServerStartable serverStartable) {

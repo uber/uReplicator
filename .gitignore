@@ -65,3 +65,4 @@ out
 
 bin/pkg/**
 
+logs/

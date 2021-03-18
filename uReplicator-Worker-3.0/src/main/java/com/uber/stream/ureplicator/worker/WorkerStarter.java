@@ -17,9 +17,6 @@ package com.uber.stream.ureplicator.worker;
 
 import com.uber.stream.ureplicator.worker.helix.ControllerWorkerHelixHandler;
 import com.uber.stream.ureplicator.worker.helix.ManagerWorkerHelixHandler;
-import java.io.IOException;
-import java.util.Properties;
-import java.util.concurrent.CountDownLatch;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -30,6 +27,10 @@ import org.restlet.Context;
 import org.restlet.data.Protocol;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
+import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
 
 public class WorkerStarter {
 
@@ -140,7 +141,7 @@ public class WorkerStarter {
   public static void main(String[] args) throws Exception {
     CommandLineParser parser = new DefaultParser();
     CommandLine cmd;
-    LOGGER.info("Start WorkerStarter with arguments {}", args);
+    LOGGER.info("Start WorkerStarter with arguments {}", Arrays.toString(args));
     cmd = parser.parse(WorkerConf.constructWorkerOptions(), args);
     if (cmd.getOptions().length == 0 || cmd.hasOption("help")) {
       HelpFormatter f = new HelpFormatter();

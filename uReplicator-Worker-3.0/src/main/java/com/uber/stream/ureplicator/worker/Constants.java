@@ -56,6 +56,8 @@ public final class Constants {
 
   public static final String FEDERATED_CLUSTER_SERVER_CONFIG_PREFIX = "kafka.cluster.servers.";
 
+  public static final String FEDERATED_SECURE_CLUSTER_SERVER_CONFIG_PREFIX = "secure.kafka.cluster.servers.";
+
   public static final String FEDERATED_CLUSTER_ZK_CONFIG_PREFIX = "kafka.cluster.zkStr.";
 
   public static final String COMMIT_ZOOKEEPER_SERVER_CONFIG = "commit.zookeeper.connect";
