@@ -66,4 +66,5 @@ out
 bin/pkg/**
 
 !bin/libs/**
+
 logs/
