@@ -33,12 +33,12 @@ FROM openjdk:8-jre
 
 ENV DEBIAN_FRONTEND noninteractive
 ENV SCALA_VERSION 2.11
-ENV KAFKA_VERSION 0.10.2.2
+ENV KAFKA_VERSION 1.1.1
 ENV KAFKA_HOME /opt/kafka_"$SCALA_VERSION"-"$KAFKA_VERSION"
 ENV DOWNLOAD_ZOOKEEPER http://archive.apache.org/dist/zookeeper/zookeeper-3.4.3/zookeeper-3.4.3.tar.gz
 
-# Install Kafka, Zookeeper and other needed things
-RUN apt-get update && \
+# Install Kafka, Zookeeper and other needed things, ignore apt-get update error (jessie-backports is no longer available)
+RUN apt-get update || true && \
 apt-get install -y zookeeper wget supervisor dnsutils netcat && \
 rm -rf /var/lib/apt/lists/* && \
 apt-get clean

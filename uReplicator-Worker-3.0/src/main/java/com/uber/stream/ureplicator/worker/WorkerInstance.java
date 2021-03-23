@@ -22,14 +22,6 @@ import com.uber.stream.ureplicator.common.MetricsReporterConf;
 import com.uber.stream.ureplicator.worker.interfaces.ICheckPointManager;
 import com.uber.stream.ureplicator.worker.interfaces.IConsumerFetcherManager;
 import com.uber.stream.ureplicator.worker.interfaces.IMessageTransformer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -37,6 +29,11 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class WorkerInstance {
 
@@ -301,12 +298,20 @@ public class WorkerInstance {
                 srcCluster, dstCluster)
         );
       }
-      String srcServers = clusterProps
-          .getProperty(Constants.FEDERATED_CLUSTER_SERVER_CONFIG_PREFIX + srcCluster, "");
-      String dstServers = clusterProps
-          .getProperty(Constants.FEDERATED_CLUSTER_SERVER_CONFIG_PREFIX + dstCluster, "");
-      producerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, dstServers);
-      consumerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, srcServers);
+
+      boolean isSrcClusterSecure = workerConf.getSecureFeatureEnabled() && workerConf.getSecureClustersSet().contains(srcCluster);
+      boolean isDstClusterSecure = workerConf.getSecureFeatureEnabled() && workerConf.getSecureClustersSet().contains(dstCluster);
+
+      if (isSrcClusterSecure) {
+        consumerProps.putAll(WorkerUtils.loadProperties(workerConf.getSecureConfigFile()));
+      }
+
+      if (isDstClusterSecure) {
+        producerProps.putAll(WorkerUtils.loadProperties(workerConf.getSecureConfigFile()));
+      }
+
+      consumerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, getClusterBootstrapServers(srcCluster, isSrcClusterSecure));
+      producerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, getClusterBootstrapServers(dstCluster, isDstClusterSecure));
 
       commitZk = clusterProps
           .getProperty(Constants.FEDERATED_CLUSTER_ZK_CONFIG_PREFIX + srcCluster, "");
@@ -327,6 +332,20 @@ public class WorkerInstance {
       }
     }
     consumerProps.setProperty(Constants.COMMIT_ZOOKEEPER_SERVER_CONFIG, commitZk);
+  }
+
+  protected String getClusterBootstrapServers(String clusterName, boolean secureEnabled) {
+    String prefix = secureEnabled ? Constants.FEDERATED_SECURE_CLUSTER_SERVER_CONFIG_PREFIX : Constants.FEDERATED_CLUSTER_SERVER_CONFIG_PREFIX;
+    String bootstrapServers = clusterProps
+        .getProperty(prefix + clusterName, "");
+    if (StringUtils.isBlank(bootstrapServers)) {
+      throw new RuntimeException(
+          String.format(
+              "Failed to find bootstrapServers for cluster %s",
+              clusterName)
+      );
+    }
+    return bootstrapServers;
   }
 
   private void initializeMetricsReporter(String srcCluster, String dstCluster, String routeId,
