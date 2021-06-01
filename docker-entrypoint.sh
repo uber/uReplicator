@@ -38,7 +38,7 @@ case "$1" in
     exec java -Dlog4j.configuration=file:config/tools-log4j.properties -server -cp uReplicator-Controller/target/uReplicator-Controller-$UREP_VERSION-jar-with-dependencies.jar com.uber.stream.kafka.mirrormaker.controller.ControllerStarter ${@:2}
   ;;
   worker)
-    exec java -Dlog4j.configuration=file:config/tools-log4j.properties -server -cp uReplicator-Worker-3.0/target/uReplicator-Worker-3.0-$UREP_VERSION-jar-with-dependencies.jar  com.uber.stream.ureplicator.worker.WorkerStarter ${@:2}
+    exec java -Dlog4j.configuration=file:config/tools-log4j.properties -server -cp uReplicator-Worker/target/uReplicator-Worker-$UREP_VERSION-jar-with-dependencies.jar  com.uber.stream.ureplicator.worker.WorkerStarter ${@:2}
   ;;
   *)
     exec $@

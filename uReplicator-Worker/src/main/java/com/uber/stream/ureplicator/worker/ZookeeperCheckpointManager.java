@@ -85,11 +85,11 @@ public class ZookeeperCheckpointManager implements ICheckPointManager {
     try {
       CompletableFuture.allOf(futureList.toArray(new CompletableFuture[futureList.size()])).get();
     } catch (InterruptedException e) {
-      LOGGER.error("[{}]Caught InterruptedException on commitOffset.", e);
+      LOGGER.error("Caught InterruptedException on commitOffset.", e);
       commitFailure.mark(topicPartitionOffsets.size());
       return false;
     } catch (ExecutionException e) {
-      LOGGER.error("[{}]Caught ExecutionException on commitOffset.", e);
+      LOGGER.error("Caught ExecutionException on commitOffset.", e);
       commitFailure.mark(topicPartitionOffsets.size());
       return false;
     }

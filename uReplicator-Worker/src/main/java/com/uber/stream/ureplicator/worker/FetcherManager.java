@@ -172,7 +172,7 @@ public class FetcherManager extends ShutdownableThread implements
           .getOrDefault(fetcherThreadName, null);
       if (fetcherThread == null) {
         try {
-          int queueSize = Math.abs(fetcherThreadName.hashCode() % messageQueue.size());
+          int queueIndex = Math.abs(fetcherThreadName.hashCode() % messageQueue.size());
 
           LOGGER.info("Creating fetcher thread {}", fetcherThreadName);
           CustomizedConsumerConfig cloned = (CustomizedConsumerConfig) consumerProperties.clone();
@@ -184,7 +184,7 @@ public class FetcherManager extends ShutdownableThread implements
           cloned.setProperty(ConsumerConfig.CLIENT_ID_CONFIG,
               String.format("%s-%d", clientIdPrefix, fetcherThreadId));
           fetcherThread = createConsumerFetcherThread(fetcherThreadName, cloned,
-              messageLimiter, messageQueue.get(queueSize));
+              messageLimiter, messageQueue.get(queueIndex));
           fetcherThread.start();
           fetcherThreadMap.put(fetcherThreadName, fetcherThread);
           LOGGER.info("Fetcher fetcher thread {} created", fetcherThreadName);
