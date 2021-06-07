@@ -15,7 +15,6 @@
  */
 package com.uber.stream.ureplicator.worker;
 
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.kafka.common.TopicPartition;
 
