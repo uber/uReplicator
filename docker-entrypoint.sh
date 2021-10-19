@@ -28,7 +28,7 @@ echo "./wait-for-it.sh $WAIT_FOR_HOST  $WAIT_FOR_TIME_OUT"
 
 fi
 
-export UREP_VERSION="2.0.1-SNAPSHOT"
+export UREP_VERSION="2.0.2-SNAPSHOT"
 
 case "$1" in
   manager)
