@@ -114,7 +114,7 @@
     <commons.lang3.version>3.3.2</commons.lang3.version>
     <testng.version>6.5.1</testng.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <lombok.version>1.16.16</lombok.version>
+    <lombok.version>1.18.4</lombok.version>
     <easymock.version>3.0</easymock.version>
     <jacoco.version>0.7.9</jacoco.version>
     <guava.version>23.0</guava.version>
