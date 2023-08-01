@@ -94,7 +94,7 @@
     <log4j.version>1.2.17</log4j.version>
     <jdk.version>1.8</jdk.version>
     <scala.version>2.11.12</scala.version>
-    <kafka.version>1.1.1</kafka.version>
+    <kafka.version>3.4.0</kafka.version>
     <kafka.scala.version>2.11</kafka.scala.version>
     <helix.version>0.6.8</helix.version>
     <yammer.version>2.2.0</yammer.version>
